@@ -1,99 +1,83 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFolder } from 'obsidian';
+import { BadgeRenderer } from './badges';
+import { SymlinkModal } from './modal';
+import { DEFAULT_SETTINGS, SymlinkManagerSettings, SymlinkManagerSettingTab } from './settings';
 
-// Remember to rename these classes and interfaces!
+export default class SymlinkManagerPlugin extends Plugin {
+	settings!: SymlinkManagerSettings;
+	private badges: BadgeRenderer | null = null;
+	private vaultRoot = '';
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
-
-	async onload() {
+	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+		const adapter = this.app.vault.adapter;
+		if (!(adapter instanceof FileSystemAdapter)) {
+			new Notice('Symlink Manager: this plugin only runs on Obsidian desktop.');
+			return;
+		}
+		this.vaultRoot = adapter.getBasePath();
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+		this.badges = new BadgeRenderer(this.app, this.vaultRoot);
 
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			}
+			id: 'manage-active-folder',
+			name: 'Manage symlink for active folder',
+			callback: () => this.openModalForVaultPath(''),
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.registerEvent(
+			this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
+				if (!(file instanceof TFolder)) return;
+				menu.addItem((item) =>
+					item
+						.setTitle('Symlink: manage this folder')
+						.setIcon('link')
+						.onClick(() => this.openModalForVaultPath(file.path))
+				);
+			})
+		);
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
+		this.app.workspace.onLayoutReady(() => this.applyBadgeSetting());
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		// Folder rename/create/delete can change link state visible in the tree.
+		this.registerEvent(this.app.vault.on('create', (f) => this.badges?.notify(f)));
+		this.registerEvent(this.app.vault.on('delete', (f) => this.badges?.notify(f)));
+		this.registerEvent(this.app.vault.on('rename', (f) => this.badges?.notify(f)));
 
+		this.addSettingTab(new SymlinkManagerSettingTab(this.app, this));
 	}
 
-	onunload() {
+	onunload(): void {
+		this.badges?.clearAll();
+		this.badges = null;
 	}
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
+	openModalForVaultPath(initialVaultPath: string): void {
+		if (!this.vaultRoot) {
+			new Notice('Symlink Manager: vault root unavailable.');
+			return;
+		}
+		new SymlinkModal(this.app, {
+			vaultRoot: this.vaultRoot,
+			initialVaultPath,
+			confirmDisconnect: this.settings.confirmDisconnect,
+			onChange: () => this.badges?.scheduleRefresh(50),
+		}).open();
 	}
 
-	async saveSettings() {
+	applyBadgeSetting(): void {
+		if (!this.badges) return;
+		if (this.settings.showBadges) this.badges.scheduleRefresh(0);
+		else this.badges.clearAll();
+	}
+
+	async loadSettings(): Promise<void> {
+		const data = (await this.loadData()) as Partial<SymlinkManagerSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
+	}
+
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
 	}
 }

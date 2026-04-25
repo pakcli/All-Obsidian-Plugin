@@ -1,8 +1,161 @@
-/*
+/* Symlink Manager — modal layout */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.symlink-manager-modal .sm-section {
+	margin-bottom: 0.75rem;
+}
 
-If your plugin does not need CSS, delete this file.
+.symlink-manager-modal .sm-status {
+	margin: 0.5rem 0 0.75rem;
+	padding: 0.5rem 0.75rem;
+	border-radius: 6px;
+	background: var(--background-secondary);
+	min-width: 0;
+}
 
-*/
+.symlink-manager-modal .sm-status-line {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-width: 0;
+}
+
+.symlink-manager-modal .sm-status-label {
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+.symlink-manager-modal .sm-target-row {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	margin-top: 0.25rem;
+	min-width: 0;
+}
+
+.symlink-manager-modal .sm-target-arrow {
+	flex: 0 0 auto;
+	color: var(--text-muted);
+}
+
+.symlink-manager-modal .sm-target-path {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.symlink-manager-modal .sm-warn {
+	color: var(--color-orange, #d08a3a);
+	font-size: var(--font-ui-smaller);
+	margin-top: 0.25rem;
+}
+
+/* Status dot */
+
+.symlink-manager-modal .sm-dot {
+	flex: 0 0 auto;
+	width: 0.65em;
+	height: 0.65em;
+	border-radius: 50%;
+	display: inline-block;
+	background: var(--background-modifier-border);
+}
+
+.symlink-manager-modal .sm-dot-junction { background: #3aa757 !important; }
+.symlink-manager-modal .sm-dot-symlink  { background: #d08a3a !important; }
+.symlink-manager-modal .sm-dot-broken   { background: #d04a4a !important; }
+.symlink-manager-modal .sm-dot-none     { background: var(--background-modifier-border) !important; }
+
+/* Action cards */
+
+.symlink-manager-modal .sm-actions-title {
+	margin: 0.75rem 0 0.5rem;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.symlink-manager-modal .sm-card {
+	padding: 0.75rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	margin-bottom: 0.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.symlink-manager-modal .sm-card-title {
+	font-weight: 600;
+}
+
+.symlink-manager-modal .sm-card-desc {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.symlink-manager-modal .sm-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+}
+
+/* ── File explorer badges ──────────────────────────────────────────────────
+ * Badge dot sits on the RIGHT side of the folder name.
+ * Uses ::after on the title element itself so it never gets clipped.
+ * Hard-coded hex colours + !important so no theme can override them.
+ * ------------------------------------------------------------------------- */
+
+.nav-folder-title.sm-link-active,
+.nav-folder-title.sm-link-broken {
+	display: flex !important;
+	align-items: center !important;
+	min-width: 0 !important;
+}
+
+/* Let the folder name truncate naturally */
+.nav-folder-title.sm-link-active .nav-folder-title-content,
+.nav-folder-title.sm-link-broken .nav-folder-title-content {
+	flex: 1 1 auto !important;
+	min-width: 0 !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+	white-space: nowrap !important;
+}
+
+/* Base dot — RIGHT side via margin-left: auto pushes it to the end */
+.nav-folder-title.sm-link-active::after,
+.nav-folder-title.sm-link-broken::after {
+	content: '' !important;
+	display: inline-block !important;
+	flex: 0 0 auto !important;
+	width: 0.55em !important;
+	height: 0.55em !important;
+	border-radius: 50% !important;
+	margin-left: 0.5em !important;
+	margin-right: 0.3em !important;
+	align-self: center !important;
+	/* fallback colour — overridden by type classes below */
+	background: #888 !important;
+}
+
+/* Colour overrides — hard-coded hex, !important, no CSS variable so themes can't win */
+.nav-folder-title.sm-link-junction::after {
+	background: #3aa757 !important; /* green  — junction, same drive */
+}
+
+.nav-folder-title.sm-link-symlink::after {
+	background: #d08a3a !important; /* orange — symlink, cross drive */
+}
+
+.nav-folder-title.sm-link-broken::after {
+	background: #d04a4a !important; /* red    — broken / drive offline */
+}
