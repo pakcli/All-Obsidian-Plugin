@@ -1,65 +1,72 @@
 /**
- * Middle-ellipsis a path so it fits the element's current width.
- * Re-runs whenever the element resizes.
+ * Attach a ResizeObserver to `el` that keeps the displayed path inside the
+ * available width using four tiers (widest → narrowest):
  *
- *   wide     →  D:\Projects\Foo\Bar\baz
- *   medium   →  D:\Projects\…\baz
- *   tiny     →  D:\…
+ *   full       E:\vault-ai-skill\Claude Skill
+ *   compact    E:\…\Claude Skill          (drive + … + last segment)
+ *   minimal    E:\vault-ai-skill\         (drive + parent segment)
+ *   drive-only E:\…                       (drive letter only)
  *
- * Returns a disposer so callers can disconnect the observer on teardown.
+ * The full path is always preserved in el.title for hover tooltip.
+ * Returns a disposer — call it to disconnect the observer.
  */
 export function applyResponsivePath(el: HTMLElement, full: string): () => void {
 	el.dataset.fullPath = full;
+	el.title = full;
 
-	const compute = (): void => {
+	const render = (): void => {
 		const width = el.clientWidth;
 		if (width <= 0) return;
-
-		const charPx = estimateCharPx(el);
-		const max = Math.max(3, Math.floor(width / charPx));
-
-		el.textContent = squeeze(full, max);
-		el.title = full;
+		const budget = Math.max(3, Math.floor(width / measureCharPx(el)));
+		el.textContent = squeeze(full, budget);
 	};
 
-	compute();
+	render();
 
-	const ro = new ResizeObserver(compute);
+	const ro = new ResizeObserver(render);
 	ro.observe(el);
 	return () => ro.disconnect();
 }
 
-function estimateCharPx(el: HTMLElement): number {
+// ─── char-width estimator ────────────────────────────────────────────────────
+
+function measureCharPx(el: HTMLElement): number {
 	const cs = getComputedStyle(el);
 	const fontSize = parseFloat(cs.fontSize) || 13;
-	// Monospace fonts run ~0.6em per char; proportional UI fonts ~0.55em.
-	const factor = /mono/i.test(cs.fontFamily) ? 0.6 : 0.55;
-	return Math.max(5, fontSize * factor);
+	const factor = /mono/i.test(cs.fontFamily) ? 0.60 : 0.52;
+	return Math.max(4, fontSize * factor);
 }
 
-function squeeze(full: string, max: number): string {
-	if (full.length <= max) return full;
+// ─── four-tier squeeze ────────────────────────────────────────────────────────
 
-	const sepRx = /[\\/]/;
-	const segments = full.split(sepRx);
-	const sep = full.match(sepRx)?.[0] ?? '/';
+export function squeeze(full: string, budget: number): string {
+	// ── Tier 0: full fits ────────────────────────────────────────────────────
+	if (full.length <= budget) return full;
 
-	// Very narrow: just the root (drive letter or first segment) + ellipsis.
-	if (max < 12) {
-		const head = segments[0] ?? full.slice(0, 3);
-		const candidate = `${head}${sep}…`;
-		return candidate.length <= max ? candidate : `…${full.slice(-Math.max(1, max - 1))}`;
+	const sep   = full.includes('\\') ? '\\' : '/';
+	const parts = full.split(/[\\/]/);
+	const first  = parts[0] ?? '';                         // drive or root
+	const last   = parts[parts.length - 1] ?? '';          // destination name
+	const parent = parts.length >= 3 ? (parts[parts.length - 2] ?? '') : ''; // parent dir
+
+	// ── Tier 1: compact — drive/…/destination ───────────────────────────────
+	if (parts.length >= 3) {
+		const t1 = `${first}${sep}…${sep}${last}`;
+		if (t1.length <= budget) return t1;
+	} else if (parts.length === 2) {
+		// Only two segments: already as compact as it gets, skip to tier 3.
 	}
 
-	// Medium: keep first segment and last segment, ellipsis in the middle.
-	if (segments.length >= 3) {
-		const first = segments[0] ?? '';
-		const last = segments[segments.length - 1] ?? '';
-		const candidate = `${first}${sep}…${sep}${last}`;
-		if (candidate.length <= max) return candidate;
+	// ── Tier 2: minimal — drive/parent-dir/ ─────────────────────────────────
+	if (parent) {
+		const t2 = `${first}${sep}${parent}${sep}`;
+		if (t2.length <= budget) return t2;
 	}
 
-	// Fallback: simple character-level middle ellipsis.
-	const half = Math.max(1, Math.floor((max - 1) / 2));
-	return `${full.slice(0, half)}…${full.slice(full.length - (max - half - 1))}`;
+	// ── Tier 3: drive-only — drive/… ────────────────────────────────────────
+	const t3 = `${first}${sep}…`;
+	if (t3.length <= budget) return t3;
+
+	// ── Absolute fallback: truncate the drive letter itself ──────────────────
+	return first.slice(0, Math.max(1, budget - 1)) + '…';
 }

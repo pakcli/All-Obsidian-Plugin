@@ -28,6 +28,7 @@ export class SymlinkModal extends Modal {
 	private vaultPathInput!: TextComponent;
 	private statusEl!: HTMLElement;
 	private bodyEl!: HTMLElement;
+	private debugEl!: HTMLElement;
 	private disposers: Array<() => void> = [];
 
 	constructor(app: App, opts: SymlinkModalOptions) {
@@ -53,6 +54,7 @@ export class SymlinkModal extends Modal {
 
 		this.statusEl = this.contentEl.createDiv({ cls: 'sm-status' });
 		this.bodyEl = this.contentEl.createDiv({ cls: 'sm-body' });
+		this.debugEl = this.contentEl.createDiv({ cls: 'sm-debug' });
 
 		this.refresh();
 	}
@@ -75,6 +77,7 @@ export class SymlinkModal extends Modal {
 		const absPath = path.join(this.opts.vaultRoot, vaultPath);
 		this.info = { absPath, vaultPath, state: detectLink(absPath) };
 
+		this.hideDebug();
 		this.renderStatus();
 		this.renderBody();
 	}
@@ -218,8 +221,11 @@ export class SymlinkModal extends Modal {
 			.onClick(() => {
 				if (!this.confirm('Remove the link? Files at the target stay where they are.')) return;
 				void this.guard(async () => {
+					const t0 = performance.now();
+					this.showDebug('Disconnecting…');
 					await removeLink(this.info.absPath);
-					new Notice('Link removed.');
+					this.showDebug(`Disconnected. (${elapsed(t0)})`);
+					new Notice(`Link removed. (${elapsed(t0)})`);
 				});
 			});
 
@@ -234,9 +240,13 @@ export class SymlinkModal extends Modal {
 			.onClick(() => {
 				if (!this.confirm('Copy contents into the vault and then disconnect?')) return;
 				void this.guard(async () => {
+					const t0 = performance.now();
+					this.showDebug('Copying… ⏳');
 					new Notice('Copying — this may take a while…');
 					await copyAndDisconnect(this.info.absPath);
-					new Notice('Copied and detached.');
+					const dur = elapsed(t0);
+					this.showDebug(`Copied and detached. (${dur})`);
+					new Notice(`Copied and detached. (${dur})`);
 				});
 			});
 
@@ -356,6 +366,16 @@ export class SymlinkModal extends Modal {
 		return window.confirm(message);
 	}
 
+	private showDebug(msg: string): void {
+		this.debugEl.setText(msg);
+		this.debugEl.addClass('sm-debug-visible');
+	}
+
+	private hideDebug(): void {
+		this.debugEl.empty();
+		this.debugEl.removeClass('sm-debug-visible');
+	}
+
 	private async guard(fn: () => Promise<void>): Promise<void> {
 		try {
 			await fn();
@@ -363,6 +383,7 @@ export class SymlinkModal extends Modal {
 			this.refresh();
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
+			this.showDebug(`Error: ${msg}`);
 			new Notice(`Symlink Manager: ${msg}`, 8000);
 		}
 	}
@@ -377,4 +398,10 @@ function statusLabel(s: LinkInfo['state']): string {
 	if (s.kind === 'none') return 'No symlink detected';
 	if (s.kind === 'broken') return 'Broken link detected';
 	return s.type === 'junction' ? 'Junction active' : 'Symlink active';
+}
+
+/** Human-readable elapsed time from a performance.now() timestamp. */
+function elapsed(t0: number): string {
+	const ms = performance.now() - t0;
+	return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
 }

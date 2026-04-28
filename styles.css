@@ -108,54 +108,87 @@
 	margin-top: 0.75rem;
 }
 
+/* Debug / timing bar — only visible when sm-debug-visible class is set */
+
+.symlink-manager-modal .sm-debug {
+	display: none;
+}
+
+.symlink-manager-modal .sm-debug.sm-debug-visible {
+	display: block;
+	margin-top: 0.5rem;
+	padding: 0.35rem 0.6rem;
+	border-radius: 4px;
+	background: var(--background-secondary);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	border-left: 3px solid var(--color-accent, #7f6df2);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 /* ── File explorer badges ──────────────────────────────────────────────────
- * Badge dot sits on the RIGHT side of the folder name.
- * Uses ::after on the title element itself so it never gets clipped.
- * Hard-coded hex colours + !important so no theme can override them.
+ * Only affects .nav-folder-title rows that OUR BadgeRenderer has decorated
+ * with .sm-link-active / .sm-link-broken.  No !important on layout props —
+ * the dual-class specificity is enough.  !important is reserved solely for
+ * the dot colours so no theme can make them invisible.
+ *
+ * Row layout after injection:
+ *   [collapse-icon] [folder-name] [target-path right-aligned] [●]
  * ------------------------------------------------------------------------- */
 
+/* ── File explorer badges ──────────────────────────────────────────────────
+ * Rules here ONLY affect elements that our plugin creates or marks.
+ * We deliberately never touch .nav-folder-title-content so that other
+ * plugins' icons (Icon Folder, etc.) injected inside it are never clipped
+ * or repositioned.
+ *
+ * Layout: .nav-folder-title is already flex in Obsidian.
+ *   [icons/collapse]  [.nav-folder-title-content — untouched]  [.sm-path-badge]  [.sm-dot-badge]
+ *
+ * Both .nav-folder-title-content and .sm-path-badge use flex-grow: 1 so they
+ * share available space.  The path badge starts at 0 basis so the name always
+ * wins the natural-size priority, and the path fills whatever is left.
+ * ------------------------------------------------------------------------- */
+
+/* Only rows flagged by our renderer — no effect on any other folder row. */
 .nav-folder-title.sm-link-active,
 .nav-folder-title.sm-link-broken {
-	display: flex !important;
-	align-items: center !important;
-	min-width: 0 !important;
+	align-items: center;
 }
 
-/* Let the folder name truncate naturally */
-.nav-folder-title.sm-link-active .nav-folder-title-content,
-.nav-folder-title.sm-link-broken .nav-folder-title-content {
-	flex: 1 1 auto !important;
-	min-width: 0 !important;
-	overflow: hidden !important;
-	text-overflow: ellipsis !important;
-	white-space: nowrap !important;
+/* Path badge: shares leftover space with the name, right-aligns its text.
+   flex-basis 0 means it only grows into genuinely unused space. */
+.nav-folder-title > .sm-path-badge {
+	flex: 1 1 0;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: right;
+	font-size: 0.72em;
+	color: var(--text-faint);
+	opacity: 0.75;
+	padding-left: 0.4em;
+	padding-right: 0.1em;
+	font-family: var(--font-monospace);
 }
 
-/* Base dot — RIGHT side via margin-left: auto pushes it to the end */
-.nav-folder-title.sm-link-active::after,
-.nav-folder-title.sm-link-broken::after {
-	content: '' !important;
-	display: inline-block !important;
-	flex: 0 0 auto !important;
-	width: 0.55em !important;
-	height: 0.55em !important;
-	border-radius: 50% !important;
-	margin-left: 0.5em !important;
-	margin-right: 0.3em !important;
-	align-self: center !important;
-	/* fallback colour — overridden by type classes below */
-	background: #888 !important;
+/* Dot: fixed size, never shrinks, always visible. */
+.nav-folder-title > .sm-dot-badge {
+	flex: 0 0 auto;
+	display: inline-block;
+	width: 0.55em;
+	height: 0.55em;
+	border-radius: 50%;
+	margin-left: 0.4em;
+	margin-right: 0.2em;
+	align-self: center;
 }
 
-/* Colour overrides — hard-coded hex, !important, no CSS variable so themes can't win */
-.nav-folder-title.sm-link-junction::after {
-	background: #3aa757 !important; /* green  — junction, same drive */
-}
-
-.nav-folder-title.sm-link-symlink::after {
-	background: #d08a3a !important; /* orange — symlink, cross drive */
-}
-
-.nav-folder-title.sm-link-broken::after {
-	background: #d04a4a !important; /* red    — broken / drive offline */
-}
+/* Dot colours: the only place we use !important — prevents themes from
+   overriding the signal colour on an element we own entirely. */
+.nav-folder-title > .sm-dot-badge-junction { background: #3aa757 !important; }
+.nav-folder-title > .sm-dot-badge-symlink  { background: #d08a3a !important; }
+.nav-folder-title > .sm-dot-badge-broken   { background: #d04a4a !important; }

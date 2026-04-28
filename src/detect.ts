@@ -10,21 +10,23 @@ export function detectLink(absPath: string): LinkState {
 		return { kind: 'none' };
 	}
 
-	// POSIX symlink
+	// Standard symlink (POSIX + Windows dir-symlink via mklink /D)
 	if (lst.isSymbolicLink()) {
 		return resolveLink(absPath, classifyLinkType(absPath));
 	}
 
-	// Windows Junction — shows as directory, but realpath differs from absPath
+	// Windows junction — lstat reports it as a plain directory.
+	// Distinguish it from a real dir by attempting readlinkSync:
+	//   - real directory  → throws EINVAL ("not a reparse point")
+	//   - junction        → returns the target path
+	// This avoids the false-positive that realpath-comparison causes for
+	// every subfolder that lives inside a junction.
 	if (process.platform === 'win32' && lst.isDirectory()) {
 		try {
-			const real = fs.realpathSync(absPath);
-			if (real.toLowerCase() !== path.resolve(absPath).toLowerCase()) {
-				// realpath differs → this is a junction
-				return resolveLink(absPath, 'junction');
-			}
+			fs.readlinkSync(absPath);
+			return resolveLink(absPath, 'junction');
 		} catch {
-			return { kind: 'broken', type: 'junction', target: absPath };
+			return { kind: 'none' };
 		}
 	}
 
@@ -36,7 +38,7 @@ function resolveLink(absPath: string, type: LinkType): LinkState {
 	try {
 		target = fs.readlinkSync(absPath);
 	} catch {
-		// junction — readlink may fail on Windows, fallback to realpath
+		// junction readlink can fail on some Windows configs — fall through to realpath
 	}
 
 	if (target && !path.isAbsolute(target)) {
