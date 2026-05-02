@@ -1,8 +1,123 @@
-/*
+/* ── Table to Files — modal ───────────────────────────────────────────────── */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.ttf-modal {
+	min-width: 460px;
+}
 
-If your plugin does not need CSS, delete this file.
+.ttf-preview {
+	margin-top: 1rem;
+	padding: 0.75rem;
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
 
-*/
+.ttf-preview-title {
+	margin: 0 0 0.4rem;
+	font-size: var(--font-ui-smaller);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--text-muted);
+}
+
+.ttf-preview-summary {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	margin-bottom: 0.5rem;
+}
+
+.ttf-preview-sample {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	overflow: hidden;
+}
+
+.ttf-sample-filename {
+	padding: 0.3rem 0.6rem;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	color: var(--text-accent);
+	background: var(--background-primary-alt);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ttf-sample-code {
+	margin: 0;
+	padding: 0.5rem 0.7rem;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: pre;
+	overflow-x: auto;
+}
+
+.ttf-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-top: 1rem;
+}
+
+.ttf-history-wrap {
+	margin: -0.25rem 0 0.5rem;
+	padding: 0.4rem 0.6rem 0.5rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-primary-alt);
+}
+
+.ttf-history-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 0.3rem;
+}
+
+.ttf-history-label {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.ttf-history-clear {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	cursor: pointer;
+	padding: 0 0.25rem;
+	border-radius: 3px;
+}
+
+.ttf-history-clear:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.ttf-history-list {
+	max-height: 160px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.ttf-history-item {
+	padding: 0.25rem 0.4rem;
+	border-radius: 4px;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-normal);
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ttf-history-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+.ttf-history-item-active {
+	background: var(--background-modifier-active-hover);
+	color: var(--text-accent);
+}
