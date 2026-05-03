@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
+	"id": "obsidian-circuitjs",
+	"name": "CircuitJS",
+	"version": "1.2.2",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+	"description": "Embed interactive CircuitJS circuit simulations in your notes with offline support",
+	"author": "Steven Gann",
+	"authorUrl": "https://github.com/StevenGann",
+	"isDesktopOnly": true
 }

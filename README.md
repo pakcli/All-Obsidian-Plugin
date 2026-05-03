@@ -1,90 +1,298 @@
-# Obsidian Sample Plugin
+# CircuitJS
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+An [Obsidian.md](https://obsidian.md/) plugin to embed [CircuitJS](https://falstad.com/circuit/circuitjs.html) circuit simulations directly into your notes.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+![CircuitJS embedded in Obsidian](https://raw.githubusercontent.com/StevenGann/obsidian-circuitjs/master/docs/screenshot.png)
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+## Table of Contents
 
-## First time developing plugins?
+- [Purpose](#purpose)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Settings](#settings)
+- [Limitations](#limitations)
+- [Development](#development)
+- [Releasing](#releasing)
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+- [License](#license)
 
-Quick starting guide for new plugin devs:
+## Purpose
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+This plugin bridges the gap between circuit design and documentation. CircuitJS is an excellent tool for sketching out circuit designs, and this plugin allows you to:
 
-## Releasing new releases
+- **Version Control**: Keep circuit designs in version control alongside your Obsidian vault
+- **Documentation**: Embed circuits directly in Markdown with extensive notes
+- **Organization**: Reference and organize circuits within your knowledge base
+- **Backup**: Circuits are backed up with the rest of your vault
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Features
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+- **Offline Mode** (NEW in v2.0): Run simulations without internet using bundled CircuitJS
+- **Embedded Simulations**: View fully interactive CircuitJS simulations directly in your notes
+- **Live Interaction**: Interact with running simulations in Reading view
+- **Quick Editing**: One-click link to open circuits in full CircuitJS browser
+- **LZ Compression**: Efficient URL encoding using LZ-string compression
+- **Configurable**: Customizable settings for editability and CircuitJS URL
 
-## Adding your plugin to the community plugin list
+## Installation
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+### From Obsidian Community Plugins (Recommended)
 
-## How to use
+1. Open Obsidian Settings
+2. Navigate to **Community plugins**
+3. Click **Browse** and search for "CircuitJS"
+4. Click **Install**, then **Enable**
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+### Manual Installation
 
-## Manually installing the plugin
+1. Download the latest release from the [releases page](https://github.com/StevenGann/obsidian-circuitjs/releases)
+2. Extract the files to your vault's plugins folder: `<vault>/.obsidian/plugins/circuitjs/`
+3. Reload Obsidian
+4. Enable the plugin in Settings → Community plugins
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Usage
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+### Basic Workflow
 
-## Funding URL
+1. **Design your circuit** in [CircuitJS](https://falstad.com/circuit/circuitjs.html)
+2. **Export the circuit** using `File → Export As Text...`
+3. **Paste into Obsidian** in a fenced code block with the `circuitjs` tag:
 
-You can include funding URLs where people who use your plugin can financially support it.
+````markdown
+```circuitjs
+$ 1 0.000005 10.20027730826997 50 5 43 5e-11
+r 176 80 384 80 0 10
+s 384 80 448 80 0 1 false
+w 176 80 176 352 0
+c 384 352 176 352 0 0.000015 -9.16123055990675 -10
+l 384 80 384 352 0 1 -0.01424104005209455 0
+v 448 352 448 80 0 0 40 5 0 0 0.5
+r 384 352 448 352 0 100
+o 4 64 0 4099 20 0.05 0 2 4 3
+o 3 64 0 4099 20 0.05 1 2 3 3
+o 0 64 0 4099 0.625 0.05 2 2 0 3
+38 3 F1 0 0.000001 0.000101 -1 Capacitance
+38 4 F1 0 0.01 1.01 -1 Inductance
+38 0 F1 0 1 101 -1 Resistance
+h 1 4 3
+```
+````
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+4. **Switch to Reading view** to see the embedded simulation
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
+### CircuitJS Text Format Reference
+
+The circuit text format uses single-letter codes for components:
+
+| Code | Component |
+|------|-----------|
+| `$`  | Header/settings line |
+| `r`  | Resistor |
+| `c`  | Capacitor |
+| `l`  | Inductor |
+| `v`  | Voltage source |
+| `s`  | Switch |
+| `w`  | Wire |
+| `o`  | Oscilloscope/Output |
+| `38` | Slider control |
+| `h`  | Hint/display |
+
+For complete documentation, see the [CircuitJS documentation](https://github.com/pfalstad/circuitjs1).
+
+## Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Offline mode** | Use bundled CircuitJS for offline support (desktop only) | `true` |
+| **Editable** | Whether the embedded simulation can be interacted with | `true` |
+| **Show edit link** | Show `[EDIT]` link to open circuit in full browser | `true` |
+| **CircuitJS URL** | Base URL for the CircuitJS application (used when offline mode is disabled) | `https://falstad.com/circuit/circuitjs.html` |
+| **Code block tag** | Code block tag to trigger rendering | `circuitjs` |
+
+## Limitations
+
+- **Desktop Only**: Offline mode requires Electron's webview (desktop Obsidian only)
+- **No Auto-Save**: Changes made in the embedded simulation are not saved back to the code block
+- **Manual Export**: To persist changes, use `File → Export As Text...` in the simulation and paste the updated code back into your note
+- **Mobile**: Mobile users must disable offline mode and use the remote CircuitJS URL
+
+## Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- [pnpm](https://pnpm.io/) (recommended) or npm
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/StevenGann/obsidian-circuitjs.git
+cd obsidian-circuitjs
+
+# Install dependencies
+pnpm install
+
+# Start development build (with watch mode)
+pnpm dev
+
+# Production build
+pnpm build
+
+# Run linting
+pnpm lint
+```
+
+### Development Workflow
+
+1. Create a symbolic link or copy the plugin folder to your test vault's `.obsidian/plugins/` directory
+2. Run `pnpm dev` to start the development build with hot reloading
+3. Enable the plugin in Obsidian and use `Ctrl+R` to reload after changes
+
+## Releasing
+
+This project uses GitHub Actions for automated releases. Releases are **deliberately triggered** — not every commit creates a release.
+
+### CI Pipeline
+
+Every push and pull request runs the CI workflow which:
+- Installs dependencies
+- Runs linting (`npm run lint`)
+- Builds the plugin (`npm run build`)
+- Verifies the build output
+
+### Creating a Release
+
+1. **Update the version** in `package.json`:
+   ```bash
+   npm version patch  # for bug fixes (1.0.0 → 1.0.1)
+   npm version minor  # for new features (1.0.0 → 1.1.0)
+   npm version major  # for breaking changes (1.0.0 → 2.0.0)
+   ```
+   This automatically updates `package.json`, `manifest.json`, and `versions.json`.
+
+2. **Push the changes and tag**:
+   ```bash
+   git push && git push --tags
+   ```
+
+3. **Create a GitHub Release**:
+   - Go to the [Releases page](https://github.com/StevenGann/obsidian-circuitjs/releases)
+   - Click "Draft a new release"
+   - Select the tag you just pushed (e.g., `1.0.1`)
+   - Add release notes describing the changes
+   - Click "Publish release"
+
+4. **Automated deployment**:
+   - The release workflow automatically builds the plugin
+   - Attaches `main.js`, `manifest.json`, and `styles.css` to the release
+   - Obsidian's plugin registry automatically picks up the new version
+
+### How Obsidian Finds Updates
+
+Obsidian's community plugin registry reads from your GitHub Releases. When you publish a release:
+- The tag version must match the version in `manifest.json`
+- The release must include `main.js`, `manifest.json`, and optionally `styles.css`
+- Users will see the update available in Obsidian's settings
+
+## Project Structure
+
+```
+circuitjs/
+├── src/
+│   ├── main.ts              # Plugin entry point
+│   ├── settings.ts          # Settings interface and tab
+│   └── circuitRenderer.ts   # Circuit rendering and iframe logic
+├── styles.css               # Plugin styles
+├── manifest.json            # Obsidian plugin manifest
+├── package.json             # Node.js dependencies and scripts
+├── tsconfig.json            # TypeScript configuration
+├── esbuild.config.mjs       # Build configuration
+├── eslint.config.mjs        # ESLint configuration
+├── version-bump.mjs         # Version bump script
+├── versions.json            # Version compatibility mapping
+├── docs/
+│   ├── screenshot.png       # Documentation screenshot
+│   └── MODERNIZATION.md     # Modernization guide
+└── README.md                # This file
+```
+
+## Architecture
+
+### Core Components
+
+#### `src/main.ts` - Plugin Entry Point
+
+The main plugin class `CircuitJsPlugin` extends Obsidian's `Plugin` class and:
+
+- Loads/saves plugin settings
+- Registers the settings tab
+- Registers the markdown code block processor for `circuitjs` blocks
+- Delegates rendering to `CircuitRenderChild`
+
+#### `src/settings.ts` - Settings Management
+
+Contains the settings interface, default values, and the settings tab UI:
+
+```typescript
+interface CircuitJsSettings {
+    editable: boolean;      // Allow simulation interaction
+    editLink: boolean;      // Show edit link
+    circuitJsUrl: string;   // CircuitJS base URL
+    circuitTag: string;     // Code block tag
 }
 ```
 
-If you have multiple URLs, you can also do:
+#### `src/circuitRenderer.ts` - Rendering Engine
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+The `CircuitRenderChild` class extends `MarkdownRenderChild` and handles:
+
+1. **Compression**: Uses LZ-string to compress circuit code for URL encoding
+2. **URL Generation**: Constructs CircuitJS URL with compressed circuit data
+3. **DOM Creation**: Creates iframe and optional edit link
+4. **Lifecycle**: Manages component mounting/unmounting
+
+**Data Flow:**
+```
+Circuit Code → LZ Compression → URL Parameter → iframe src
 ```
 
-## API Documentation
+### Dependencies
 
-See https://docs.obsidian.md
+| Package | Purpose |
+|---------|---------|
+| `obsidian` | Obsidian API types and base classes |
+| `lz-string` | LZ-based compression for URL encoding |
+| `esbuild` | Fast TypeScript bundler |
+| `typescript` | TypeScript compiler |
+| `typescript-eslint` | ESLint TypeScript support |
+
+### Build Process
+
+The plugin uses esbuild for building:
+
+- **Development**: `pnpm dev` - Builds with watch mode and inline source maps
+- **Production**: `pnpm build` - Type-checked, optimized build with tree shaking and minification
+
+Output is a single `main.js` file in CommonJS format targeting ES2018.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make your changes
+4. Run linting: `pnpm lint`
+5. Test in a local Obsidian vault
+6. Submit a pull request
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Credits
+
+- [CircuitJS](https://falstad.com/circuit/circuitjs.html) by Paul Falstad
+- [Obsidian](https://obsidian.md/) by Obsidian.md team
+- Plugin developed by [Steven Gann](https://github.com/StevenGann)
