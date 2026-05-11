@@ -1,8 +1,22 @@
-/*
+/* Tree Diagram Plugin Styles */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* Interactive toggle indicators */
+.tree-toggle {
+	cursor: pointer;
+	font-weight: normal;
+}
 
-If your plugin does not need CSS, delete this file.
+/* Light theme - black text */
+.theme-light .tree-toggle {
+	color: #141414;
+}
 
-*/
+/* Dark theme - near white text */
+.theme-dark .tree-toggle {
+	color: #e0e0e0;
+}
+
+/* Hover effect for better UX */
+.tree-toggle:hover {
+	opacity: 0.7;
+}

@@ -1,16 +1,23 @@
+export interface WikiLink {
+	target: string;
+	alias: string;
+}
+
 export default class Node {
 	name: string;
 	depth: number;
 	parent: Node | null;
 	children: Node[];
 	isLast: boolean;
+	link: WikiLink | null;
 
-	constructor(name: string, depth: number, parent = null, isLast = false) {
+	constructor(name: string, depth: number, parent = null, isLast = false, link: WikiLink | null = null) {
 		this.name = name;
 		this.depth = depth;
 		this.parent = parent;
 		this.children = [];
 		this.isLast = isLast;
+		this.link = link;
 	}
 
 	addChild(child: Node) {
