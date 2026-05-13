@@ -5,22 +5,10 @@ import { buildTabTree, copyToClipboard } from './util';
 export default class TreeDiagramPlugin extends Plugin {
 
 	async onload() {
-		// Register tree code block processor with flag support
+		// Register single tree code block processor
+		// Configuration is now handled via inline flags
 		this.registerMarkdownCodeBlockProcessor("tree", async (source, el, ctx) => {
-			const options = { interactive: false, expandAll: false };
-			ctx.addChild(new TreeDiagramMarkdownRenderChild(this, source, el, ctx, options));
-		});
-
-		// Register interactive tree variant
-		this.registerMarkdownCodeBlockProcessor("tree-interactive", async (source, el, ctx) => {
-			const options = { interactive: true, expandAll: false };
-			ctx.addChild(new TreeDiagramMarkdownRenderChild(this, source, el, ctx, options));
-		});
-
-		// Register interactive + expandall variant
-		this.registerMarkdownCodeBlockProcessor("tree-interactive-expandall", async (source, el, ctx) => {
-			const options = { interactive: true, expandAll: true };
-			ctx.addChild(new TreeDiagramMarkdownRenderChild(this, source, el, ctx, options));
+			ctx.addChild(new TreeDiagramMarkdownRenderChild(this, source, el, ctx));
 		});
 
 		// Copy full vault tree (folders + files)

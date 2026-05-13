@@ -15,11 +15,90 @@ try {
 	// Electron not available, will fall back to navigator.clipboard
 }
 
+/**
+ * Tree configuration from inline flags
+ */
+export interface TreeConfig {
+	interactive: boolean;
+	startShowLevel: number; // 0 = collapsed (with more/less), 1+ = initially show that many levels
+	levelNumbered: number; // 0 = no numbering, 1 = depth 0 only, 2 = depth 0-1, etc.
+	title: string; // Title text (empty = no title)
+}
+
+/**
+ * Parse result with config and trees
+ */
+export interface ParseResult {
+	config: TreeConfig;
+	trees: Node[];
+}
+
 
 interface parseLineOutput {
     depth: number;
     name: string;
     link: WikiLink | null;
+}
+
+/**
+ * Parse configuration flags from source
+ */
+export function parseConfig(source: string): { config: TreeConfig; contentStart: number } {
+	const lines = source.split("\n");
+	const config: TreeConfig = {
+		interactive: false,
+		startShowLevel: 1, // Default: show root level only
+		levelNumbered: 0,
+		title: ""
+	};
+	
+	let contentStart = 0;
+	
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i].trim();
+		
+		// Check if line is a config flag
+		if (line.startsWith('-') && line.includes(':')) {
+			const match = line.match(/^-(\w+):\s*(.*)$/i);
+			if (match) {
+				const flagName = match[1].toLowerCase();
+				const flagValue = match[2].trim();
+				
+				if (flagName === 'interactive') {
+					config.interactive = flagValue.toLowerCase() === 'true';
+				} else if (flagName === 'startshowlevel' || flagName === 'showlevel' || flagName === 'expandall') {
+					// Support startshowlevel, showlevel, and expandall for backwards compatibility
+					const lower = flagValue.toLowerCase();
+					if (lower === 'false') {
+						config.startShowLevel = 0;
+					} else if (lower === 'true') {
+						config.startShowLevel = 1;
+					} else {
+						const num = parseInt(flagValue);
+						config.startShowLevel = !isNaN(num) ? num : 1;
+					}
+				} else if (flagName === 'levelnumbered') {
+					const num = parseInt(flagValue);
+					config.levelNumbered = !isNaN(num) && num > 0 ? num : 0;
+				} else if (flagName === 'title') {
+					config.title = flagValue;
+				}
+				
+				contentStart = i + 1;
+			} else {
+				// Not a valid config line, content starts here
+				break;
+			}
+		} else if (line) {
+			// Non-empty, non-config line found
+			break;
+		} else {
+			// Empty line, skip
+			contentStart = i + 1;
+		}
+	}
+	
+	return { config, contentStart };
 }
 
 /**
@@ -146,6 +225,9 @@ export function parseMultiInput(source: string): Node[] {
  * @param interactive Whether to add expand/collapse indicators
  * @param expandedNodes Set of node paths that are expanded (for interactive mode)
  * @param nodePath Current node path for tracking
+ * @param levelNumbered Depth level for numbering (0 = no numbering)
+ * @param numberPrefix Prefix for hierarchical numbering (e.g., "1" for root)
+ * @param startShowLevel Initial depth level to show (0 = none, 1 = root only, 2 = root + children, etc.)
  * @returns An array of lines to display in the tree diagram,
  *          each line corresponds to a Node
  */
@@ -153,28 +235,57 @@ export function treeView(
     root: Node, 
     interactive: boolean = false, 
     expandedNodes: Set<string> = new Set(), 
-    nodePath: string = ""
+    nodePath: string = "",
+    levelNumbered: number = 0,
+    numberPrefix: string = "",
+    startShowLevel: number = 999
 ): string[] {
     let output: string[] = [];
-    let queue: Array<{ node: Node; path: string }> = [];
+    let queue: Array<{ node: Node; path: string; depth: number; number: string }> = [];
 
-    // Root line with optional wikilink
-    let rootLine = root.name;
+    // Root line with optional numbering and wikilink
+    let rootLine = "";
+    
+    // Check if root should have interactive toggle
+    const rootHasChildren = root.children.length > 0;
+    const rootIsExpanded = expandedNodes.has(nodePath);
+    
+    if (interactive && rootHasChildren) {
+        const indicator = rootIsExpanded ? "(•)" : "(>)";
+        rootLine += `{{TOGGLE:${nodePath}:${indicator}}} `;
+    }
+    
+    if (levelNumbered > 0 && root.depth < levelNumbered) {
+        rootLine += `${numberPrefix}. `;
+    }
+    rootLine += root.name;
     if (root.link) {
         rootLine += ` [[${root.link.target}|${root.link.alias}]]`;
     }
     output.push(rootLine);
 
-    // Add root children to queue
-    root.children.forEach((child, index) => {
-        queue.push({ node: child, path: `${nodePath}/${index}` });
-    });
+    // Add root children to queue with numbering
+    // In interactive mode: only show if root is expanded (user controls)
+    // In non-interactive mode: respect startShowLevel (startShowLevel > 1 means show children)
+    const canShowRootChildren = interactive ? rootIsExpanded : (startShowLevel > 1);
+    
+    if (canShowRootChildren) {
+        root.children.forEach((child, index) => {
+            const childNumber = numberPrefix ? `${numberPrefix}.${index + 1}` : `${index + 1}`;
+            queue.push({ 
+                node: child, 
+                path: `${nodePath}/${index}`,
+                depth: child.depth,
+                number: childNumber
+            });
+        });
+    }
 
     while (queue.length > 0) {
         const item = queue.shift();
         if (!item) continue;
 
-        const { node, path } = item;
+        const { node, path, depth, number } = item;
         const isExpanded = expandedNodes.has(path);
         const hasChildren = node.children.length > 0;
 
@@ -199,11 +310,16 @@ export function treeView(
         if (interactive && hasChildren) {
             // Remove trailing space from branch char and add indicator
             line += branchChar.trimEnd();
-            const indicator = isExpanded ? "(v)" : "(>)";
+            const indicator = isExpanded ? "(•)" : "(>)";
             line += `{{TOGGLE:${path}:${indicator}}} `;
         } else {
             // Normal mode - use branch char with its trailing space
             line += branchChar;
+        }
+        
+        // Add numbering if enabled and within depth limit
+        if (levelNumbered > 0 && depth < levelNumbered) {
+            line += `${number}. `;
         }
         
         // If node has a link, render as wikilink
@@ -215,11 +331,21 @@ export function treeView(
 
         output.push(line);
 
-        // Add children to queue if expanded or not interactive
-        if (!interactive || isExpanded) {
-            const childQueue: Array<{ node: Node; path: string }> = [];
+        // Add children to queue based on interactive mode
+        // In interactive mode: only show children if node is expanded (user controls visibility)
+        // In non-interactive mode: respect startShowLevel limit
+        const canShowChildren = interactive ? isExpanded : (depth < startShowLevel - 1);
+        
+        if (canShowChildren) {
+            const childQueue: Array<{ node: Node; path: string; depth: number; number: string }> = [];
             node.children.forEach((child, index) => {
-                childQueue.push({ node: child, path: `${path}/${index}` });
+                const childNumber = `${number}.${index + 1}`;
+                childQueue.push({ 
+                    node: child, 
+                    path: `${path}/${index}`,
+                    depth: child.depth,
+                    number: childNumber
+                });
             });
             queue = [...childQueue, ...queue];
         }
@@ -297,4 +423,18 @@ export function buildTabTree(
 	});
 
 	return output;
+}
+
+/**
+ * Parse source with configuration and trees
+ */
+export function parseWithConfig(source: string): ParseResult {
+	const { config, contentStart } = parseConfig(source);
+	const lines = source.split("\n");
+	const content = lines.slice(contentStart).join("\n");
+	
+	// Parse all trees from content
+	const trees = parseMultiInput(content);
+	
+	return { config, trees };
 }

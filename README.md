@@ -1,10 +1,32 @@
 # Tree Diagram Plugin for Obsidian
 
-Render hierarchical tree diagrams from indented text with wikilink support, multiple trees per code block, and interactive collapse/expand functionality.
+Render hierarchical tree diagrams from indented text with wikilink support, multiple trees per code block, interactive collapse/expand functionality, and presentation mode.
 
 ## Features
 
-### 1. Basic Tree Code Blocks
+### 1. Configuration Flags
+
+Control plugin behavior using inline configuration flags at the start of your code block:
+
+````markdown
+```tree
+-interactive:true
+-expandall:false
+-presentationmode:true
+
+Your tree content here...
+```
+````
+
+**Available Flags:**
+
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `-interactive:` | `true`/`false` | `false` | Enable node-level collapse/expand |
+| `-expandall:` | `true`/`false` | `false` | Start with all nodes expanded |
+| `-presentationmode:` | `true`/`false` | `false` | Enable section accordion mode |
+
+### 2. Basic Tree Code Blocks
 
 Create tree diagrams using code blocks with the `tree` language identifier:
 
@@ -30,50 +52,14 @@ Root
 └── Child 3
 ```
 
-### 2. Multiple Trees per Code Block
+### 3. Interactive Mode
 
-Create multiple independent trees in a single code block by having multiple root-level nodes (no indentation):
+Enable collapsible/expandable trees with the `-interactive:true` flag:
 
 ````markdown
 ```tree
-Project A
-	Design
-		Wireframes
-		Mockups
-	Development
-		Frontend
-		Backend
+-interactive:true
 
-Project B
-	Planning
-	Execution
-	Review
-```
-````
-
-This renders as:
-
-```
-Project A
-├── Design
-│   ├── Wireframes
-│   └── Mockups
-└── Development
-    ├── Frontend
-    └── Backend
-
-Project B
-├── Planning
-├── Execution
-└── Review
-```
-
-### 3. Interactive Mode
-
-Enable collapsible/expandable trees with the `tree-interactive` language identifier:
-
-````markdown
-```tree-interactive
 Root
 	Branch 1
 		Leaf 1
@@ -89,20 +75,19 @@ This renders with interactive indicators:
 
 ```
 Root
-├──(v) Branch 1
-│   ├── Leaf 1
-│   └── Leaf 2
+├──(>) Branch 1
 └──(>) Branch 2
 ```
 
-Click on `(v)` or `(>)` to toggle the visibility of child nodes.
+### 4. Expand All Mode
 
-### 4. Interactive with Expand All
-
-Start with all nodes expanded using `tree-interactive-expandall`:
+Start with all nodes expanded using `-expandall:true`:
 
 ````markdown
-```tree-interactive-expandall
+```tree
+-interactive:true
+-expandall:true
+
 Root
 	Branch 1
 		Leaf 1
@@ -112,9 +97,125 @@ Root
 ```
 ````
 
-All nodes start expanded with `(v)` indicators, and you can collapse them as needed.
+All nodes start expanded with `(v)` indicators.
 
-### 5. Wikilink Support
+### 5. Presentation Mode
+
+Create section-based accordion with `-presentationmode:true`:
+
+````markdown
+```tree
+-presentationmode:true
+
+Frontend Architecture
+	Components
+		Header
+		Footer
+	Routing
+		Routes
+		Guards
+
+---
+
+Backend Architecture
+	API Layer
+		REST Endpoints
+		GraphQL
+	Database
+		Models
+		Migrations
+```
+````
+
+**Section Separators:**
+- `---` - New section, collapsed by default
+- `---NEXT(v)---` - New section, expanded by default
+- `---NEXT(>)---` - New section, collapsed by default (explicit)
+
+**Output:**
+```
+▼ Frontend Architecture
+├── Components
+│   ├── Header
+│   └── Footer
+└── Routing
+    ├── Routes
+    └── Guards
+
+▶ Backend Architecture
+```
+
+Click `▼` or `▶` to toggle section visibility.
+
+### 6. Combined Modes
+
+Combine all features for maximum flexibility:
+
+````markdown
+```tree
+-interactive:true
+-expandall:true
+-presentationmode:true
+
+Frontend Architecture
+	Components
+		Header
+		Footer
+	Routing
+		Routes
+		Guards
+
+---NEXT(v)---
+
+Backend Architecture
+	API Layer
+		REST Endpoints
+		GraphQL
+	Database
+		Models
+		Migrations
+```
+````
+
+**Output:**
+```
+▼ Frontend Architecture
+├──(v) Components
+│   ├── Header
+│   └── Footer
+└──(v) Routing
+    ├── Routes
+    └── Guards
+
+▼ Backend Architecture
+├──(v) API Layer
+│   ├── REST Endpoints
+│   └── GraphQL
+└──(v) Database
+    ├── Models
+    └── Migrations
+```
+
+- **Section level**: `▼`/`▶` controls entire section
+- **Node level**: `(v)`/`(>)` controls node children
+
+### 7. Multiple Trees per Code Block
+
+Create multiple independent trees in a single code block:
+
+````markdown
+```tree
+Project A
+	branch a1
+
+Project B
+	branch b1
+```
+````
+
+Any line with depth 0 (no indentation) creates a new tree root.
+
+### 8. Wikilink Support
 
 Add clickable wikilinks to your tree nodes:
 
@@ -131,14 +232,13 @@ Project
 
 - Use `[[target]]` for simple links
 - Use `[[target|alias]]` for links with custom display text
-- Click any link to navigate to that note
-- Works with all tree modes (basic, multi-root, interactive)
+- Works with all modes (basic, interactive, presentation)
 
-### 6. Copy Button
+### 9. Copy Button
 
 Each rendered tree includes a "Copy" button in the top-right corner to copy the ASCII tree to your clipboard.
 
-### 7. Vault Structure Commands
+### 10. Vault Structure Commands
 
 Generate tree source text from your vault structure:
 
@@ -163,84 +263,91 @@ My Project
 ```
 ````
 
-### Example 2: Multi-Root Tree
+### Example 2: Interactive Tree
 
 ````markdown
 ```tree
+-interactive:true
+
+My Project
+	src
+		main.ts
+		utils.ts
+	docs
+		README.md
+```
+````
+
+### Example 3: Presentation Mode
+
+````markdown
+```tree
+-presentationmode:true
+
 Frontend
 	React Components
-		Header
-		Footer
 	Styles
-		CSS
-		SCSS
+
+---
 
 Backend
 	API Routes
+	Database
+```
+````
+
+### Example 4: All Features
+
+````markdown
+```tree
+-interactive:true
+-expandall:true
+-presentationmode:true
+
+Frontend
+	[[React Components]]
+		Header
+		Footer
+	Styles
+
+---NEXT(v)---
+
+Backend
+	[[API Routes]]
 		Users
 		Posts
-	Database
-		Models
-		Migrations
-```
-````
-
-### Example 3: Interactive Tree with Wikilinks
-
-````markdown
-```tree-interactive
-[[Project Overview]]
-	[[Phase 1 - Planning]]
-		[[Requirements]]
-		[[Design]]
-	[[Phase 2 - Development]]
-		[[Sprint 1]]
-		[[Sprint 2]]
-	[[Phase 3 - Testing]]
-```
-````
-
-### Example 4: Multi-Root Interactive Tree
-
-````markdown
-```tree-interactive-expandall
-Team A Tasks
-	[[Task 1]]
-		Subtask 1.1
-		Subtask 1.2
-	[[Task 2]]
-
-Team B Tasks
-	[[Task 3]]
-		Subtask 3.1
-	[[Task 4]]
+	[[Database]]
 ```
 ````
 
 ## Syntax Reference
 
-### Code Block Types
+### Configuration Flags
 
-| Syntax | Description |
-|--------|-------------|
-| ````tree```` | Basic tree diagram |
-| ````tree-interactive```` | Interactive tree with collapse/expand |
-| ````tree-interactive-expandall```` | Interactive tree, all nodes expanded by default |
+Place at the start of the code block, one per line:
+```
+-interactive:true
+-expandall:false
+-presentationmode:true
+```
 
 ### Tree Syntax
 
-- **Indentation**: Use tabs or double-spaces for hierarchy
-- **Multi-root**: Multiple root-level nodes (depth 0) create separate trees
+- **Indentation**: Use tabs for hierarchy
+- **Multi-root**: Multiple depth-0 nodes create separate trees
 - **Wikilinks**: Use `[[note]]` or `[[note\|alias]]` syntax
-- **Interactive indicators**: Automatically added in interactive mode
-  - `(v)` = Expanded
-  - `(>)` = Collapsed
+- **Section separators**: `---`, `---NEXT(v)---`, `---NEXT(>)---`
+
+### Indicators
+
+- **Node level**: `(v)` expanded, `(>)` collapsed
+- **Section level**: `▼` expanded, `▶` collapsed
 
 ## Installation
 
 ### Manual Installation
 
-1. Download `main.js`, `manifest.json`, and `styles.css` (if present)
+1. Download `main.js`, `manifest.json`, and `styles.css`
 2. Create a folder named `tree-diagram` in your vault's `.obsidian/plugins/` directory
 3. Copy the downloaded files into the `tree-diagram` folder
 4. Reload Obsidian
