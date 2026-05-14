@@ -2,6 +2,10 @@ import { MarkdownPostProcessorContext, MarkdownRenderChild } from "obsidian";
 import { parseWithConfig, treeView, copyToClipboard, enableWikiLinks, TreeConfig } from './util';
 import TreeDiagramPlugin from "./main";
 import TreeNode from './node';
+import { TableModeA } from './TableModeA';
+import { TableModeB } from './TableModeB';
+
+export type ViewMode = 'tree' | 'table-a' | 'table-b';
 
 export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 	plugin: TreeDiagramPlugin;
@@ -11,6 +15,11 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 	trees: TreeNode[];
 	expandedNodes: Set<string>;
 	treeVisible: boolean; // Track if tree content is visible (for collapsible title)
+	viewMode: ViewMode = 'tree'; // Current view mode
+	tableBNavigationStack: string[] = []; // Navigation stack for Table Mode B
+	levelNumberOffset: number = 0; // Offset for level numbering (0 = root is 1, 1 = root has no number)
+	isUpdatingSource: boolean = false; // Flag to prevent re-render during source update
+	sourceHash: string; // Unique identifier for this codeblock
 
 	constructor(
 		plugin: TreeDiagramPlugin,
@@ -29,10 +38,243 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 		this.config = parseResult.config;
 		this.trees = parseResult.trees;
 		
+		// Create a hash from tree content only (without flags) to identify this codeblock
+		// This ensures the hash stays the same even when flags change
+		const sourceLines = source.split('\n');
+		const treeContentLines: string[] = [];
+		for (const line of sourceLines) {
+			const trimmed = line.trim();
+			// Skip flag lines
+			if (trimmed.startsWith('-') && trimmed.includes(':')) {
+				continue;
+			}
+			// Skip empty lines at start
+			if (treeContentLines.length === 0 && trimmed === '') {
+				continue;
+			}
+			treeContentLines.push(line);
+		}
+		const treeContent = treeContentLines.join('\n').trim();
+		this.sourceHash = this.hashCode(treeContent);
+		
+		console.log(`[Constructor] Created instance with hash=${this.sourceHash}`);
+		console.log(`[Constructor] Tree content length=${treeContent.length}`);
+		console.log(`[Constructor] Current panel state=${this.settingsPanelOpen}`);
+		
+		// Initialize from config
+		this.levelNumberOffset = this.config.offsetLevelNumbered;
+		
+		// Map currentView to viewMode
+		if (this.config.currentView === 2) {
+			this.viewMode = 'table-a';
+		} else if (this.config.currentView === 3) {
+			this.viewMode = 'table-b';
+		} else {
+			this.viewMode = 'tree';
+		}
+		
 		// Initialize tree visibility based on startShowLevel
 		// If startShowLevel is 0, tree starts collapsed (hidden)
 		// Otherwise, tree is always visible
 		this.treeVisible = this.config.startShowLevel !== 0;
+	}
+
+	/**
+	 * Simple hash function to create unique ID from source
+	 */
+	private hashCode(str: string): string {
+		let hash = 0;
+		for (let i = 0; i < str.length; i++) {
+			const char = str.charCodeAt(i);
+			hash = ((hash << 5) - hash) + char;
+			hash = hash & hash; // Convert to 32bit integer
+		}
+		return hash.toString();
+	}
+
+	/**
+	 * Get settings panel open state from plugin storage
+	 */
+	private get settingsPanelOpen(): boolean {
+		const isOpen = this.plugin.settingsPanelStates.get(this.sourceHash) || false;
+		console.log(`[settingsPanelOpen getter] hash=${this.sourceHash}, isOpen=${isOpen}`);
+		return isOpen;
+	}
+
+	/**
+	 * Set settings panel open state in plugin storage
+	 */
+	private set settingsPanelOpen(value: boolean) {
+		console.log(`[settingsPanelOpen setter] hash=${this.sourceHash}, value=${value}`);
+		this.plugin.settingsPanelStates.set(this.sourceHash, value);
+	}
+
+	/**
+	 * Update the source codeblock with current config flags
+	 */
+	private async updateSourceCodeblock() {
+		console.log('=== updateSourceCodeblock called ===');
+		console.log('Source path:', this.ctx.sourcePath);
+		
+		// Set flag to indicate we're updating
+		this.isUpdatingSource = true;
+		
+		try {
+			// Get the active file from the workspace
+			const activeFile = this.plugin.app.workspace.getActiveFile();
+			if (!activeFile) {
+				console.log('No active file');
+				this.isUpdatingSource = false;
+				return;
+			}
+			
+			console.log('Active file:', activeFile.path);
+			
+			// Read the file content
+			const content = await this.plugin.app.vault.read(activeFile);
+			const lines = content.split('\n');
+			
+			console.log('Total lines:', lines.length);
+			
+			// Extract tree content from this.source (without flags) for matching
+			const sourceLines = this.source.split('\n');
+			const sourceTreeContent: string[] = [];
+			for (const line of sourceLines) {
+				const trimmed = line.trim();
+				// Skip flag lines and empty lines at start
+				if (trimmed.startsWith('-') && trimmed.includes(':')) {
+					continue;
+				}
+				if (sourceTreeContent.length === 0 && trimmed === '') {
+					continue;
+				}
+				sourceTreeContent.push(line);
+			}
+			const sourceTreeText = sourceTreeContent.join('\n').trim();
+			
+			console.log('Source tree content length:', sourceTreeText.length);
+			
+			// Find all tree codeblocks and match with our source
+			let codeblockStart = -1;
+			let codeblockEnd = -1;
+			let currentBlockStart = -1;
+			let inCodeblock = false;
+			
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i].trim();
+				
+				if (line.startsWith('```tree')) {
+					if (!inCodeblock) {
+						currentBlockStart = i;
+						inCodeblock = true;
+					}
+				} else if (line === '```' && inCodeblock) {
+					// Found end of a codeblock, check if it matches our source
+					const blockLines = lines.slice(currentBlockStart + 1, i);
+					const blockTreeContent: string[] = [];
+					
+					for (const blockLine of blockLines) {
+						const trimmed = blockLine.trim();
+						// Skip flag lines and empty lines at start
+						if (trimmed.startsWith('-') && trimmed.includes(':')) {
+							continue;
+						}
+						if (blockTreeContent.length === 0 && trimmed === '') {
+							continue;
+						}
+						blockTreeContent.push(blockLine);
+					}
+					
+					const blockTreeText = blockTreeContent.join('\n').trim();
+					
+					// Check if this block matches our source
+					if (blockTreeText === sourceTreeText) {
+						codeblockStart = currentBlockStart;
+						codeblockEnd = i;
+						console.log('Found matching codeblock at lines:', codeblockStart, '-', codeblockEnd);
+						break;
+					}
+					
+					inCodeblock = false;
+				}
+			}
+			
+			if (codeblockStart === -1 || codeblockEnd === -1) {
+				console.log('Could not find matching codeblock');
+				this.isUpdatingSource = false;
+				return;
+			}
+			
+			// Extract current codeblock content
+			const codeblockLines = lines.slice(codeblockStart, codeblockEnd + 1);
+			console.log('Codeblock lines:', codeblockLines.length);
+			
+			// Find where tree content starts (after existing flags)
+			const treeContentLines: string[] = [];
+			
+			for (let i = 1; i < codeblockLines.length - 1; i++) {
+				const line = codeblockLines[i];
+				const trimmed = line.trim();
+				
+				// Skip existing flag lines
+				if (trimmed.startsWith('-') && trimmed.includes(':')) {
+					console.log('Skipping flag line:', trimmed);
+					continue;
+				}
+				
+				// Skip empty lines at the beginning
+				if (treeContentLines.length === 0 && trimmed === '') {
+					continue;
+				}
+				
+				// This is tree content
+				treeContentLines.push(line);
+			}
+			
+			console.log('Tree content lines:', treeContentLines.length);
+			
+			// Build new flags (each on its own line)
+			const newFlags = [
+				'-interactive:' + this.config.interactive,
+				'-startshowlevel:' + this.config.startShowLevel,
+				'-levelnumbered:' + this.config.levelNumbered,
+				'-offsetlevelnumbered:' + this.levelNumberOffset,
+				'-currentview:' + this.config.currentView
+			];
+			
+			console.log('New flags:', newFlags);
+			
+			// Reconstruct codeblock with flags at the top
+			const newCodeblock = [
+				codeblockLines[0], // ```tree
+				...newFlags,
+				'', // Empty line after flags
+				...treeContentLines,
+				codeblockLines[codeblockLines.length - 1] // ```
+			];
+			
+			// Replace in full content
+			const newLines = [
+				...lines.slice(0, codeblockStart),
+				...newCodeblock,
+				...lines.slice(codeblockEnd + 1)
+			];
+			
+			const newContent = newLines.join('\n');
+			
+			console.log('About to modify file...');
+			await this.plugin.app.vault.modify(activeFile, newContent);
+			
+			console.log('✅ Codeblock updated successfully!');
+			
+			// Wait a bit before resetting flag to allow Obsidian to process the change
+			setTimeout(() => {
+				this.isUpdatingSource = false;
+			}, 100);
+		} catch (error) {
+			console.error('❌ Failed to update codeblock:', error);
+			this.isUpdatingSource = false;
+		}
 	}
 
 	async onload() {
@@ -58,10 +300,30 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 		wrapper.style.position = "relative";
 		wrapper.addClass('tree-diagram-container');
 
-		// Add control panel (top-right)
-		this.renderControlPanel(wrapper);
+		// Create main layout with content and settings panel
+		const mainLayout = wrapper.createDiv({ cls: 'tree-main-layout' });
+		
+		// Content area (left side)
+		const contentArea = mainLayout.createDiv({ cls: 'tree-content-area' });
+		
+		// Add top control bar
+		this.renderTopControlBar(contentArea);
 
-		const pre = wrapper.createEl("pre");
+		// Render based on view mode
+		if (this.viewMode === 'tree') {
+			this.renderTreeView(contentArea);
+		} else if (this.viewMode === 'table-a') {
+			this.renderTableModeA(contentArea);
+		} else if (this.viewMode === 'table-b') {
+			this.renderTableModeB(contentArea);
+		}
+		
+		// Settings panel (right side) - always render to preserve state
+		this.renderSettingsPanel(mainLayout);
+	}
+
+	renderTreeView(contentArea: HTMLElement) {
+		const pre = contentArea.createEl("pre");
 		Object.assign(pre.style, {
 			margin: "0",
 			whiteSpace: "pre",
@@ -101,7 +363,8 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 					`tree${treeIndex}`,
 					this.config.levelNumbered,
 					`${treeIndex + 1}`, // Root number
-					this.config.startShowLevel // Pass startShowLevel to control visible depth
+					this.config.startShowLevel, // Pass startShowLevel to control visible depth
+					this.levelNumberOffset // Pass level number offset
 				);
 				allLines.push(...treeLines);
 				
@@ -137,7 +400,7 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 		htmlContent = htmlContent.replace(/\{\{TOGGLE:(.*?):(.*?)\}\}/g, 
 			'<span class="tree-toggle" data-path="$1">$2</span>');
 		
-		// Replace wikilinks
+		// Replace wikilinks (supports mixed text and wikilinks)
 		htmlContent = htmlContent.replace(/\[\[(.*?)(?:\|(.*?))?\]\]/g, (_, target, alias) => {
 			const display = alias ? alias : target;
 			return `<a class="internal-link" data-href="${target.trim()}">${display.trim()}</a>`;
@@ -189,144 +452,193 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 				};
 			});
 		}
-
-		// Copy button
-		const copyBtn = wrapper.createEl("button", { text: "Copy" });
-		Object.assign(copyBtn.style, {
-			position: "absolute",
-			top: "4px",
-			right: "4px",
-			fontSize: "11px",
-		});
-
-		copyBtn.onclick = async () => {
-			// Copy the plain text version with toggles included
-			const ok = await copyToClipboard(plainTextForCopy);
-			copyBtn.textContent = ok ? "Copied!" : "Fail";
-			setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
-		};
 	}
 
-	renderControlPanel(wrapper: HTMLElement) {
-		const controlsWrapper = wrapper.createDiv({ cls: 'tree-controls-wrapper' });
+	renderTableModeA(wrapper: HTMLElement) {
+		const container = wrapper.createDiv({ cls: 'tree-table-container' });
+		const renderer = new TableModeA(this.trees);
+		const table = renderer.render();
+		container.appendChild(table);
 		
-		// Detect if mobile
-		const isMobile = window.innerWidth < 768;
-		
-		if (isMobile) {
-			// Mobile: Show hamburger menu button
-			this.renderMobileControls(controlsWrapper);
-		} else {
-			// Desktop: Show inline controls
-			this.renderDesktopControls(controlsWrapper);
+		// Enable wikilinks in table after DOM is ready
+		// Use setTimeout to ensure DOM is fully rendered
+		setTimeout(() => {
+			console.log('[TableModeA] Enabling wikilinks...');
+			const links = table.querySelectorAll('a.internal-link');
+			console.log(`[TableModeA] Found ${links.length} internal links`);
+			enableWikiLinks(table, this.plugin.app, this.ctx.sourcePath);
+		}, 0);
+	}
+
+	renderTableModeB(wrapper: HTMLElement) {
+		// Render breadcrumb in top bar if navigation stack is not empty
+		if (this.tableBNavigationStack.length > 0) {
+			const topBar = wrapper.querySelector('.tree-top-control-bar');
+			if (topBar) {
+				const breadcrumb = document.createElement('div');
+				breadcrumb.className = 'table-breadcrumb-inline';
+				
+				// Add "Root" link
+				const rootLink = document.createElement('span');
+				rootLink.className = 'breadcrumb-link';
+				rootLink.textContent = 'Root';
+				rootLink.onclick = () => {
+					this.tableBNavigationStack = [];
+					this.render();
+				};
+				breadcrumb.appendChild(rootLink);
+				
+				// Add navigation path
+				this.tableBNavigationStack.forEach((item, index) => {
+					const separator = document.createElement('span');
+					separator.className = 'breadcrumb-separator';
+					separator.textContent = ' > ';
+					breadcrumb.appendChild(separator);
+					
+					const link = document.createElement('span');
+					link.className = 'breadcrumb-link';
+					link.textContent = item;
+					link.onclick = () => {
+						this.tableBNavigationStack = this.tableBNavigationStack.slice(0, index + 1);
+						this.render();
+					};
+					breadcrumb.appendChild(link);
+				});
+				
+				// Insert breadcrumb at the beginning of top bar
+				topBar.insertBefore(breadcrumb, topBar.firstChild);
+			}
 		}
 		
-		// Copy button (always visible)
-		const copyBtn = controlsWrapper.createEl("button", { 
-			text: "Copy",
+		const container = wrapper.createDiv({ cls: 'tree-table-container' });
+		const renderer = new TableModeB(
+			this.trees, 
+			this.tableBNavigationStack,
+			(newStack) => {
+				this.tableBNavigationStack = newStack;
+				this.render();
+			}
+		);
+		const tableContainer = renderer.render();
+		container.appendChild(tableContainer);
+		
+		// Enable wikilinks in table after DOM is ready
+		// Use setTimeout to ensure DOM is fully rendered
+		setTimeout(() => {
+			console.log('[TableModeB] Enabling wikilinks...');
+			const links = tableContainer.querySelectorAll('a.internal-link');
+			console.log(`[TableModeB] Found ${links.length} internal links`);
+			enableWikiLinks(tableContainer, this.plugin.app, this.ctx.sourcePath);
+		}, 0);
+	}
+
+	renderTopControlBar(contentArea: HTMLElement) {
+		const topBar = contentArea.createDiv({ cls: 'tree-top-control-bar' });
+		
+		// Interactive toggle button
+		const interactiveBtn = topBar.createEl("button", {
+			text: this.config.interactive ? "(v) interactive" : "(>) interactive",
 			cls: 'tree-control-button'
 		});
+		interactiveBtn.onclick = async () => {
+			this.config.interactive = !this.config.interactive;
+			await this.updateSourceCodeblock();
+			this.render();
+		};
 		
+		// Copy button
+		const copyBtn = topBar.createEl("button", { 
+			text: "copy",
+			cls: 'tree-control-button'
+		});
 		copyBtn.onclick = async () => {
 			const plainText = this.getPlainTextForCopy();
 			const ok = await copyToClipboard(plainText);
 			copyBtn.textContent = ok ? "Copied!" : "Fail";
-			setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
+			setTimeout(() => (copyBtn.textContent = "copy"), 1200);
 		};
-	}
-
-	renderDesktopControls(wrapper: HTMLElement) {
-		const inlineControls = wrapper.createDiv({ cls: 'tree-controls-inline' });
 		
-		// Interactive toggle button
-		const interactiveBtn = inlineControls.createEl("button", {
-			text: this.config.interactive ? "🔧 Interactive" : "Interactive",
-			cls: 'tree-control-button'
+		// Settings toggle button (three dots)
+		const settingsBtn = topBar.createEl("button", {
+			text: "⋯",
+			cls: 'tree-control-button tree-settings-toggle'
 		});
-		if (this.config.interactive) {
-			interactiveBtn.style.background = "var(--interactive-accent)";
-			interactiveBtn.style.color = "var(--text-on-accent)";
-		}
-		interactiveBtn.onclick = () => {
-			this.config.interactive = !this.config.interactive;
+		settingsBtn.onclick = () => {
+			this.settingsPanelOpen = !this.settingsPanelOpen;
 			this.render();
 		};
-		
-		// Show Level spinner
-		const showLevelSpinner = this.createSpinner(
-			"Show",
-			this.config.startShowLevel,
-			0,
-			10,
-			(value) => {
-				this.config.startShowLevel = value;
-				this.treeVisible = value > 0;
-				// Re-initialize expanded nodes if needed
-				if (this.config.interactive && value > 1) {
-					this.expandedNodes.clear();
-					this.initializeExpandedNodes(value);
-				}
-				this.render();
-			}
-		);
-		inlineControls.appendChild(showLevelSpinner);
-		
-		// Numbering spinner
-		const numberingSpinner = this.createSpinner(
-			"Num",
-			this.config.levelNumbered,
-			0,
-			10,
-			(value) => {
-				this.config.levelNumbered = value;
-				this.render();
-			}
-		);
-		inlineControls.appendChild(numberingSpinner);
 	}
 
-	renderMobileControls(wrapper: HTMLElement) {
-		// Hamburger menu button
-		const menuBtn = wrapper.createEl("button", {
-			text: "☰",
-			cls: 'tree-menu-button'
+	renderSettingsPanel(mainLayout: HTMLElement) {
+		const settingsPanel = mainLayout.createDiv({ 
+			cls: this.settingsPanelOpen ? 'tree-settings-panel open' : 'tree-settings-panel'
 		});
 		
-		// Dropdown menu
-		const menu = wrapper.createDiv({ cls: 'tree-controls-menu' });
+		if (!this.settingsPanelOpen) {
+			return;
+		}
+		
+		// Settings header
+		const header = settingsPanel.createDiv({ cls: 'settings-header' });
+		header.createEl("h3", { text: "settings" });
+		
+		// View mode dropdown
+		const viewModeGroup = settingsPanel.createDiv({ cls: 'settings-group' });
+		viewModeGroup.createEl("label", { text: "view mode", cls: 'settings-label' });
+		const viewModeSelect = viewModeGroup.createEl("select", {
+			cls: 'settings-select'
+		});
+		viewModeSelect.createEl("option", { value: 'tree', text: 'Tree' });
+		viewModeSelect.createEl("option", { value: 'table-a', text: 'Table FullView' });
+		viewModeSelect.createEl("option", { value: 'table-b', text: 'Table FolderView' });
+		viewModeSelect.value = this.viewMode;
+		viewModeSelect.onchange = async () => {
+			this.viewMode = viewModeSelect.value as ViewMode;
+			// Update config
+			if (this.viewMode === 'tree') {
+				this.config.currentView = 1;
+			} else if (this.viewMode === 'table-a') {
+				this.config.currentView = 2;
+			} else if (this.viewMode === 'table-b') {
+				this.config.currentView = 3;
+			}
+			await this.updateSourceCodeblock();
+			this.render();
+		};
 		
 		// Interactive toggle
-		const interactiveItem = menu.createDiv({ cls: 'tree-controls-menu-item' });
-		interactiveItem.createEl("label", {
-			text: "Interactive Mode",
-			cls: 'tree-controls-menu-label'
+		const interactiveGroup = settingsPanel.createDiv({ cls: 'settings-group' });
+		interactiveGroup.createEl("label", { text: "interactive", cls: 'settings-label' });
+		const interactiveToggle = interactiveGroup.createDiv({ cls: 'settings-toggle' });
+		const onBtn = interactiveToggle.createEl("button", {
+			text: "● ON",
+			cls: this.config.interactive ? 'toggle-btn active' : 'toggle-btn'
 		});
-		const interactiveBtn = interactiveItem.createEl("button", {
-			text: this.config.interactive ? "🔧 ON" : "OFF",
-			cls: 'tree-control-button'
-		});
-		if (this.config.interactive) {
-			interactiveBtn.style.background = "var(--interactive-accent)";
-			interactiveBtn.style.color = "var(--text-on-accent)";
-		}
-		interactiveBtn.onclick = () => {
-			this.config.interactive = !this.config.interactive;
-			menu.removeClass('open');
+		onBtn.onclick = async () => {
+			this.config.interactive = true;
+			await this.updateSourceCodeblock();
 			this.render();
 		};
 		
-		// Show Level spinner
-		const showLevelItem = menu.createDiv({ cls: 'tree-controls-menu-item' });
-		showLevelItem.createEl("label", {
-			text: "Show Level",
-			cls: 'tree-controls-menu-label'
+		const offBtn = interactiveToggle.createEl("button", {
+			text: "○ OFF",
+			cls: !this.config.interactive ? 'toggle-btn active' : 'toggle-btn'
 		});
+		offBtn.onclick = async () => {
+			this.config.interactive = false;
+			await this.updateSourceCodeblock();
+			this.render();
+		};
+		
+		// Start show level spinner
+		const showLevelGroup = settingsPanel.createDiv({ cls: 'settings-group' });
+		showLevelGroup.createEl("label", { text: "start show level", cls: 'settings-label' });
 		const showLevelSpinner = this.createSpinner(
 			"",
 			this.config.startShowLevel,
 			0,
 			10,
-			(value) => {
+			async (value) => {
 				this.config.startShowLevel = value;
 				this.treeVisible = value > 0;
 				// Re-initialize expanded nodes if needed
@@ -334,48 +646,47 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 					this.expandedNodes.clear();
 					this.initializeExpandedNodes(value);
 				}
+				await this.updateSourceCodeblock();
 				this.render();
 			}
 		);
-		showLevelItem.appendChild(showLevelSpinner);
+		showLevelGroup.appendChild(showLevelSpinner);
 		
-		// Numbering spinner
-		const numberingItem = menu.createDiv({ cls: 'tree-controls-menu-item' });
-		numberingItem.createEl("label", {
-			text: "Numbering",
-			cls: 'tree-controls-menu-label'
-		});
+		// Level numbered spinner
+		const numberingGroup = settingsPanel.createDiv({ cls: 'settings-group' });
+		numberingGroup.createEl("label", { text: "level numbered", cls: 'settings-label' });
 		const numberingSpinner = this.createSpinner(
 			"",
 			this.config.levelNumbered,
 			0,
 			10,
-			(value) => {
+			async (value) => {
 				this.config.levelNumbered = value;
+				await this.updateSourceCodeblock();
 				this.render();
 			}
 		);
-		numberingItem.appendChild(numberingSpinner);
+		numberingGroup.appendChild(numberingSpinner);
 		
-		// Toggle menu on click
-		menuBtn.onclick = () => {
-			if (menu.hasClass('open')) {
-				menu.removeClass('open');
-			} else {
-				menu.addClass('open');
+		// Level number offset spinner
+		const offsetGroup = settingsPanel.createDiv({ cls: 'settings-group' });
+		offsetGroup.createEl("label", { text: "offset", cls: 'settings-label' });
+		const offsetSpinner = this.createSpinner(
+			"",
+			this.levelNumberOffset,
+			0,
+			10,
+			async (value) => {
+				this.levelNumberOffset = value;
+				this.config.offsetLevelNumbered = value;
+				await this.updateSourceCodeblock();
+				this.render();
 			}
-		};
-		
-		// Close menu when clicking outside
-		document.addEventListener('click', (e) => {
-			const target = e.target as HTMLElement;
-			if (!menuBtn.contains(target) && !menu.contains(target)) {
-				menu.removeClass('open');
-			}
-		});
+		);
+		offsetGroup.appendChild(offsetSpinner);
 	}
 
-	createSpinner(label: string, value: number, min: number, max: number, onChange: (value: number) => void): HTMLElement {
+	createSpinner(label: string, value: number, min: number, max: number, onChange: (value: number) => void | Promise<void>): HTMLElement {
 		const spinner = document.createElement('div');
 		spinner.className = 'tree-spinner';
 		
@@ -389,7 +700,7 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 		
 		// Decrease button
 		const decreaseBtn = document.createElement('button');
-		decreaseBtn.textContent = "◀";
+		decreaseBtn.textContent = "−";
 		decreaseBtn.className = 'spinner-button';
 		decreaseBtn.onclick = () => {
 			if (value > min) {
@@ -406,7 +717,7 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 		
 		// Increase button
 		const increaseBtn = document.createElement('button');
-		increaseBtn.textContent = "▶";
+		increaseBtn.textContent = "+";
 		increaseBtn.className = 'spinner-button';
 		increaseBtn.onclick = () => {
 			if (value < max) {
@@ -447,7 +758,8 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 					`tree${treeIndex}`,
 					this.config.levelNumbered,
 					`${treeIndex + 1}`,
-					this.config.startShowLevel
+					this.config.startShowLevel,
+					this.levelNumberOffset
 				);
 				
 				// Replace toggle placeholders with actual text

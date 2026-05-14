@@ -15,14 +15,16 @@ try {
 	// Electron not available, will fall back to navigator.clipboard
 }
 
-/**
- * Tree configuration from inline flags
+/** 
+ * Tree configuration from inline flags 
  */
 export interface TreeConfig {
 	interactive: boolean;
 	startShowLevel: number; // 0 = collapsed (with more/less), 1+ = initially show that many levels
 	levelNumbered: number; // 0 = no numbering, 1 = depth 0 only, 2 = depth 0-1, etc.
 	title: string; // Title text (empty = no title)
+	offsetLevelNumbered: number; // Offset for numbering (0 = root is 1, 1 = root has no number)
+	currentView: number; // 1 = tree, 2 = table full, 3 = table folder
 }
 
 /**
@@ -49,7 +51,9 @@ export function parseConfig(source: string): { config: TreeConfig; contentStart:
 		interactive: false,
 		startShowLevel: 1, // Default: show root level only
 		levelNumbered: 0,
-		title: ""
+		title: "",
+		offsetLevelNumbered: 0,
+		currentView: 1 // Default: tree view
 	};
 	
 	let contentStart = 0;
@@ -80,6 +84,12 @@ export function parseConfig(source: string): { config: TreeConfig; contentStart:
 				} else if (flagName === 'levelnumbered') {
 					const num = parseInt(flagValue);
 					config.levelNumbered = !isNaN(num) && num > 0 ? num : 0;
+				} else if (flagName === 'offsetlevelnumbered') {
+					const num = parseInt(flagValue);
+					config.offsetLevelNumbered = !isNaN(num) && num >= 0 ? num : 0;
+				} else if (flagName === 'currentview') {
+					const num = parseInt(flagValue);
+					config.currentView = !isNaN(num) && num >= 1 && num <= 3 ? num : 1;
 				} else if (flagName === 'title') {
 					config.title = flagValue;
 				}
@@ -128,11 +138,12 @@ function parseLine(text: string): parseLineOutput {
         link = { target, alias };
     }
 
-    // Remove the wikilink portion to get plain name
-    let name = raw.replace(/\[\[.*?\]\]/, "").trim();
+    // Keep the full text including wikilinks for mixed content support
+    let name = raw;
 
     // If node is purely a wikilink with no extra text, use alias as display name
-    if (!name && link) {
+    const textWithoutWikilink = raw.replace(/\[\[.*?\]\]/g, "").trim();
+    if (!textWithoutWikilink && link) {
         name = link.alias;
     }
 
@@ -228,6 +239,7 @@ export function parseMultiInput(source: string): Node[] {
  * @param levelNumbered Depth level for numbering (0 = no numbering)
  * @param numberPrefix Prefix for hierarchical numbering (e.g., "1" for root)
  * @param startShowLevel Initial depth level to show (0 = none, 1 = root only, 2 = root + children, etc.)
+ * @param levelNumberOffset Offset for numbering depth (0 = root is 1, 1 = root has no number, level 2 is 1, etc.)
  * @returns An array of lines to display in the tree diagram,
  *          each line corresponds to a Node
  */
@@ -238,10 +250,11 @@ export function treeView(
     nodePath: string = "",
     levelNumbered: number = 0,
     numberPrefix: string = "",
-    startShowLevel: number = 999
+    startShowLevel: number = 999,
+    levelNumberOffset: number = 0
 ): string[] {
     let output: string[] = [];
-    let queue: Array<{ node: Node; path: string; depth: number; number: string }> = [];
+    let queue: Array<{ node: Node; path: string; depth: number; numberParts: number[] }> = [];
 
     // Root line with optional numbering and wikilink
     let rootLine = "";
@@ -251,17 +264,21 @@ export function treeView(
     const rootIsExpanded = expandedNodes.has(nodePath);
     
     if (interactive && rootHasChildren) {
-        const indicator = rootIsExpanded ? "(•)" : "(>)";
+        const indicator = rootIsExpanded ? "(v)" : "(>)";
         rootLine += `{{TOGGLE:${nodePath}:${indicator}}} `;
     }
     
-    if (levelNumbered > 0 && root.depth < levelNumbered) {
+    // Apply offset to numbering
+    // Offset 0: root (depth 0) gets numbered → 1. Root, 1.1. Child
+    // Offset 1: root (depth 0) no number, children (depth 1) get numbered → Root, 1. Child, 1.1. Grandchild
+    // Offset 2: root and children no number, grandchildren (depth 2) get numbered → Root, Child, 1. Grandchild
+    const rootRelativeDepth = 0; // Root is always at relative depth 0
+    if (levelNumbered > 0 && rootRelativeDepth >= levelNumberOffset && (rootRelativeDepth - levelNumberOffset) < levelNumbered) {
+        // Root gets numbered only if offset is 0
         rootLine += `${numberPrefix}. `;
     }
+    // Add root name (which may include wikilinks)
     rootLine += root.name;
-    if (root.link) {
-        rootLine += ` [[${root.link.target}|${root.link.alias}]]`;
-    }
     output.push(rootLine);
 
     // Add root children to queue with numbering
@@ -271,12 +288,31 @@ export function treeView(
     
     if (canShowRootChildren) {
         root.children.forEach((child, index) => {
-            const childNumber = numberPrefix ? `${numberPrefix}.${index + 1}` : `${index + 1}`;
+            // If offset is 0, children continue from root number (e.g., 1.1, 1.2)
+            // If offset >= 1, children start fresh numbering (e.g., 1, 2)
+            const childDepth = 1;
+            let childNumberParts: number[];
+            
+            if (levelNumberOffset === 0) {
+                // No offset: continue from root (1.1, 1.2, ...)
+                const rootNum = numberPrefix ? parseInt(numberPrefix) : 1;
+                childNumberParts = [rootNum, index + 1];
+            } else if (childDepth === levelNumberOffset) {
+                // This level is where numbering starts
+                childNumberParts = [index + 1];
+            } else if (childDepth > levelNumberOffset) {
+                // This level is after offset, shouldn't happen for direct children
+                childNumberParts = [index + 1];
+            } else {
+                // This level is before offset, no numbering yet
+                childNumberParts = [];
+            }
+            
             queue.push({ 
                 node: child, 
                 path: `${nodePath}/${index}`,
-                depth: child.depth,
-                number: childNumber
+                depth: childDepth,
+                numberParts: childNumberParts
             });
         });
     }
@@ -285,7 +321,7 @@ export function treeView(
         const item = queue.shift();
         if (!item) continue;
 
-        const { node, path, depth, number } = item;
+        const { node, path, depth, numberParts } = item;
         const isExpanded = expandedNodes.has(path);
         const hasChildren = node.children.length > 0;
 
@@ -310,24 +346,26 @@ export function treeView(
         if (interactive && hasChildren) {
             // Remove trailing space from branch char and add indicator
             line += branchChar.trimEnd();
-            const indicator = isExpanded ? "(•)" : "(>)";
+            const indicator = isExpanded ? "(v)" : "(>)";
             line += `{{TOGGLE:${path}:${indicator}}} `;
         } else {
             // Normal mode - use branch char with its trailing space
             line += branchChar;
         }
         
-        // Add numbering if enabled and within depth limit
-        if (levelNumbered > 0 && depth < levelNumbered) {
-            line += `${number}. `;
+        // Add numbering if this level should have numbers
+        // Only add number if:
+        // 1. levelNumbered > 0 (numbering is enabled)
+        // 2. depth >= levelNumberOffset (we've reached the offset level)
+        // 3. numberParts is not empty (this level gets numbered)
+        // 4. (depth - levelNumberOffset) < levelNumbered (within numbering depth limit)
+        if (levelNumbered > 0 && depth >= levelNumberOffset && numberParts.length > 0 && (depth - levelNumberOffset) < levelNumbered) {
+            const numberStr = numberParts.join('.');
+            line += `${numberStr}. `;
         }
         
-        // If node has a link, render as wikilink
-        if (node.link) {
-            line += `[[${node.link.target}|${node.link.alias}]]`;
-        } else {
-            line += node.name;
-        }
+        // Add node name (which may include wikilinks)
+        line += node.name;
 
         output.push(line);
 
@@ -337,14 +375,32 @@ export function treeView(
         const canShowChildren = interactive ? isExpanded : (depth < startShowLevel - 1);
         
         if (canShowChildren) {
-            const childQueue: Array<{ node: Node; path: string; depth: number; number: string }> = [];
+            const childQueue: Array<{ node: Node; path: string; depth: number; numberParts: number[] }> = [];
             node.children.forEach((child, index) => {
-                const childNumber = `${number}.${index + 1}`;
+                const childDepth = depth + 1;
+                let childNumberParts: number[];
+                
+                if (childDepth < levelNumberOffset) {
+                    // Before offset level, no numbering
+                    childNumberParts = [];
+                } else if (childDepth === levelNumberOffset) {
+                    // This is the offset level, start fresh numbering
+                    childNumberParts = [index + 1];
+                } else {
+                    // After offset level, continue numbering
+                    if (numberParts.length > 0) {
+                        childNumberParts = [...numberParts, index + 1];
+                    } else {
+                        // Parent had no number, start fresh
+                        childNumberParts = [index + 1];
+                    }
+                }
+                
                 childQueue.push({ 
                     node: child, 
                     path: `${path}/${index}`,
-                    depth: child.depth,
-                    number: childNumber
+                    depth: childDepth,
+                    numberParts: childNumberParts
                 });
             });
             queue = [...childQueue, ...queue];
@@ -373,6 +429,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
 /**
  * Enable wikilink navigation in a container element
+ * Makes links clickable and enables hover preview
  */
 export function enableWikiLinks(
 	container: HTMLElement,
@@ -381,13 +438,43 @@ export function enableWikiLinks(
 ): void {
 	container.querySelectorAll("a.internal-link").forEach((link) => {
 		const anchor = link as HTMLAnchorElement;
-		anchor.onclick = (e: MouseEvent) => {
-			e.preventDefault();
-			const href = anchor.dataset.href;
-			if (href) {
-				app.workspace.openLinkText(href, sourcePath);
-			}
-		};
+		const href = anchor.dataset.href;
+		
+		if (href) {
+			// Set href attribute for proper link behavior
+			anchor.setAttribute('href', href);
+			
+			// Add data-tooltip-position for hover preview
+			anchor.setAttribute('data-tooltip-position', 'top');
+			
+			// Add aria-label for accessibility
+			anchor.setAttribute('aria-label', href);
+			
+			// Set target to make it an internal link
+			anchor.setAttribute('target', '_blank');
+			anchor.setAttribute('rel', 'noopener');
+			
+			// Handle click to open link
+			anchor.onclick = (e: MouseEvent) => {
+				e.preventDefault();
+				e.stopPropagation();
+				app.workspace.openLinkText(href, sourcePath, e.ctrlKey || e.metaKey);
+			};
+			
+			// Handle hover for preview (Obsidian will handle this automatically with proper attributes)
+			anchor.addEventListener('mouseenter', (e: MouseEvent) => {
+				// Obsidian's hover preview will trigger automatically
+				// because we have the correct class and attributes
+				app.workspace.trigger('hover-link', {
+					event: e,
+					source: 'preview',
+					hoverParent: container,
+					targetEl: anchor,
+					linktext: href,
+					sourcePath: sourcePath
+				});
+			});
+		}
 	});
 }
 

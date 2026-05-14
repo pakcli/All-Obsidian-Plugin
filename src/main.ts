@@ -3,6 +3,8 @@ import { TreeDiagramMarkdownRenderChild } from './TreeDiagramMarkdownRenderChild
 import { buildTabTree, copyToClipboard } from './util';
 
 export default class TreeDiagramPlugin extends Plugin {
+	// Store settings panel state per codeblock (keyed by source hash)
+	settingsPanelStates: Map<string, boolean> = new Map();
 
 	async onload() {
 		// Register single tree code block processor

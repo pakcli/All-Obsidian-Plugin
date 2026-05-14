@@ -10,18 +10,56 @@
 /* ============================================
    CONTAINER & LAYOUT
    ============================================ */
+table{
+	margin-left: 0px !important;
+}
+
+.tree-table
+.tree-table-mode-a{
+	margin-left: 0px !important;
+}
 
 .tree-diagram-container {
 	position: relative;
-	padding: 8px;
+	padding: 0;
 	font-size: 16px; /* Larger for mobile readability */
 	line-height: 1.8;
+}
+
+/* Main layout with content and settings panel */
+.tree-main-layout {
+	display: flex;
+	gap: 0;
+	position: relative;
+}
+
+/* Content area (left side) */
+.tree-content-area {
+	flex: 1;
+	min-width: 0; /* Allow flex shrinking */
+	width: 100%;
+	padding: 0;
+	margin: 0;
+}
+
+/* Settings panel (right side) */
+.tree-settings-panel {
+	width: 0;
+	overflow: hidden;
+	transition: width 0.3s ease;
+	border-left: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.tree-settings-panel.open {
+	width: 250px;
+	padding: 12px;
 }
 
 /* Tablet & Desktop (768px+) */
 @media (min-width: 768px) {
 	.tree-diagram-container {
-		padding: 12px;
+		padding: 0;
 		font-size: 14px;
 		line-height: 1.6;
 	}
@@ -30,12 +68,108 @@
 /* Desktop (1024px+) */
 @media (min-width: 1024px) {
 	.tree-diagram-container {
-		padding: 16px;
+		padding: 0;
 	}
 }
 
 /* ============================================
-   CONTROL PANEL
+   TOP CONTROL BAR
+   ============================================ */
+
+.tree-top-control-bar {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 8px 12px;
+	margin-bottom: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tree-settings-toggle {
+	font-size: 18px;
+	font-weight: bold;
+}
+
+/* ============================================
+   SETTINGS PANEL
+   ============================================ */
+
+.settings-header {
+	margin-bottom: 16px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.settings-header h3 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: lowercase;
+}
+
+.settings-group {
+	margin-bottom: 16px;
+}
+
+.settings-label {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 12px;
+	font-weight: 500;
+	text-transform: lowercase;
+	color: var(--text-muted);
+}
+
+.settings-select {
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--text-normal);
+}
+
+.settings-select:hover {
+	background: var(--background-modifier-hover);
+}
+
+.settings-select:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.settings-toggle {
+	display: flex;
+	gap: 4px;
+}
+
+.toggle-btn {
+	flex: 1;
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 11px;
+	color: var(--text-muted);
+	transition: all 0.2s ease;
+}
+
+.toggle-btn.active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.toggle-btn:hover:not(.active) {
+	background: var(--background-modifier-hover);
+}
+
+/* ============================================
+   CONTROL PANEL (OLD - DEPRECATED)
    ============================================ */
 
 /* Control panel wrapper */
@@ -261,30 +395,23 @@
 .tree-spinner {
 	display: flex;
 	align-items: center;
-	gap: 2px;
-}
-
-.spinner-button {
-	min-width: 44px;
-	min-height: 44px;
-	padding: 8px;
-	border: none;
-	background: var(--background-secondary);
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 18px;
-	display: flex;
-	align-items: center;
+	gap: 4px;
 	justify-content: center;
 }
 
-@media (min-width: 768px) {
-	.spinner-button {
-		min-width: 24px;
-		min-height: 24px;
-		padding: 2px 6px;
-		font-size: 12px;
-	}
+.spinner-button {
+	min-width: 32px;
+	min-height: 32px;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: bold;
 }
 
 .spinner-button:hover {
@@ -296,10 +423,10 @@
 }
 
 .spinner-value {
-	min-width: 20px;
+	min-width: 32px;
 	text-align: center;
-	font-weight: 500;
-	font-size: 11px;
+	font-weight: 600;
+	font-size: 13px;
 }
 
 /* ============================================
@@ -481,4 +608,241 @@
 	.tree-diagram-container pre {
 		tab-size: 4; /* 4 spaces per tab on desktop */
 	}
+}
+
+
+/* ============================================
+   TABLE VIEW STYLES
+   ============================================ */
+
+/* Table container */
+.tree-table-container {
+	width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	margin: 0;
+	padding: 0 12px 12px 12px;
+}
+
+/* Base table styles */
+.tree-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+	line-height: 1.5;
+	table-layout: fixed;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+	.tree-table {
+		font-size: 14px;
+		line-height: 1.6;
+	}
+}
+
+/* Table headers */
+.tree-table th {
+	background: var(--background-secondary) !important;
+	border: 1px solid var(--background-modifier-border);
+	padding: 8px 12px;
+	text-align: left;
+	font-weight: normal;
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	white-space: nowrap;
+}
+
+/* Table cells */
+.tree-table td {
+	border: 1px solid var(--background-modifier-border);
+	padding: 8px 12px;
+	vertical-align: top;
+	text-align: left;
+	font-weight: normal;
+	white-space: normal;
+	background: var(--background-primary) !important;
+}
+
+/* Remove zebra striping */
+.tree-table tbody tr:nth-child(odd) td {
+	background: var(--background-primary) !important;
+}
+
+.tree-table tbody tr:nth-child(even) td {
+	background: var(--background-primary) !important;
+}
+
+/* Wikilinks in table */
+.tree-table a.internal-link {
+	color: var(--link-color);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.tree-table a.internal-link:hover {
+	color: var(--link-color-hover);
+	text-decoration: underline;
+}
+
+/* Empty cells */
+.tree-table .empty-cell {
+	color: var(--text-muted);
+	text-align: center;
+}
+
+/* Clickable cells (Mode B drill-down) */
+.tree-table .clickable-cell {
+	cursor: pointer;
+	color: var(--link-color);
+}
+
+.tree-table .clickable-cell:hover {
+	background: var(--background-modifier-hover);
+	text-decoration: underline;
+}
+
+/* Badge column styling */
+.tree-table .badge-column {
+	font-family: inherit;
+	font-weight: normal;
+	text-align: left;
+}
+
+.tree-table td.badge-column {
+	background: transparent;
+	border-radius: 0;
+	padding: 8px 12px;
+	font-size: inherit;
+	font-weight: normal;
+}
+
+/* Text column styling */
+.tree-table .text-column {
+	font-weight: normal;
+	text-align: left;
+}
+
+/* Sticky first column on mobile */
+@media (max-width: 767px) {
+	.tree-table th:first-child,
+	.tree-table td:first-child {
+		position: sticky;
+		left: 0;
+		z-index: 1;
+		background: var(--background-primary);
+		box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+	}
+	
+	.tree-table th:first-child {
+		z-index: 3;
+	}
+}
+
+
+/* Breadcrumb navigation */
+.table-breadcrumb {
+	padding: 8px 12px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	margin-bottom: 8px;
+	font-size: 13px;
+}
+
+/* Inline breadcrumb in top bar */
+.table-breadcrumb-inline {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	margin-right: auto;
+	padding: 4px 8px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+}
+
+.breadcrumb-separator {
+	color: var(--text-muted);
+	margin: 0 4px;
+}
+
+.breadcrumb-link {
+	color: var(--link-color);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.breadcrumb-link:hover {
+	text-decoration: underline;
+}
+
+/* Touch targets for mobile */
+@media (max-width: 767px) {
+	.tree-table .clickable-cell {
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+	}
+	
+	.breadcrumb-link {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		padding: 4px 8px;
+	}
+}
+
+/* Rowspan visual enhancement */
+.tree-table td[rowspan] {
+	background: var(--background-primary) !important;
+	font-weight: normal;
+}
+
+/* Hover effect for rows - subtle and consistent */
+.tree-table tbody tr:hover td {
+	background: var(--background-modifier-hover) !important;
+}
+
+
+/* ============================================
+   VIEW MODE SELECT DROPDOWN
+   ============================================ */
+
+.tree-control-select {
+	min-height: auto;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 11px;
+	color: var(--text-normal);
+}
+
+.tree-control-select:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tree-control-select:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+/* Mobile select */
+.tree-control-select-mobile {
+	width: 100%;
+	min-height: 44px;
+	padding: 8px 12px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+.tree-control-select-mobile:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
 }
