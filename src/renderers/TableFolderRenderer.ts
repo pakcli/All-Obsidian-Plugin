@@ -1,11 +1,12 @@
-import TreeNode from './node';
-import { TableDetector } from './TableDetector';
+import TreeNode from '../models/TreeNode';
+import { TableDetector, extractContent } from '../utils/tableAnalysis';
+import { parseWikilinks } from '../utils/rendering';
 
 /**
  * Table Mode B - Folder TableView with drill-down navigation
  * Shows 2 hierarchy levels at a time with breadcrumb navigation
  */
-export class TableModeB {
+export class TableFolderRenderer {
 	private trees: TreeNode[];
 	private contentColumns: string[];
 	private navigationStack: string[] = [];
@@ -16,52 +17,6 @@ export class TableModeB {
 		this.contentColumns = TableDetector.collectContentColumns(trees);
 		this.navigationStack = navigationStack;
 		this.onNavigate = onNavigate;
-	}
-
-	/**
-	 * Parse wikilinks in text and create HTML with proper link elements
-	 */
-	private parseWikilinks(text: string): DocumentFragment {
-		const fragment = document.createDocumentFragment();
-		
-		// Regex to match [[target|alias]] or [[target]]
-		const wikilinkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-		let lastIndex = 0;
-		let match;
-		
-		console.log(`[parseWikilinks] Parsing text: "${text}"`);
-		
-		while ((match = wikilinkRegex.exec(text)) !== null) {
-			console.log(`[parseWikilinks] Found wikilink: ${match[0]}`);
-			
-			// Add text before the wikilink
-			if (match.index > lastIndex) {
-				const textNode = document.createTextNode(text.substring(lastIndex, match.index));
-				fragment.appendChild(textNode);
-			}
-			
-			// Create wikilink element
-			const target = match[1].trim();
-			const alias = match[2] ? match[2].trim() : target;
-			
-			console.log(`[parseWikilinks] Creating link: target="${target}", alias="${alias}"`);
-			
-			const link = document.createElement('a');
-			link.className = 'internal-link';
-			link.setAttribute('data-href', target);
-			link.textContent = alias;
-			fragment.appendChild(link);
-			
-			lastIndex = match.index + match[0].length;
-		}
-		
-		// Add remaining text
-		if (lastIndex < text.length) {
-			const textNode = document.createTextNode(text.substring(lastIndex));
-			fragment.appendChild(textNode);
-		}
-		
-		return fragment;
 	}
 
 	/**
@@ -101,51 +56,11 @@ export class TableModeB {
 	}
 
 	/**
-	 * Render breadcrumb navigation
-	 */
-	private renderBreadcrumb(): HTMLElement {
-		const breadcrumb = document.createElement('div');
-		breadcrumb.className = 'table-breadcrumb';
-
-		if (this.navigationStack.length === 0) {
-			breadcrumb.textContent = 'Root';
-			return breadcrumb;
-		}
-
-		this.navigationStack.forEach((item, index) => {
-			if (index > 0) {
-				const separator = document.createElement('span');
-				separator.textContent = ' > ';
-				separator.className = 'breadcrumb-separator';
-				breadcrumb.appendChild(separator);
-			}
-
-			const link = document.createElement('a');
-			link.textContent = item;
-			link.className = 'breadcrumb-link';
-			link.href = '#';
-			link.onclick = (e) => {
-				e.preventDefault();
-				// Navigate to this level
-				const newStack = this.navigationStack.slice(0, index + 1);
-				if (this.onNavigate) {
-					this.onNavigate(newStack);
-				}
-			};
-			breadcrumb.appendChild(link);
-		});
-
-		return breadcrumb;
-	}
-
-	/**
 	 * Render table for current navigation level
 	 */
 	render(): HTMLElement {
 		const container = document.createElement('div');
 		container.className = 'tree-table-mode-b-container';
-
-		// Breadcrumb is now rendered in top bar, not here
 
 		const table = document.createElement('table');
 		table.className = 'tree-table tree-table-mode-b';
@@ -208,7 +123,7 @@ export class TableModeB {
 		// Group by parent for rowspan
 		const grouped = this.groupByParent(hierarchicalNodes);
 
-		grouped.forEach((group, groupIndex) => {
+		grouped.forEach((group) => {
 			group.nodes.forEach((node, nodeIndex) => {
 				const tr = tbody.insertRow();
 
@@ -246,7 +161,7 @@ export class TableModeB {
 
 				if (showContent) {
 					// Show content columns
-					const contentMap = this.extractContent(node);
+					const contentMap = extractContent(node);
 					this.contentColumns.forEach(col => {
 						const td = tr.insertCell();
 						const values = contentMap.get(col) || [];
@@ -259,7 +174,7 @@ export class TableModeB {
 									td.appendChild(document.createElement('br'));
 								}
 								// Parse wikilinks in the value
-								const fragment = this.parseWikilinks(value);
+								const fragment = parseWikilinks(value);
 								td.appendChild(fragment);
 							});
 						} else {
@@ -327,53 +242,9 @@ export class TableModeB {
 	}
 
 	/**
-	 * Extract content values from node
-	 */
-	private extractContent(node: TreeNode): Map<string, string[]> {
-		const contentMap = new Map<string, string[]>();
-		
-		const traverse = (n: TreeNode) => {
-			if (TableDetector.isContentColumn(n)) {
-				const values: string[] = [];
-				
-				// Collect all child values
-				if (n.children && n.children.length > 0) {
-					n.children.forEach(child => {
-						if (child.name) {
-							// Check if child has wikilink
-							if (child.link) {
-								// If name is same as alias or empty, just use wikilink
-								// Otherwise, include both name and wikilink
-								if (child.name === child.link.alias || child.name.trim() === '') {
-									values.push(`[[${child.link.target}|${child.link.alias}]]`);
-								} else {
-									values.push(`${child.name} [[${child.link.target}|${child.link.alias}]]`);
-								}
-							} else {
-								values.push(child.name);
-							}
-						} else if (child.link) {
-							// Node has no name, only wikilink
-							values.push(`[[${child.link.target}|${child.link.alias}]]`);
-						}
-					});
-				}
-				
-				contentMap.set(n.name, values);
-			}
-			if (n.children) {
-				n.children.forEach(child => traverse(child));
-			}
-		};
-		
-		traverse(node);
-		return contentMap;
-	}
-
-	/**
 	 * Get CSS class for column based on name
 	 */
-	private getColumnClass(columnName: string): string {
+	private getColumnClass(_columnName: string): string {
 		// Return consistent class for all columns
 		return 'text-column';
 	}

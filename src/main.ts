@@ -1,6 +1,7 @@
 import { Notice, Plugin, TFolder } from 'obsidian';
-import { TreeDiagramMarkdownRenderChild } from './TreeDiagramMarkdownRenderChild';
-import { buildTabTree, copyToClipboard } from './util';
+import { DiagramRenderer } from './renderers/DiagramRenderer';
+import { buildTabTree } from './utils/parser';
+import { copyToClipboard } from './utils/clipboard';
 
 export default class TreeDiagramPlugin extends Plugin {
 	// Store settings panel state per codeblock (keyed by source hash)
@@ -10,7 +11,7 @@ export default class TreeDiagramPlugin extends Plugin {
 		// Register single tree code block processor
 		// Configuration is now handled via inline flags
 		this.registerMarkdownCodeBlockProcessor("tree", async (source, el, ctx) => {
-			ctx.addChild(new TreeDiagramMarkdownRenderChild(this, source, el, ctx));
+			ctx.addChild(new DiagramRenderer(this, source, el, ctx));
 		});
 
 		// Copy full vault tree (folders + files)

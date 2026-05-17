@@ -1,11 +1,12 @@
-import TreeNode from './node';
-import { TableDetector } from './TableDetector';
+import TreeNode from '../models/TreeNode';
+import { TableDetector } from '../utils/tableAnalysis';
+import { parseWikilinks } from '../utils/rendering';
 
 /**
  * Table Mode A - Full View with rowspan
  * Displays all leaf nodes in one flat table with vertical merging
  */
-export class TableModeA {
+export class TableFullRenderer {
 	private trees: TreeNode[];
 	private contentColumns: string[];
 	private maxDepth: number;
@@ -23,7 +24,7 @@ export class TableModeA {
 	private flattenToLeafPaths(): LeafPath[] {
 		const paths: LeafPath[] = [];
 
-		const traverse = (node: TreeNode, currentPath: string[], currentNodes: TreeNode[], contentMap: Map<string, string[]>) => {
+		const traverse = (node: TreeNode, currentPath: string[], currentNodes: TreeNode[]) => {
 			if (TableDetector.isHierarchical(node)) {
 				// Hierarchical node - add to path
 				const newPath = [...currentPath, node.name];
@@ -74,7 +75,7 @@ export class TableModeA {
 						});
 					} else {
 						// Has hierarchical children - continue traversing
-						node.children.forEach(child => traverse(child, newPath, newNodes, new Map()));
+						node.children.forEach(child => traverse(child, newPath, newNodes));
 					}
 				} else {
 					// Leaf hierarchical node with no children
@@ -87,7 +88,7 @@ export class TableModeA {
 			}
 		};
 
-		this.trees.forEach(tree => traverse(tree, [], [], new Map()));
+		this.trees.forEach(tree => traverse(tree, [], []));
 		return paths;
 	}
 
@@ -123,52 +124,6 @@ export class TableModeA {
 		}
 
 		return rowspans;
-	}
-
-	/**
-	 * Parse wikilinks in text and create HTML with proper link elements
-	 */
-	private parseWikilinks(text: string): DocumentFragment {
-		const fragment = document.createDocumentFragment();
-		
-		// Regex to match [[target|alias]] or [[target]]
-		const wikilinkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-		let lastIndex = 0;
-		let match;
-		
-		console.log(`[parseWikilinks] Parsing text: "${text}"`);
-		
-		while ((match = wikilinkRegex.exec(text)) !== null) {
-			console.log(`[parseWikilinks] Found wikilink: ${match[0]}`);
-			
-			// Add text before the wikilink
-			if (match.index > lastIndex) {
-				const textNode = document.createTextNode(text.substring(lastIndex, match.index));
-				fragment.appendChild(textNode);
-			}
-			
-			// Create wikilink element
-			const target = match[1].trim();
-			const alias = match[2] ? match[2].trim() : target;
-			
-			console.log(`[parseWikilinks] Creating link: target="${target}", alias="${alias}"`);
-			
-			const link = document.createElement('a');
-			link.className = 'internal-link';
-			link.setAttribute('data-href', target);
-			link.textContent = alias;
-			fragment.appendChild(link);
-			
-			lastIndex = match.index + match[0].length;
-		}
-		
-		// Add remaining text
-		if (lastIndex < text.length) {
-			const textNode = document.createTextNode(text.substring(lastIndex));
-			fragment.appendChild(textNode);
-		}
-		
-		return fragment;
 	}
 
 	/**
@@ -250,7 +205,7 @@ export class TableModeA {
 							td.appendChild(document.createElement('br'));
 						}
 						// Parse wikilinks in the value
-						const fragment = this.parseWikilinks(value);
+						const fragment = parseWikilinks(value);
 						td.appendChild(fragment);
 					});
 				} else {
@@ -268,7 +223,7 @@ export class TableModeA {
 	/**
 	 * Get CSS class for column based on name
 	 */
-	private getColumnClass(columnName: string): string {
+	private getColumnClass(_columnName: string): string {
 		// Return consistent class for all columns
 		return 'text-column';
 	}

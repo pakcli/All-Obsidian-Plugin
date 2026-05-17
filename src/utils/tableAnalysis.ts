@@ -1,4 +1,4 @@
-import TreeNode from './node';
+import TreeNode from '../models/TreeNode';
 
 /**
  * Detects node type based on capital letter presence
@@ -93,4 +93,48 @@ export class TableDetector {
 		div.textContent = text;
 		return div.innerHTML;
 	}
+}
+
+/**
+ * Extract content values from node
+ */
+export function extractContent(node: TreeNode): Map<string, string[]> {
+	const contentMap = new Map<string, string[]>();
+	
+	const traverse = (n: TreeNode) => {
+		if (TableDetector.isContentColumn(n)) {
+			const values: string[] = [];
+			
+			// Collect all child values
+			if (n.children && n.children.length > 0) {
+				n.children.forEach(child => {
+					if (child.name) {
+						// Check if child has wikilink
+						if (child.link) {
+							// If name is same as alias or empty, just use wikilink
+							// Otherwise, include both name and wikilink
+							if (child.name === child.link.alias || child.name.trim() === '') {
+								values.push(`[[${child.link.target}|${child.link.alias}]]`);
+							} else {
+								values.push(`${child.name} [[${child.link.target}|${child.link.alias}]]`);
+							}
+						} else {
+							values.push(child.name);
+						}
+					} else if (child.link) {
+						// Node has no name, only wikilink
+						values.push(`[[${child.link.target}|${child.link.alias}]]`);
+					}
+				});
+			}
+			
+			contentMap.set(n.name, values);
+		}
+		if (n.children) {
+			n.children.forEach(child => traverse(child));
+		}
+	};
+	
+	traverse(node);
+	return contentMap;
 }

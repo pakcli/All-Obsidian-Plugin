@@ -1,13 +1,17 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild } from "obsidian";
-import { parseWithConfig, treeView, copyToClipboard, enableWikiLinks, TreeConfig } from './util';
-import TreeDiagramPlugin from "./main";
-import TreeNode from './node';
-import { TableModeA } from './TableModeA';
-import { TableModeB } from './TableModeB';
+import { parseWithConfig, TreeConfig } from '../utils/parser';
+import { treeView } from '../utils/treeFormatter';
+import { enableWikiLinks } from '../utils/rendering';
+import TreeDiagramPlugin from "../main";
+import TreeNode from '../models/TreeNode';
+import { TableFullRenderer } from './TableFullRenderer';
+import { TableFolderRenderer } from './TableFolderRenderer';
+import { ControlBar } from '../ui/ControlBar';
+import { SettingsPanel } from '../ui/SettingsPanel';
 
 export type ViewMode = 'tree' | 'table-a' | 'table-b';
 
-export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
+export class DiagramRenderer extends MarkdownRenderChild {
 	plugin: TreeDiagramPlugin;
 	source: string;
 	ctx: MarkdownPostProcessorContext;
@@ -376,11 +380,6 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 		}
 
 		const fullText = allLines.join("\n");
-		
-		// Store plain text version for copying (with toggles replaced)
-		const plainTextForCopy = fullText
-			.replace(/\{\{TITLE_TOGGLE:(.*?)\}\}/g, '$1')
-			.replace(/\{\{TOGGLE:(.*?):(.*?)\}\}/g, '$2');
 
 		// Escape HTML first to preserve ASCII characters
 		const escapeHtml = (text: string) => {
@@ -456,7 +455,7 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 
 	renderTableModeA(wrapper: HTMLElement) {
 		const container = wrapper.createDiv({ cls: 'tree-table-container' });
-		const renderer = new TableModeA(this.trees);
+		const renderer = new TableFullRenderer(this.trees);
 		const table = renderer.render();
 		container.appendChild(table);
 		
@@ -511,7 +510,7 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 		}
 		
 		const container = wrapper.createDiv({ cls: 'tree-table-container' });
-		const renderer = new TableModeB(
+		const renderer = new TableFolderRenderer(
 			this.trees, 
 			this.tableBNavigationStack,
 			(newStack) => {
@@ -533,200 +532,70 @@ export class TreeDiagramMarkdownRenderChild extends MarkdownRenderChild {
 	}
 
 	renderTopControlBar(contentArea: HTMLElement) {
-		const topBar = contentArea.createDiv({ cls: 'tree-top-control-bar' });
+		const controlBar = new ControlBar(
+			this.config.interactive,
+			async () => {
+				this.config.interactive = !this.config.interactive;
+				await this.updateSourceCodeblock();
+				this.render();
+			},
+			async () => {
+				return this.getPlainTextForCopy();
+			},
+			() => {
+				this.settingsPanelOpen = !this.settingsPanelOpen;
+				this.render();
+			}
+		);
 		
-		// Interactive toggle button
-		const interactiveBtn = topBar.createEl("button", {
-			text: this.config.interactive ? "(v) interactive" : "(>) interactive",
-			cls: 'tree-control-button'
-		});
-		interactiveBtn.onclick = async () => {
-			this.config.interactive = !this.config.interactive;
-			await this.updateSourceCodeblock();
-			this.render();
-		};
-		
-		// Copy button
-		const copyBtn = topBar.createEl("button", { 
-			text: "copy",
-			cls: 'tree-control-button'
-		});
-		copyBtn.onclick = async () => {
-			const plainText = this.getPlainTextForCopy();
-			const ok = await copyToClipboard(plainText);
-			copyBtn.textContent = ok ? "Copied!" : "Fail";
-			setTimeout(() => (copyBtn.textContent = "copy"), 1200);
-		};
-		
-		// Settings toggle button (three dots)
-		const settingsBtn = topBar.createEl("button", {
-			text: "⋯",
-			cls: 'tree-control-button tree-settings-toggle'
-		});
-		settingsBtn.onclick = () => {
-			this.settingsPanelOpen = !this.settingsPanelOpen;
-			this.render();
-		};
+		controlBar.render(contentArea);
 	}
 
 	renderSettingsPanel(mainLayout: HTMLElement) {
-		const settingsPanel = mainLayout.createDiv({ 
-			cls: this.settingsPanelOpen ? 'tree-settings-panel open' : 'tree-settings-panel'
-		});
-		
-		if (!this.settingsPanelOpen) {
-			return;
-		}
-		
-		// Settings header
-		const header = settingsPanel.createDiv({ cls: 'settings-header' });
-		header.createEl("h3", { text: "settings" });
-		
-		// View mode dropdown
-		const viewModeGroup = settingsPanel.createDiv({ cls: 'settings-group' });
-		viewModeGroup.createEl("label", { text: "view mode", cls: 'settings-label' });
-		const viewModeSelect = viewModeGroup.createEl("select", {
-			cls: 'settings-select'
-		});
-		viewModeSelect.createEl("option", { value: 'tree', text: 'Tree' });
-		viewModeSelect.createEl("option", { value: 'table-a', text: 'Table FullView' });
-		viewModeSelect.createEl("option", { value: 'table-b', text: 'Table FolderView' });
-		viewModeSelect.value = this.viewMode;
-		viewModeSelect.onchange = async () => {
-			this.viewMode = viewModeSelect.value as ViewMode;
-			// Update config
-			if (this.viewMode === 'tree') {
-				this.config.currentView = 1;
-			} else if (this.viewMode === 'table-a') {
-				this.config.currentView = 2;
-			} else if (this.viewMode === 'table-b') {
-				this.config.currentView = 3;
-			}
-			await this.updateSourceCodeblock();
-			this.render();
-		};
-		
-		// Interactive toggle
-		const interactiveGroup = settingsPanel.createDiv({ cls: 'settings-group' });
-		interactiveGroup.createEl("label", { text: "interactive", cls: 'settings-label' });
-		const interactiveToggle = interactiveGroup.createDiv({ cls: 'settings-toggle' });
-		const onBtn = interactiveToggle.createEl("button", {
-			text: "● ON",
-			cls: this.config.interactive ? 'toggle-btn active' : 'toggle-btn'
-		});
-		onBtn.onclick = async () => {
-			this.config.interactive = true;
-			await this.updateSourceCodeblock();
-			this.render();
-		};
-		
-		const offBtn = interactiveToggle.createEl("button", {
-			text: "○ OFF",
-			cls: !this.config.interactive ? 'toggle-btn active' : 'toggle-btn'
-		});
-		offBtn.onclick = async () => {
-			this.config.interactive = false;
-			await this.updateSourceCodeblock();
-			this.render();
-		};
-		
-		// Start show level spinner
-		const showLevelGroup = settingsPanel.createDiv({ cls: 'settings-group' });
-		showLevelGroup.createEl("label", { text: "start show level", cls: 'settings-label' });
-		const showLevelSpinner = this.createSpinner(
-			"",
-			this.config.startShowLevel,
-			0,
-			10,
-			async (value) => {
-				this.config.startShowLevel = value;
-				this.treeVisible = value > 0;
-				// Re-initialize expanded nodes if needed
-				if (this.config.interactive && value > 1) {
-					this.expandedNodes.clear();
-					this.initializeExpandedNodes(value);
+		const settingsPanel = new SettingsPanel(
+			this.config,
+			this.viewMode,
+			this.levelNumberOffset,
+			this.settingsPanelOpen,
+			async (updates) => {
+				// Handle config updates
+				Object.assign(this.config, updates);
+				
+				// Special handling for startShowLevel
+				if (updates.startShowLevel !== undefined) {
+					this.treeVisible = updates.startShowLevel > 0;
+					// Re-initialize expanded nodes if needed
+					if (this.config.interactive && updates.startShowLevel > 1) {
+						this.expandedNodes.clear();
+						this.initializeExpandedNodes(updates.startShowLevel);
+					}
+				}
+				
+				await this.updateSourceCodeblock();
+				this.render();
+			},
+			async (mode) => {
+				this.viewMode = mode;
+				// Update config
+				if (mode === 'tree') {
+					this.config.currentView = 1;
+				} else if (mode === 'table-a') {
+					this.config.currentView = 2;
+				} else if (mode === 'table-b') {
+					this.config.currentView = 3;
 				}
 				await this.updateSourceCodeblock();
 				this.render();
-			}
-		);
-		showLevelGroup.appendChild(showLevelSpinner);
-		
-		// Level numbered spinner
-		const numberingGroup = settingsPanel.createDiv({ cls: 'settings-group' });
-		numberingGroup.createEl("label", { text: "level numbered", cls: 'settings-label' });
-		const numberingSpinner = this.createSpinner(
-			"",
-			this.config.levelNumbered,
-			0,
-			10,
-			async (value) => {
-				this.config.levelNumbered = value;
+			},
+			async (offset) => {
+				this.levelNumberOffset = offset;
+				this.config.offsetLevelNumbered = offset;
 				await this.updateSourceCodeblock();
 				this.render();
 			}
 		);
-		numberingGroup.appendChild(numberingSpinner);
 		
-		// Level number offset spinner
-		const offsetGroup = settingsPanel.createDiv({ cls: 'settings-group' });
-		offsetGroup.createEl("label", { text: "offset", cls: 'settings-label' });
-		const offsetSpinner = this.createSpinner(
-			"",
-			this.levelNumberOffset,
-			0,
-			10,
-			async (value) => {
-				this.levelNumberOffset = value;
-				this.config.offsetLevelNumbered = value;
-				await this.updateSourceCodeblock();
-				this.render();
-			}
-		);
-		offsetGroup.appendChild(offsetSpinner);
-	}
-
-	createSpinner(label: string, value: number, min: number, max: number, onChange: (value: number) => void | Promise<void>): HTMLElement {
-		const spinner = document.createElement('div');
-		spinner.className = 'tree-spinner';
-		
-		if (label) {
-			const labelEl = document.createElement('span');
-			labelEl.textContent = label + ":";
-			labelEl.style.marginRight = "4px";
-			labelEl.style.fontSize = "11px";
-			spinner.appendChild(labelEl);
-		}
-		
-		// Decrease button
-		const decreaseBtn = document.createElement('button');
-		decreaseBtn.textContent = "−";
-		decreaseBtn.className = 'spinner-button';
-		decreaseBtn.onclick = () => {
-			if (value > min) {
-				onChange(value - 1);
-			}
-		};
-		spinner.appendChild(decreaseBtn);
-		
-		// Value display
-		const valueEl = document.createElement('span');
-		valueEl.textContent = value.toString();
-		valueEl.className = 'spinner-value';
-		spinner.appendChild(valueEl);
-		
-		// Increase button
-		const increaseBtn = document.createElement('button');
-		increaseBtn.textContent = "+";
-		increaseBtn.className = 'spinner-button';
-		increaseBtn.onclick = () => {
-			if (value < max) {
-				onChange(value + 1);
-			}
-		};
-		spinner.appendChild(increaseBtn);
-		
-		return spinner;
+		settingsPanel.render(mainLayout);
 	}
 
 	getPlainTextForCopy(): string {

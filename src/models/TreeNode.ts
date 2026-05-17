@@ -3,15 +3,15 @@ export interface WikiLink {
 	alias: string;
 }
 
-export default class Node {
+export default class TreeNode {
 	name: string;
 	depth: number;
-	parent: Node | null;
-	children: Node[];
+	parent: TreeNode | null;
+	children: TreeNode[];
 	isLast: boolean;
 	link: WikiLink | null;
 
-	constructor(name: string, depth: number, parent = null, isLast = false, link: WikiLink | null = null) {
+	constructor(name: string, depth: number, parent: TreeNode | null = null, isLast = false, link: WikiLink | null = null) {
 		this.name = name;
 		this.depth = depth;
 		this.parent = parent;
@@ -20,7 +20,7 @@ export default class Node {
 		this.link = link;
 	}
 
-	addChild(child: Node) {
+	addChild(child: TreeNode) {
 		if (this.children.length > 0)
 			this.children[this.children.length - 1].isLast = false;
 		this.children.push(child);
@@ -29,7 +29,7 @@ export default class Node {
 		child.setDepth(this.depth + 1);
 	}
 
-	setParent(p: Node) {
+	setParent(p: TreeNode) {
 		this.parent = p;
 	}
 
