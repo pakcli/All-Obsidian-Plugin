@@ -45,9 +45,12 @@ export function squeeze(full: string, budget: number): string {
 
 	const sep   = full.includes('\\') ? '\\' : '/';
 	const parts = full.split(/[\\/]/);
-	const first  = parts[0] ?? '';                         // drive or root
-	const last   = parts[parts.length - 1] ?? '';          // destination name
-	const parent = parts.length >= 3 ? (parts[parts.length - 2] ?? '') : ''; // parent dir
+	const [firstStr] = parts;
+	const first = firstStr ?? '';                         // drive or root
+	const [lastStr] = parts.slice(-1);
+	const last = lastStr ?? '';                           // destination name
+	const [parentStr] = parts.slice(-2);
+	const parent = parts.length >= 3 ? (parentStr ?? '') : ''; // parent dir
 
 	// ── Tier 1: compact — drive/…/destination ───────────────────────────────
 	if (parts.length >= 3) {

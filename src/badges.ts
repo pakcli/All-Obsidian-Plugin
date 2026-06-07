@@ -1,5 +1,5 @@
 import { App, TAbstractFile, TFolder } from 'obsidian';
-import * as path from 'path';
+import { join } from 'path';
 import { detectLink } from './detect';
 import { applyResponsivePath } from './truncate';
 
@@ -42,7 +42,7 @@ export class BadgeRenderer {
 					this.clear(titleEl);
 					continue;
 				}
-				const absPath = path.join(this.vaultRoot, af.path);
+				const absPath = join(this.vaultRoot, af.path);
 				const state = detectLink(absPath);
 				if (state.kind === 'none') {
 					this.clear(titleEl);

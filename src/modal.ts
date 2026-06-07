@@ -8,7 +8,7 @@ import {
 	TextComponent,
 	normalizePath,
 } from 'obsidian';
-import * as path from 'path';
+import { join } from 'path';
 import { detectLink, suggestLinkType } from './detect';
 import { copyAndDisconnect, createLink, removeLink, repointLink } from './ops';
 import { browseFolder } from './dialog';
@@ -74,7 +74,7 @@ export class SymlinkModal extends Modal {
 	private refresh(): void {
 		const raw = this.vaultPathInput.getValue().trim();
 		const vaultPath = normalizePath(raw || this.opts.initialVaultPath || '/');
-		const absPath = path.join(this.opts.vaultRoot, vaultPath);
+		const absPath = join(this.opts.vaultRoot, vaultPath);
 		this.info = { absPath, vaultPath, state: detectLink(absPath) };
 
 		this.hideDebug();

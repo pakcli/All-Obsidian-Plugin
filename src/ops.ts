@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import { promises, Stats } from 'fs';
+import { dirname, join, basename } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import type { LinkType } from './types';
@@ -13,7 +13,7 @@ const execAsync = promisify(exec);
 export async function createLink(linkPath: string, targetPath: string, type: LinkType): Promise<void> {
 	await assertPathFree(linkPath);
 	await assertTargetExists(targetPath);
-	await fs.promises.mkdir(path.dirname(linkPath), { recursive: true });
+	await promises.mkdir(dirname(linkPath), { recursive: true });
 
 	if (process.platform === 'win32') {
 		// mklink is a cmd.exe builtin, not a standalone exe — must run via cmd /c.
@@ -28,7 +28,7 @@ export async function createLink(linkPath: string, targetPath: string, type: Lin
 	}
 
 	// POSIX: dir/file symlink — Node infers type on Linux/macOS.
-	await fs.promises.symlink(targetPath, linkPath, 'dir');
+	await promises.symlink(targetPath, linkPath, 'dir');
 }
 
 /**
@@ -36,22 +36,22 @@ export async function createLink(linkPath: string, targetPath: string, type: Lin
  * On Windows a directory junction must be removed with rmdir, not unlink.
  */
 export async function removeLink(linkPath: string): Promise<void> {
-	const lst = await fs.promises.lstat(linkPath);
+	const lst = await promises.lstat(linkPath);
 	if (!lst.isSymbolicLink()) {
 		throw new Error(`Not a symlink/junction: ${linkPath}`);
 	}
 
 	if (process.platform === 'win32') {
 		try {
-			await fs.promises.unlink(linkPath);
+			await promises.unlink(linkPath);
 		} catch {
 			// Junctions appear as directories to rmdir.
-			await fs.promises.rmdir(linkPath);
+			await promises.rmdir(linkPath);
 		}
 		return;
 	}
 
-	await fs.promises.unlink(linkPath);
+	await promises.unlink(linkPath);
 }
 
 /**
@@ -59,15 +59,15 @@ export async function removeLink(linkPath: string): Promise<void> {
  * with the copied folder. Effectively: snapshot then detach.
  */
 export async function copyAndDisconnect(linkPath: string): Promise<void> {
-	const lst = await fs.promises.lstat(linkPath);
+	const lst = await promises.lstat(linkPath);
 	if (!lst.isSymbolicLink()) {
 		throw new Error(`Not a symlink/junction: ${linkPath}`);
 	}
 
-	const resolved = await fs.promises.realpath(linkPath);
-	const tmp = path.join(path.dirname(linkPath), `.${path.basename(linkPath)}.copying-${Date.now()}`);
+	const resolved = await promises.realpath(linkPath);
+	const tmp = join(dirname(linkPath), `.${basename(linkPath)}.copying-${Date.now()}`);
 
-	await fs.promises.cp(resolved, tmp, { recursive: true, dereference: true });
+	await promises.cp(resolved, tmp, { recursive: true, dereference: true });
 
 	try {
 		await removeLink(linkPath);
@@ -76,7 +76,7 @@ export async function copyAndDisconnect(linkPath: string): Promise<void> {
 		throw err;
 	}
 
-	await fs.promises.rename(tmp, linkPath);
+	await promises.rename(tmp, linkPath);
 }
 
 /** Atomically repoint: remove old link and create a new one at the same path. */
@@ -96,7 +96,7 @@ function quote(p: string): string {
 
 async function assertPathFree(p: string): Promise<void> {
 	try {
-		await fs.promises.lstat(p);
+		await promises.lstat(p);
 	} catch {
 		return;
 	}
@@ -104,9 +104,9 @@ async function assertPathFree(p: string): Promise<void> {
 }
 
 async function assertTargetExists(p: string): Promise<void> {
-	let st: fs.Stats;
+	let st: Stats;
 	try {
-		st = await fs.promises.stat(p);
+		st = await promises.stat(p);
 	} catch {
 		throw new Error(`Target does not exist: ${p}`);
 	}
@@ -117,7 +117,7 @@ async function assertTargetExists(p: string): Promise<void> {
 
 async function safeRemove(p: string): Promise<void> {
 	try {
-		await fs.promises.rm(p, { recursive: true, force: true });
+		await promises.rm(p, { recursive: true, force: true });
 	} catch {
 		// best-effort cleanup
 	}

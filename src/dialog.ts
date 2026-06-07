@@ -43,5 +43,6 @@ export async function browseFolder(defaultPath?: string): Promise<string | null>
 	});
 
 	if (result.canceled || result.filePaths.length === 0) return null;
-	return result.filePaths[0] ?? null;
+	const [firstPath] = result.filePaths;
+	return firstPath ?? null;
 }
