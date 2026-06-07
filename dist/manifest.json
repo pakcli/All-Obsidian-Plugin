@@ -1,0 +1,9 @@
+{
+	"id": "symlink-manager",
+	"name": "Symlink Manager",
+	"version": "1.0.0",
+	"minAppVersion": "1.4.0",
+	"description": "Right-click any folder to create, edit, or disconnect junctions and symbolic links. Single adaptive panel, no terminal.",
+	"author": "Symlink Manager",
+	"isDesktopOnly": true
+}

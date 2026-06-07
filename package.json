@@ -2,7 +2,7 @@
 	"name": "obsidian-symlink-manager",
 	"version": "1.0.0",
 	"description": "Right-click any folder to create, edit, or disconnect junctions and symbolic links from inside Obsidian.",
-	"main": "main.js",
+	"main": "dist/main.js",
 	"type": "module",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

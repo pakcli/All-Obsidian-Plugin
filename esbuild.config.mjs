@@ -18,13 +18,27 @@ const postBuildPlugin = {
 		build.onEnd(async (result) => {
 			if (result.errors.length > 0) return;
 			try {
-				let content = await fs.promises.readFile('main.js', 'utf8');
+				await fs.promises.mkdir('dist', { recursive: true });
+				let content = await fs.promises.readFile('dist/main.js', 'utf8');
 				// Replace bracket notation in copyProps helper to avoid static analysis security flags
 				content = content.replace(/\bget:\s*\(\)\s*=>\s*i\[s\]/g, 'get:()=>Reflect.get(i,s)');
 				content = content.replace(/\bget:\s*\(\)\s*=>\s*from\[key\]/g, 'get:()=>Reflect.get(from,key)');
 				// Replace bracket notation in export helper to avoid static analysis security flags
 				content = content.replace(/\ball\[name\]/g, 'Reflect.get(all, name)');
-				await fs.promises.writeFile('main.js', content, 'utf8');
+				await fs.promises.writeFile('dist/main.js', content, 'utf8');
+
+				// Copy other release artifacts to dist/
+				await fs.promises.copyFile('manifest.json', 'dist/manifest.json');
+				try {
+					await fs.promises.copyFile('styles.css', 'dist/styles.css');
+				} catch (e) {
+					// ignore if styles.css doesn't exist
+				}
+
+				// Clean up old root main.js if it exists
+				try {
+					await fs.promises.unlink('main.js');
+				} catch (e) {}
 			} catch (err) {
 				console.error('Post-build processing failed:', err);
 			}
@@ -58,7 +72,7 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outfile: "dist/main.js",
 	minifyWhitespace: prod,
 	minifySyntax: prod,
 	minifyIdentifiers: false,

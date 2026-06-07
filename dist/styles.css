@@ -1,0 +1,194 @@
+/* Symlink Manager — modal layout */
+
+.symlink-manager-modal .sm-section {
+	margin-bottom: 0.75rem;
+}
+
+.symlink-manager-modal .sm-status {
+	margin: 0.5rem 0 0.75rem;
+	padding: 0.5rem 0.75rem;
+	border-radius: 6px;
+	background: var(--background-secondary);
+	min-width: 0;
+}
+
+.symlink-manager-modal .sm-status-line {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-width: 0;
+}
+
+.symlink-manager-modal .sm-status-label {
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+.symlink-manager-modal .sm-target-row {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	margin-top: 0.25rem;
+	min-width: 0;
+}
+
+.symlink-manager-modal .sm-target-arrow {
+	flex: 0 0 auto;
+	color: var(--text-muted);
+}
+
+.symlink-manager-modal .sm-target-path {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.symlink-manager-modal .sm-warn {
+	color: var(--color-orange, #d08a3a);
+	font-size: var(--font-ui-smaller);
+	margin-top: 0.25rem;
+}
+
+/* Status dot */
+
+.symlink-manager-modal .sm-dot {
+	flex: 0 0 auto;
+	width: 0.65em;
+	height: 0.65em;
+	border-radius: 50%;
+	display: inline-block;
+	background: var(--background-modifier-border);
+}
+
+.symlink-manager-modal .sm-dot-junction { background: #3aa757 !important; }
+.symlink-manager-modal .sm-dot-symlink  { background: #d08a3a !important; }
+.symlink-manager-modal .sm-dot-broken   { background: #d04a4a !important; }
+.symlink-manager-modal .sm-dot-none     { background: var(--background-modifier-border) !important; }
+
+/* Action cards */
+
+.symlink-manager-modal .sm-actions-title {
+	margin: 0.75rem 0 0.5rem;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.symlink-manager-modal .sm-card {
+	padding: 0.75rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	margin-bottom: 0.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.symlink-manager-modal .sm-card-title {
+	font-weight: 600;
+}
+
+.symlink-manager-modal .sm-card-desc {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.symlink-manager-modal .sm-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+}
+
+/* Debug / timing bar — only visible when sm-debug-visible class is set */
+
+.symlink-manager-modal .sm-debug {
+	display: none;
+}
+
+.symlink-manager-modal .sm-debug.sm-debug-visible {
+	display: block;
+	margin-top: 0.5rem;
+	padding: 0.35rem 0.6rem;
+	border-radius: 4px;
+	background: var(--background-secondary);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	border-left: 3px solid var(--color-accent, #7f6df2);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ── File explorer badges ──────────────────────────────────────────────────
+ * Only affects .nav-folder-title rows that OUR BadgeRenderer has decorated
+ * with .sm-link-active / .sm-link-broken.  No !important on layout props —
+ * the dual-class specificity is enough.  !important is reserved solely for
+ * the dot colours so no theme can make them invisible.
+ *
+ * Row layout after injection:
+ *   [collapse-icon] [folder-name] [target-path right-aligned] [●]
+ * ------------------------------------------------------------------------- */
+
+/* ── File explorer badges ──────────────────────────────────────────────────
+ * Rules here ONLY affect elements that our plugin creates or marks.
+ * We deliberately never touch .nav-folder-title-content so that other
+ * plugins' icons (Icon Folder, etc.) injected inside it are never clipped
+ * or repositioned.
+ *
+ * Layout: .nav-folder-title is already flex in Obsidian.
+ *   [icons/collapse]  [.nav-folder-title-content — untouched]  [.sm-path-badge]  [.sm-dot-badge]
+ *
+ * Both .nav-folder-title-content and .sm-path-badge use flex-grow: 1 so they
+ * share available space.  The path badge starts at 0 basis so the name always
+ * wins the natural-size priority, and the path fills whatever is left.
+ * ------------------------------------------------------------------------- */
+
+/* Only rows flagged by our renderer — no effect on any other folder row. */
+.nav-folder-title.sm-link-active,
+.nav-folder-title.sm-link-broken {
+	align-items: center;
+}
+
+/* Path badge: shares leftover space with the name, right-aligns its text.
+   flex-basis 0 means it only grows into genuinely unused space. */
+.nav-folder-title > .sm-path-badge {
+	flex: 1 1 0;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: right;
+	font-size: 0.72em;
+	color: var(--text-faint);
+	opacity: 0.75;
+	padding-left: 0.4em;
+	padding-right: 0.1em;
+	font-family: var(--font-monospace);
+}
+
+/* Dot: fixed size, never shrinks, always visible. */
+.nav-folder-title > .sm-dot-badge {
+	flex: 0 0 auto;
+	display: inline-block;
+	width: 0.55em;
+	height: 0.55em;
+	border-radius: 50%;
+	margin-left: 0.4em;
+	margin-right: 0.2em;
+	align-self: center;
+}
+
+/* Dot colours: the only place we use !important — prevents themes from
+   overriding the signal colour on an element we own entirely. */
+.nav-folder-title > .sm-dot-badge-junction { background: #3aa757 !important; }
+.nav-folder-title > .sm-dot-badge-symlink  { background: #d08a3a !important; }
+.nav-folder-title > .sm-dot-badge-broken   { background: #d04a4a !important; }
