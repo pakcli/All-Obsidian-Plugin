@@ -156,6 +156,12 @@ function postBuild() {
     if (existsSync("manifest.json")) {
         copyFileSync("manifest.json", "dist/manifest.json");
     }
+    if (existsSync("dist/main.js")) {
+        copyFileSync("dist/main.js", "main.js");
+    }
+    if (existsSync("dist/styles.css")) {
+        copyFileSync("dist/styles.css", "styles.css");
+    }
 }
 
 // Copy manifest plugin to run on every build end

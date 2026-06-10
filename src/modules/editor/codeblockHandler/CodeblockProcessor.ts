@@ -1,8 +1,11 @@
+// SQLSeal codeblock query processor
 import { OmnibusRegistrator } from "@hypersphere/omnibus";
 import {
 	App,
 	MarkdownPostProcessorContext,
 	MarkdownRenderChild,
+	Modal,
+	Notice,
 } from "obsidian";
 import { Sync } from "../../sync/sync/sync";
 import { RendererRegistry, RenderReturn } from "../renderer/rendererRegistry";
@@ -21,12 +24,19 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 	private extrasEl: HTMLElement;
 	private explainEl: HTMLElement;
 
+	private tables: TableDefinition[] = [];
+	private isEditable = false;
+	private targetTableAlias = "";
+	private targetTableName = "";
+	private targetSourcePath = "";
+	private registeredTables: Record<string, string> = {};
+
 	constructor(
 		private el: HTMLElement,
 		private source: string,
 		private ctx: MarkdownPostProcessorContext,
 		private rendererRegistry: RendererRegistry,
-		private db: Pick<SqlocalDatabaseProxy, 'select' | 'explain'>,
+		private db: Pick<SqlocalDatabaseProxy, 'select' | 'explain' | 'updateData' | 'getColumns'>,
 		private cellParser: ModernCellParser,
 		private settings: Settings,
 		private app: App,
@@ -62,6 +72,7 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 				this.rendererRegistry.flags,
 			);
 
+			this.tables = results.tables ?? [];
 			if (results.tables) {
 				await this.registerTables(results.tables);
 				if (!results.query) {
@@ -117,13 +128,47 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 	async render() {
 		try {
 			const registeredTablesForContext =
-				await this.sync.getTablesMappingForContext(this.sourceKey);
+				await this.sync.getTablesMappingForContext(this.sourceKey) as Record<string, string>;
 
 			// Transforming Query
 			const res = this.tq(this.query, registeredTablesForContext, {
 				disableTagAutoDetection: this.settings.get('disableTagAutoDetection')
 			});
-			const transformedQuery = res.sql;
+
+			this.registeredTables = registeredTablesForContext;
+
+			const fileTable = this.tables.find(t => t.type === 'file');
+			this.isEditable = fileTable !== undefined;
+
+			let transformedQuery = res.sql;
+			if (this.isEditable) {
+				const rowidSelections: string[] = [];
+				let firstPrefix: string | null = null;
+
+				for (const t of this.tables.filter(t => t.type === 'file')) {
+					const dbTableName = registeredTablesForContext[t.tableAlias];
+					if (dbTableName) {
+						// 1. Detect if the alias is used in the query
+						const aliasRegex = new RegExp('\\b(?:FROM|JOIN)\\s+' + t.tableAlias + '(?:\\s+(?:AS\\s+)?([a-zA-Z0-9_]+))?\\b', 'i');
+						const match = this.query.match(aliasRegex);
+						const aliasCandidate = match && match[1] ? match[1] : null;
+						const isKeyword = aliasCandidate && /^(?:AS|ON|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|CROSS|ORDER|GROUP|LIMIT|UNION|SELECT|USING|NATURAL|WHERE|HAVING)$/i.test(aliasCandidate);
+						const prefix = (aliasCandidate && !isKeyword) ? aliasCandidate : dbTableName;
+
+						rowidSelections.push(`${prefix}.rowid as __rowid_${t.tableAlias}`);
+						if (!firstPrefix) {
+							firstPrefix = prefix;
+						}
+					}
+				}
+
+				if (rowidSelections.length > 0 && !/__rowid/i.test(transformedQuery)) {
+					if (firstPrefix) {
+						rowidSelections.push(`${firstPrefix}.rowid as __rowid`);
+					}
+					transformedQuery = transformedQuery.replace(/\bSELECT\b/i, `SELECT ${rowidSelections.join(', ')},`);
+				}
+			}
 
 			if (this.flags.refresh) {
 				registerObservers({
@@ -171,7 +216,47 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 				columns,
 				flags: this.flags,
 				frontmatter: variables,
+				isEditable: this.isEditable,
 			});
+
+			// Setup onpage edit handlers
+			const communicator = (this.renderer as any).communicator;
+			if (communicator) {
+				const gridApi = communicator.gridApi;
+				if (gridApi) {
+					// Set the value changed listener
+					if (this.isEditable) {
+						gridApi.setGridOption('onCellValueChanged', (event: any) => {
+							this.handleCellValueChanged(event);
+						});
+					}
+				}
+			}
+
+			if (this.isEditable && fileTable) {
+				this.targetTableAlias = fileTable.tableAlias;
+				const path = this.app.metadataCache.getFirstLinkpathDest(fileTable.arguments[0], this.sourceKey);
+				if (path) {
+					this.targetSourcePath = path.path;
+					this.targetTableName = registeredTablesForContext[this.targetTableAlias];
+				}
+			}
+
+			// Append debug info if debug mode is active
+			const existingDebug = this.el.querySelector(".sqlseal-debug-info");
+			if (existingDebug) {
+				existingDebug.remove();
+			}
+			if (this.settings.get("debug" as any)) {
+				const debugEl = this.el.createDiv({ cls: "sqlseal-debug-info" });
+				debugEl.setText(`[SQLSeal Debug] isEditable: ${this.isEditable} | tables: ${JSON.stringify(this.tables)} | mappedTables: ${JSON.stringify(res.mappedTables)} | enableEditing: ${this.settings.get("enableEditing")}`);
+				debugEl.style.fontSize = "11px";
+				debugEl.style.color = "var(--text-accent)";
+				debugEl.style.padding = "5px 10px";
+				debugEl.style.backgroundColor = "var(--background-secondary)";
+				debugEl.style.borderRadius = "4px";
+				debugEl.style.marginTop = "10px";
+			}
 		} catch (e) {
 			this.renderer.error(e.toString());
 		}
@@ -219,5 +304,168 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 				}),
 			),
 		);
+	}
+
+	private async handleCellValueChanged(event: any) {
+		const oldValue = event.oldValue;
+		const newValue = event.newValue;
+		if (oldValue === newValue) return;
+
+		const field = event.colDef.field;
+		const rowData = event.data;
+
+		try {
+			// Find the source table that contains this column case-insensitively
+			let targetTable: TableDefinition | null = null;
+			let targetDbTableName = "";
+			let resolvedFieldName = field; // fallback
+
+			for (const t of this.tables.filter(t => t.type === 'file')) {
+				const dbTableName = this.registeredTables[t.tableAlias];
+				if (!dbTableName) continue;
+				const columns = await this.db.getColumns(dbTableName);
+				if (columns) {
+					const matchedCol = columns.find(c => c.toLowerCase() === field.toLowerCase());
+					if (matchedCol) {
+						targetTable = t;
+						targetDbTableName = dbTableName;
+						resolvedFieldName = matchedCol;
+						break;
+					}
+				}
+			}
+
+			if (!targetTable || !targetDbTableName) {
+				throw new Error(`Could not find column "${field}" in any referenced tables.`);
+			}
+
+			// Get the rowid for this specific table
+			const rowid = rowData[`__rowid_${targetTable.tableAlias}`] ?? rowData.__rowid;
+			if (rowid === undefined || rowid === null) {
+				throw new Error(`Row ID not found for table "${targetTable.tableAlias}". Cannot save.`);
+			}
+
+			// Find source file path
+			const path = this.app.metadataCache.getFirstLinkpathDest(targetTable.arguments[0], this.sourceKey);
+			if (!path) {
+				throw new Error(`File not found: ${targetTable.arguments[0]}`);
+			}
+			const targetSourcePath = path.path;
+
+			// Create a modal to ask for confirmation
+			const modal = new CellSaveConfirmationModal(
+				this.app,
+				field,
+				oldValue,
+				newValue,
+				async () => {
+					// Confirm / OK: Save to DB and file
+					try {
+						const rowEdit = { rowid, [resolvedFieldName]: newValue };
+						
+						// 1. Update the database table
+						await this.db.updateData(targetDbTableName, [rowEdit], 'rowid');
+
+						// 2. Fetch the entire updated data from database
+						const { data: allRows } = (await this.db.select(`SELECT * FROM ${targetDbTableName}`, {}))!;
+
+						// 3. Serialize back to the file
+						const file = this.app.vault.getFileByPath(targetSourcePath);
+						if (!file) {
+							throw new Error(`File not found: ${targetSourcePath}`);
+						}
+						const extension = file.extension.toLowerCase();
+						let output: string;
+						
+						const cleanRows = allRows.map(row => {
+							const cleanRow = { ...row };
+							delete cleanRow.__rowid;
+							delete cleanRow.rowid;
+							for (const key of Object.keys(cleanRow)) {
+								if (key.startsWith('__rowid_')) {
+									delete cleanRow[key];
+								}
+							}
+							return cleanRow;
+						});
+
+						if (extension === 'csv' || extension === 'tsv') {
+							const { unparse } = await import("papaparse");
+							output = unparse(cleanRows, {
+								delimiter: extension === 'tsv' ? '\t' : ','
+							});
+						} else if (extension === 'json' || extension === 'json5') {
+							output = JSON.stringify(cleanRows, null, 2);
+						} else {
+							throw new Error(`Unsupported output format: ${extension}`);
+						}
+
+						// 4. Modify the vault file
+						await this.app.vault.modify(file, output);
+
+						new Notice(`Saved change: ${oldValue} -> ${newValue}`);
+						
+						// Re-render to show updated database data
+						await this.render();
+					} catch (e) {
+						console.error("SQLSeal: Error saving edits:", e);
+						new Notice(`Failed to save: ${e.message}`);
+						// Revert the cell value in the grid
+						event.node.setDataValue(field, oldValue);
+					}
+				},
+				() => {
+					// Cancel: Revert the cell value in the grid
+					event.node.setDataValue(field, oldValue);
+				}
+			);
+			modal.open();
+		} catch (e) {
+			console.error("SQLSeal: Error during handleCellValueChanged preparation:", e);
+			new Notice(`Failed to initiate save: ${e.message}`);
+			event.node.setDataValue(field, oldValue);
+		}
+	}
+}
+
+class CellSaveConfirmationModal extends Modal {
+	constructor(
+		app: App,
+		private field: string,
+		private oldValue: any,
+		private newValue: any,
+		private onConfirm: () => Promise<void>,
+		private onCancel: () => void
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.createEl("h3", { text: "Save Changes" });
+		
+		const desc = contentEl.createEl("p");
+		desc.setText(`Are you sure you want to update the field "${this.field}" from "${this.oldValue}" to "${this.newValue}"?`);
+
+		const buttonContainer = contentEl.createDiv({ cls: "modal-button-container" });
+		
+		const cancelBtn = buttonContainer.createEl("button", { text: "Cancel" });
+		cancelBtn.addEventListener("click", () => {
+			this.onCancel();
+			this.close();
+		});
+
+		const saveBtn = buttonContainer.createEl("button", {
+			text: "Save",
+			cls: "mod-cta"
+		});
+		saveBtn.addEventListener("click", async () => {
+			await this.onConfirm();
+			this.close();
+		});
+	}
+
+	onClose() {
+		this.contentEl.empty();
 	}
 }

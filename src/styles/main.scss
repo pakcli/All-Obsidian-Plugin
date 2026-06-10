@@ -14,3 +14,67 @@
 @use '../modules/explorer/explorer/style.scss';
 
 @import "../styles.css";
+
+.sqlseal-edit-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3) var(--size-4-4);
+    margin-top: 10px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-s);
+    animation: sqlsealSlideIn 0.2s ease-out;
+
+    span {
+        font-weight: 500;
+        color: var(--text-muted);
+        font-size: var(--font-size-small);
+    }
+
+    .sqlseal-edit-banner-actions {
+        display: flex;
+        gap: var(--size-4-2);
+
+        button {
+            padding: var(--size-4-1) var(--size-4-3);
+            font-size: var(--font-size-small);
+            border-radius: var(--radius-s);
+            cursor: pointer;
+            transition: all 0.15s ease;
+
+            &.sqlseal-edit-btn-save {
+                background-color: var(--interactive-accent);
+                color: var(--text-on-accent);
+                border: none;
+
+                &:hover {
+                    background-color: var(--interactive-accent-hover);
+                }
+            }
+
+            &.sqlseal-edit-btn-discard {
+                background-color: transparent;
+                border: 1px solid var(--border-color);
+                color: var(--text-normal);
+
+                &:hover {
+                    background-color: var(--background-modifier-hover);
+                }
+            }
+        }
+    }
+}
+
+@keyframes sqlsealSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

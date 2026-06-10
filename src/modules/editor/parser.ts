@@ -71,7 +71,7 @@ const generateSemantic = (grammar: ohm.Grammar) => {
     const s = grammar.createSemantics()
 
     const operations: ohm.ActionDict<any> = {
-        Grammar: (entries, selectStatement) => {
+        Grammar: (entries: any, selectStatement: any) => {
             const res = {
                 flags: {
                 },
@@ -83,7 +83,7 @@ const generateSemantic = (grammar: ohm.Grammar) => {
                 query: ''
             }
             if (entries.children.length) {
-                entries.children.forEach(c => {
+                entries.children.forEach((c: any) => {
                     switch (c.ctorName) {
                         case 'TableExpression':
                             res.tables.push(c.toObject())
@@ -103,50 +103,50 @@ const generateSemantic = (grammar: ohm.Grammar) => {
 
         return res
        },
-       TableExpression: (_table, identifier, _eq, tableDef) => {
+       TableExpression: (_table: any, identifier: any, _eq: any, tableDef: any) => {
         return {
             tableAlias: identifier.sourceString ,
             ...tableDef.toObject()
         }
        },
-       TableDefinition_file: (_file, args, _close) => {
+       TableDefinition_file: (_file: any, args: any, _close: any) => {
         return {
             arguments: args.toObject(),
             type: 'file'
         }
        },
-       TableFileExpressionArgs: (filename, _sep, rest) => {
+       TableFileExpressionArgs: (filename: any, _sep: any, rest: any) => {
         // ...rest.asIteration().children.map((c: ohm.Node) => c.toObject().trim())
         let remaining = []
         if (rest.children.length) {
-            remaining = rest.children[0].asIteration().children.map((c: ohm.Node) => c.toObject().trim())
+            remaining = rest.children[0].asIteration().children.map((c: any) => c.toObject().trim())
         }
         return [filename.toObject(), ...remaining]
        },
-       TableDefinition_mdtable: (_file, args, _close) =>  {
+       TableDefinition_mdtable: (_file: any, args: any, _close: any) =>  {
         return {
-            arguments: args.asIteration().children.map((c: ohm.Node) => c.toObject().trim()),
+            arguments: args.asIteration().children.map((c: any) => c.toObject().trim()),
             type: 'table'
         }
        },
-       FlagExpression_refresh: (v) => {
+       FlagExpression_refresh: (v: any) => {
         return { refresh: true }
        },
-       FlagExpression_norefresh: (v) => {
+       FlagExpression_norefresh: (v: any) => {
         return {refresh: false}
        },
-       FlagExpression_explain: (v) => {
+       FlagExpression_explain: (v: any) => {
         return { explain: true }
        },
-       ViewExpression: (view, options) => {
+       ViewExpression: (view: any, options: any) => {
         return {
             type: view.toObject().toUpperCase(),
             options: (options.sourceString ?? '').trim()
         }
        },
-       listElement_quoted: (_q, value, _q2) => value.sourceString,
-       listElement_unquoted: (v) => v.sourceString,
-       filename: (v) => {
+       listElement_quoted: (_q: any, value: any, _q2: any) => value.sourceString,
+       listElement_unquoted: (v: any) => v.sourceString,
+       filename: (v: any) => {
         const f = v.sourceString
         if (f.length && f[0] === '"' && f[f.length - 1] === '"') {
             return f.substring(1, f.length - 1)
@@ -158,7 +158,7 @@ const generateSemantic = (grammar: ohm.Grammar) => {
         }
     }
     if ((grammar.rules['ExtraFlags'].body as any).ruleName) {
-        operations.ExtraFlags = (flag) => {
+        operations.ExtraFlags = (flag: any) => {
             const key = flag.ctorName.substring('ExtraFlags_'.length)
             return { [key]: true }
         }
@@ -196,7 +196,7 @@ export const parse = (query: string, views: ViewDefinition[], flags: readonly Fl
         const s = generateSemantic(grammar)(match)
         return s.toObject() as Partial<ParserResult>
     } else {
-        throw new Error(match.message || 'Unknown parsing error')
+        throw new Error((match as any).message || 'Unknown parsing error')
     }
 }
 

@@ -31,7 +31,7 @@ export class SQLSealFileView extends TextFileView {
         private cellParser: ModernCellParser,
         private settings: Settings,
         private sync: Sync,
-        private vaultDb: Pick<SqlocalDatabaseProxy, 'select' | 'explain'>,
+        private vaultDb: Pick<SqlocalDatabaseProxy, 'select' | 'explain' | 'updateData' | 'getColumns'>,
     ) {
         super(leaf);
     }
@@ -128,7 +128,14 @@ export class SQLSealFileView extends TextFileView {
                         executionTime: 0
                     };
                 },
-                explain: async () => ""
+                explain: async () => "",
+                updateData: async () => {
+                    throw new Error("Editing file views directly is not supported");
+                },
+                getColumns: async (name: string) => {
+                    const result = await this.fileDb!.getColumns(name);
+                    return result.data.map(col => col.name);
+                }
             } : this.vaultDb;
 
             const processor = new CodeblockProcessor(

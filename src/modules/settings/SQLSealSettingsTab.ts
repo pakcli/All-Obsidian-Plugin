@@ -18,7 +18,7 @@ export interface SQLSealSettings {
 
 export const DEFAULT_SETTINGS: SQLSealSettings = {
     enableViewer: false,
-    enableEditing: false,
+    enableEditing: true,
     enableJSONViewer: true,
     enableJSONLViewer: true,
     enableSQLViewer: true,

@@ -19,7 +19,7 @@ export class ExplorerView extends ItemView {
 	constructor(
 		leaf: WorkspaceLeaf,
 		private rendererRegistry: RendererRegistry,
-		private db: Pick<SqlocalDatabaseProxy, 'select' | 'explain'>,
+		private db: Pick<SqlocalDatabaseProxy, 'select' | 'explain' | 'updateData' | 'getColumns'>,
 		private cellParser: ModernCellParser,
 		private settings: Settings,
 		private sync: Sync,

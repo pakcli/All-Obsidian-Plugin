@@ -10,7 +10,8 @@ import { ModernCellParser } from "../../syntaxHighlight/cellParser/ModernCellPar
 
 interface DataParam {
     data: Record<string, unknown>[],
-    columns?: string[]
+    columns?: string[],
+    isEditable?: boolean
 }
 
 const getCurrentTheme = () => {
@@ -56,7 +57,7 @@ export class GridRendererCommunicator {
 
     private setupLayoutObservers() {
         // Debounce the resize observer to prevent too frequent updates
-        let resizeTimeout: NodeJS.Timeout;
+        let resizeTimeout: any;
         this.resizeObserver = new ResizeObserver(() => {
             if (this._gridApi) {
                 clearTimeout(resizeTimeout);
@@ -113,6 +114,7 @@ export class GridRendererCommunicator {
             theme: myTheme,
             defaultColDef: {
                 resizable: false,
+                editable: this.settings.get("enableEditing"),
                 cellRendererSelector: this.cellParser ? () => {
                     return {
                         component: ({ value }: { value: string }) => this.cellParser!.render(value)
@@ -141,13 +143,18 @@ export class GridRendererCommunicator {
         );
     }
 
-    setData(columns: any[], data: any[]) {
+     setData(columns: any[], data: any[], isEditable: boolean = false) {
         if (!this.gridApi) {
             throw new Error('Grid has not been initiated')
         }
         if (columns && columns.length) {
-            this.gridApi.setGridOption('columnDefs', columns.map(field => ({ field })))
+            const visibleColumns = columns.filter(c => c !== '__rowid' && c !== 'rowid' && !c.startsWith('__rowid_'));
+            this.gridApi.setGridOption('columnDefs', visibleColumns.map(field => ({ 
+                field,
+                editable: isEditable
+            })))
         }
+        this.gridApi.setGridOption('enableCellTextSelection', !isEditable)
         this.gridApi.setGridOption('rowData', data)
         this.gridApi.setGridOption('loading', false)
     }
@@ -192,7 +199,7 @@ export class GridRenderer implements RendererConfig {
         const communicator = new GridRendererCommunicator(el, config, this.plugin, this.settings, this.app, cellParser)
         return {
             render: (data: DataParam) => {
-                communicator.setData(data.columns ?? [], data.data)
+                communicator.setData(data.columns ?? [], data.data, data.isEditable ?? false)
                 communicator.gridApi.autoSizeAllColumns()
             },
             error: (message: string) => {
