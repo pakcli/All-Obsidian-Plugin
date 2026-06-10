@@ -1,4 +1,3 @@
-import "./styles.css";
 import {
   Modal,
   Notice,
@@ -10,13 +9,25 @@ import {
   normalizePath,
 } from "obsidian";
 import { CsvView, CSV_VIEW_TYPE } from "./csv-view";
-import { SampleSettingTab } from "./settings";
 import {
   DEFAULT_PLUGIN_DATA,
   normalizeColumnConfig,
   type ColumnConfig,
   type TablitePluginData,
 } from "./types";
+
+import {
+  AllCommunityModule,
+  ModuleRegistry,
+  provideGlobalGridOptions,
+} from "ag-grid-community";
+import { mainModule } from "./modules/main/module";
+
+// Register all community features
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+// Mark all grids as using legacy themes
+provideGlobalGridOptions({ theme: "legacy" });
 
 class NewCsvModal extends Modal {
   private value: string;
@@ -79,14 +90,16 @@ class NewCsvModal extends Modal {
 
 export default class TablitePlugin extends Plugin {
   public settings: TablitePluginData = DEFAULT_PLUGIN_DATA;
+  public container?: ReturnType<(typeof mainModule)["build"]>;
 
   async onload() {
     await this.loadSettings();
     await this.cleanupMissingFiles();
 
+    // Register Tablite CSV File Editor View
     this.registerView(CSV_VIEW_TYPE, (leaf) => new CsvView(leaf, this));
     this.registerExtensions(["csv", "tsv"], CSV_VIEW_TYPE);
-    this.addSettingTab(new SampleSettingTab(this.app, this));
+
     this.addCommand({
       id: "create-new-csv",
       name: "Create new CSV file",
@@ -131,6 +144,16 @@ export default class TablitePlugin extends Plugin {
         );
       }),
     );
+
+    // Initialize SQLSeal (SQL onpage query blocks, ag-grid themes, and sqlite database)
+    this.container = mainModule
+      .resolve('obsidian.app', d => d.value(this.app))
+      .resolve('obsidian.plugin', d => d.value(this))
+      .resolve('obsidian.vault', d => d.value(this.app.vault))
+      .build();
+
+    const init = await this.container.get("init");
+    init();
   }
 
   onunload() {}

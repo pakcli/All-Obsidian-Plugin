@@ -4,3 +4,8 @@ styles.css
 dist/
 *.map
 .DS_Store
+docs/.vitepress/dist
+docs/.vitepress/cache
+coverage/
+dist/
+styles.css

@@ -28,10 +28,10 @@ jobs:
         run: |
           tag="${GITHUB_REF#refs/tags/}"
           mkdir -p tablite
-          cp main.js styles.css manifest.json tablite/
+          cp dist/main.js dist/styles.css dist/manifest.json tablite/
           zip -r tablite-${tag}.zip tablite/
           gh release create "$tag" \
             --title "Tablite ${tag}" \
             --generate-notes \
             tablite-${tag}.zip \
-            main.js styles.css manifest.json
+            dist/main.js dist/styles.css dist/manifest.json

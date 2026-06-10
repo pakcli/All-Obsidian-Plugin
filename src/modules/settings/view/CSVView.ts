@@ -1,0 +1,436 @@
+import { WorkspaceLeaf, TextFileView, Menu, MenuItem, IconName } from "obsidian";
+import { parse, unparse } from "papaparse";
+import {
+	GridRenderer,
+	GridRendererCommunicator,
+} from "../../editor/renderer/GridRenderer";
+import { errorNotice } from "../../../utils/notice";
+import { ColumnDefinition, ConfigObject, DEFAULT_CONFIG, loadConfig, saveConfig } from "src/utils/csvConfig";
+import { ColumnType } from "../../../utils/types";
+import { Settings } from "../Settings";
+import { RenameColumnModal } from "../modal/renameColumnModal";
+import { CodeSampleModal } from "../modal/showCodeSample";
+import { DeleteConfirmationModal } from "../modal/deleteConfirmationModal";
+import { CSVColumnContextMenu } from "../menu/csvColumnContextMenu";
+import { AgColumn, Column } from "ag-grid-community";
+import { CSVViewMenuBar } from "./CSVViewMenuBar";
+import { ViewPluginGeneratorType } from "../../syntaxHighlight/viewPluginGenerator";
+
+const delay = (n: number) => new Promise((resolve) => setTimeout(resolve, n));
+
+export const CSV_VIEW_TYPE = "csv-viewer" as const;
+export const CSV_VIEW_EXTENSIONS = ["csv"];
+
+export class CSVView extends TextFileView {
+	private content: string;
+	private table: HTMLTableElement;
+	private config: ConfigObject;
+
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly settings: Settings,
+		private readonly viewPluginGenerator: ViewPluginGeneratorType
+	) {
+		super(leaf);
+	}
+
+	getViewType(): string {
+		return CSV_VIEW_TYPE;
+	}
+
+	getDisplayText(): string {
+		return this.file?.basename || "CSV Viewer";
+	}
+
+	async onload(): Promise<void> {
+		super.onload();
+		this.contentEl.addClass("csv-viewer-container");
+	}
+
+	async onOpen() {
+		this.renderCSV();
+	}
+
+	async onClose() {
+		// Cleanup if needed
+	}
+
+	async setViewData(data: string, clear: boolean): Promise<void> {
+		this.content = data;
+		await this.renderCSV();
+	}
+
+	getViewData(): string {
+		return this.content;
+	}
+
+	clear(): void {
+		this.content = "";
+		this.table.empty();
+	}
+
+	private result: any;
+	updateRow(newRowData: Record<string, any>) {
+		this.result.data[parseInt(newRowData.__index, 10)] = newRowData;
+		this.saveData(true);
+	}
+
+	deleteRow(idx: number) {
+		this.result.data.splice(idx, 1);
+		this.saveData();
+	}
+
+	deleteColumn(column: string) {
+		this.result.fields = this.result.fields.filter((c: string) => c !== column);
+		this.saveData();
+	}
+
+	addNewColumn(columnName: string) {
+		if (this.result.fields.indexOf(columnName) > -1) {
+			throw new Error("Column already exists");
+		}
+		this.result.fields.push(columnName);
+		this.result.data = this.result.data.map((d: any) => ({
+			[columnName]: "",
+			...d,
+		}));
+		this.saveData();
+	}
+
+	renameColumn(oldName: string, newName: string) {
+		if (!newName) {
+			return;
+		}
+		if (this.result.fields.contains(newName)) {
+			errorNotice("Column already exists");
+			return;
+		}
+		const oldNameIdx = this.result.fields.indexOf(oldName);
+		if (oldNameIdx < 0) {
+			errorNotice("Old column does not exist");
+			return;
+		}
+		this.result.fields[oldNameIdx] = newName;
+		this.result.data = this.result.data.map((d: Record<string, unknown>) => {
+			d[newName] = d[oldName];
+			delete d[oldName];
+			return d;
+		});
+		this.saveData();
+		this.loadDataIntoGrid();
+	}
+
+	setIsEditable(newValue: boolean) {
+		this.settings.set("enableEditing", newValue);
+		// FIXME: if there already rendered view, use this to rerender it?
+	}
+
+	saveData(noRefresh: boolean = false) {
+		if (noRefresh) {
+			this.refreshSkip = Date.now() + 500;
+		}
+
+		// Map results
+		const res = [...this.result.data].map((r) => {
+			const r2 = { ...r };
+			Object.keys(r).forEach((k) => {
+				if (typeof r[k] === "boolean") {
+					r2[k] = r[k] ? 1 : 0;
+				}
+			});
+			return r2;
+		});
+
+		const output = unparse({ ...this.result, data: res });
+		this.app.vault.modify(this.file!, output);
+		this.refreshTypes();
+	}
+
+	createRow() {
+		this.result.data.push(
+			this.result.fields.reduce(
+				(acc: Record<string, any>, f: string) => ({ ...acc, [f]: "" }),
+				{},
+			),
+		);
+		this.saveData();
+	}
+
+	getColumnType(columnName: string) {
+		if (this.config.columnDefinitions[columnName]) {
+			return this.config.columnDefinitions[columnName].type;
+		}
+		return "auto";
+	}
+
+    getColumnConfig(columnName: string) {
+        if (this.config.columnDefinitions[columnName]) {
+            return this.config.columnDefinitions[columnName]
+        }
+        return { ...DEFAULT_CONFIG } 
+    }
+
+	async changeColumnType(columnName: string, type: ColumnType) {
+        return await this.setConfig(columnName, { type })
+	}
+
+    async setConfig(columnName: string, config: Partial<ColumnDefinition>) {
+		const prev = this.config.columnDefinitions[columnName] ?? {};
+        this.config.columnDefinitions[columnName] = {
+			...prev,
+			...config,
+		};
+		await this.saveConfig();
+    }
+
+	async loadConfig() {
+		while (!this.file) {
+			await delay(100);
+		}
+		this.config = await loadConfig(this.file, this.app.vault);
+	}
+
+	async saveConfig() {
+		await saveConfig(this.file!, this.config, this.app.vault);
+	}
+
+	private getColumnConfigurations(columns: string[]) {
+		return columns
+        .filter(f => this.showHidden || !this.getColumnConfig(f).isHidden)
+        .map((f) => {
+			if (!this.config) {
+				return {
+					field: f,
+				};
+			}
+            const config = this.getColumnConfig(f)
+            const type = config.type
+            const cellStyle = { opacity: config.isHidden ? 0.5 : 1 }
+            const result = {
+                field: f,
+                cellStyle,
+                headerClass: config.isHidden ? 'sqlseal-hidden-column' : ''
+            }
+			if (!type || type === "auto") {
+				return result;
+			}
+			if (type === "date") {
+				return {
+					...result,
+					cellDataType: "dateString",
+				};
+			}
+			return {
+				...result,
+				cellDataType: type,
+			};
+		});
+	}
+
+	refreshTypes() {
+		if (this.gridCommunicator) {
+			const columns = this.result.fields;
+			if (columns && columns.length) {
+				this.gridCommunicator.gridApi.setGridOption(
+					"columnDefs",
+					this.getColumnConfigurations(columns),
+				);
+			}
+		}
+	}
+
+    getIcon(): IconName {
+        return 'table'
+    }
+
+	moveColumn(name: string, toIndex: number) {
+		let fields = this.result.fields as Array<string>;
+		fields = fields.filter((f) => f !== name);
+		fields = [...fields.slice(0, toIndex), name, ...fields.slice(toIndex)];
+		this.result.fields = fields;
+		this.saveData();
+	}
+
+	api: any = null;
+	gridCommunicator: GridRendererCommunicator | null = null;
+	refreshSkip: number = 0;
+
+	formatWithTypes(d: Record<string, string | boolean | number>) {
+		Object.entries(this.config.columnDefinitions).forEach(([key, value]) => {
+			if (!d[key]) {
+				return;
+			}
+			if (value.type === "boolean") {
+				if (d[key] === "false" || d[key] === "0") {
+					d[key] = false;
+				}
+				d[key] = !!d[key];
+			}
+			if (value.type === "number") {
+				if (d[key] === null || d[key] === "") {
+					d[key] = "";
+				} else {
+					d[key] = parseFloat(d[key] as string);
+				}
+			}
+			if (value.type === "date") {
+				// try parsing
+				const val = d[key] as string;
+				const date = new Date(val);
+				d[key] = date.toISOString().split("T")[0];
+			}
+		});
+		return d;
+	}
+
+	prepareData() {
+		const result = parse(this.content, {
+			header: true,
+			skipEmptyLines: true,
+		});
+		const data = result.data.map((d: any, i) => ({
+			...this.formatWithTypes(d),
+			__index: i.toString(),
+		}));
+		return {
+			data: data,
+			fields: result.meta.fields,
+		};
+	}
+
+	loadDataIntoGrid() {
+		if (this.refreshSkip > Date.now()) {
+			return;
+		}
+		requestAnimationFrame(() => {
+			const result = this.prepareData();
+			this.result = result;
+			this.refreshTypes();
+			this.api!.render(result);
+		});
+	}
+
+	isLoading: boolean = false;
+
+    showHidden: boolean = false;
+
+    private menu(container: HTMLElement) {
+
+        const buttonsRow = container.createDiv({
+            cls: "sql-seal-csv-viewer-buttons",
+        });
+
+        const menuBar = new CSVViewMenuBar(buttonsRow, this.settings, this.app)
+
+        const events = menuBar.events
+        
+        events.on('add-column', (columnName: string) => {
+            this.addNewColumn(columnName)
+        })
+
+        events.on('add-row', () => {
+				this.createRow();
+        })
+
+        events.on('generate-code', () => {
+            if (!this.file) {
+				return;
+			}
+			const modal = new CodeSampleModal(this.app, this.file, this.viewPluginGenerator);
+			modal.open();
+        })
+
+        events.on('toggle-hidden', (v) => {
+            this.showHidden = v
+			this.refreshTypes();
+        })
+    }
+
+	private async renderCSV() {
+		if (this.isLoading) {
+			if (this.api) {
+				this.loadDataIntoGrid();
+			}
+			return;
+		}
+		this.isLoading = true;
+
+		this.contentEl.empty();
+		const csvEditorDiv = this.contentEl.createDiv({
+			cls: "sql-seal-csv-editor",
+		});
+		await this.loadConfig();
+
+        this.menu(csvEditorDiv)
+
+		const gridEl = csvEditorDiv.createDiv({ cls: "sql-seal-csv-viewer" });
+
+		const grid = new GridRenderer(this.settings, null, this.app);
+		const csvView = this;
+		const data = this.prepareData();
+		this.result = data;
+		const api = grid.render(
+			{
+				columnDefs: this.getColumnConfigurations(data.fields ?? []),
+				defaultColDef: {
+					editable: this.settings.get("enableEditing"),
+					headerComponentParams: {
+						enableMenu: this.settings.get("enableEditing"),
+						showColumnMenu: function (e: any) {
+							const menu = new CSVColumnContextMenu(csvView, this.column as AgColumn)
+                    		const pos = e.getBoundingClientRect();
+                            menu.show({ x: pos.x, y: pos.y + 20 })
+						},
+					},
+				},
+				enableCellTextSelection: false,
+				ensureDomOrder: false,
+				paginationAutoPageSize: true,
+				suppressMovableColumns: false,
+				onColumnMoved: (e) => {
+					if (!e.finished) {
+						return;
+					}
+					const columnName = e.column?.getUserProvidedColDef();
+					if (!columnName) {
+						return;
+					}
+					csvView.moveColumn(columnName?.field!, e.toIndex!);
+				},
+				domLayout: "normal",
+				getRowId: (p) => p.data.__index,
+				onCellValueChanged: (event) => {
+					if (event.rowIndex === null) {
+						return;
+					}
+					this.updateRow(event.data);
+				},
+				onCellContextMenu: (e) => {
+					if (!this.settings.get("enableEditing")) {
+						return;
+					}
+					const menu = new Menu();
+					menu.addItem((item) => {
+						item.setTitle("Delete Row");
+						item.onClick(() => {
+							const modal = new DeleteConfirmationModal(
+								csvView.app,
+								`row`,
+								() => {
+									csvView.deleteRow(e.data.__index);
+								},
+							);
+							modal.open();
+						});
+					});
+					menu.showAtMouseEvent(e.event as any);
+				},
+			},
+			gridEl,
+			{ sourcePath: this.file?.path || "" },
+		);
+		this.api = api;
+		this.gridCommunicator = api.communicator;
+		api.render(data);
+	}
+}

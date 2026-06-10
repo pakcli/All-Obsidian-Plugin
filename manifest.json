@@ -1,10 +1,10 @@
 {
   "id": "tablite",
-  "name": "Tablite",
+  "name": "Tablite (with SQLSeal)",
   "version": "0.3.0",
   "minAppVersion": "1.5.0",
-  "description": "A fast CSV/TSV editor with virtual scrolling, inline editing, column filtering, and auto encoding detection.",
-  "author": "laofahai",
+  "description": "A fast CSV/TSV editor with virtual scrolling, inline editing, column filtering, and embeddable SQL queries to query vault CSV/JSON files.",
+  "author": "laofahai & hypersphere",
   "authorUrl": "https://github.com/laofahai",
   "isDesktopOnly": false
 }

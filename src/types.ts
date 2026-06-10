@@ -1,3 +1,5 @@
+import { DEFAULT_SETTINGS as DEFAULT_SQLSEAL_SETTINGS, type SQLSealSettings } from "./modules/settings/SQLSealSettingsTab";
+
 export interface ColumnConfig {
   order: number[];
   hidden: number[];
@@ -5,12 +7,13 @@ export interface ColumnConfig {
   frozenCount: number;
 }
 
-export interface TablitePluginData {
+export interface TablitePluginData extends SQLSealSettings {
   files: Record<string, ColumnConfig>;
   debug: boolean;
 }
 
 export const DEFAULT_PLUGIN_DATA: TablitePluginData = {
+  ...DEFAULT_SQLSEAL_SETTINGS,
   files: {},
   debug: false,
 };
