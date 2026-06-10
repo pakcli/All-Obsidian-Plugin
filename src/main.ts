@@ -1,99 +1,218 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import "./styles.css";
+import {
+  Modal,
+  Notice,
+  Plugin,
+  Setting,
+  TAbstractFile,
+  TFile,
+  TFolder,
+  normalizePath,
+} from "obsidian";
+import { CsvView, CSV_VIEW_TYPE } from "./csv-view";
+import {
+  DEFAULT_PLUGIN_DATA,
+  normalizeColumnConfig,
+  type ColumnConfig,
+  type TablitePluginData,
+} from "./types";
 
-// Remember to rename these classes and interfaces!
+class NewCsvModal extends Modal {
+  private value: string;
+  private onSubmit: (value: string) => Promise<void>;
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+  constructor(plugin: TablitePlugin, initialValue: string, onSubmit: (value: string) => Promise<void>) {
+    super(plugin.app);
+    this.value = initialValue;
+    this.onSubmit = onSubmit;
+  }
 
-	async onload() {
-		await this.loadSettings();
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h3", { text: "New CSV file" });
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+    new Setting(contentEl)
+      .setName("File name")
+      .setDesc("Enter a CSV file name")
+      .addText((text) => {
+        text
+          .setPlaceholder("Untitled.csv")
+          .setValue(this.value)
+          .onChange((value) => {
+            this.value = value;
+          });
+      });
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+    const actions = contentEl.createDiv({ cls: "tablite-modal-actions" });
+    const cancelBtn = actions.createEl("button", { text: "Cancel" });
+    const createBtn = actions.createEl("button", {
+      text: "Create",
+      cls: "mod-cta",
+    });
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+    const submit = async () => {
+      await this.onSubmit(this.value);
+    };
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			}
-		});
+    cancelBtn.addEventListener("click", () => this.close());
+    createBtn.addEventListener("click", () => {
+      void submit();
+    });
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+    const resolvedInputEl = contentEl.querySelector("input");
+    if (resolvedInputEl) {
+      resolvedInputEl.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        void submit();
+      });
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-
-	}
-
-	onunload() {
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+      window.setTimeout(() => {
+        resolvedInputEl.focus();
+        resolvedInputEl.select();
+      }, 0);
+    }
+  }
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
+export default class TablitePlugin extends Plugin {
+  private settings: TablitePluginData = DEFAULT_PLUGIN_DATA;
 
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
+  async onload() {
+    await this.loadSettings();
+    await this.cleanupMissingFiles();
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
+    this.registerView(CSV_VIEW_TYPE, (leaf) => new CsvView(leaf, this));
+    this.registerExtensions(["csv", "tsv"], CSV_VIEW_TYPE);
+    this.addCommand({
+      id: "create-new-csv",
+      name: "Create new CSV file",
+      callback: () => {
+        this.createAndOpenCsv();
+      },
+    });
+
+    this.registerEvent(
+      this.app.vault.on("delete", async (file) => {
+        if (!(file instanceof TFile)) return;
+        if (!(file.extension === "csv" || file.extension === "tsv")) return;
+        if (!this.settings.files[file.path]) return;
+        delete this.settings.files[file.path];
+        await this.saveSettings();
+      }),
+    );
+
+    this.registerEvent(
+      this.app.vault.on("rename", async (file, oldPath) => {
+        if (!(file instanceof TFile)) return;
+        if (!(file.extension === "csv" || file.extension === "tsv")) return;
+        const config = this.settings.files[oldPath];
+        if (!config) return;
+        this.settings.files[file.path] = config;
+        delete this.settings.files[oldPath];
+        await this.saveSettings();
+      }),
+    );
+
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        const targetFolder = this.resolveTargetFolder(file);
+        if (!targetFolder) return;
+        menu.addItem((item) =>
+          item
+            .setTitle("New CSV")
+            .setIcon("spreadsheet")
+            .onClick(() => {
+              this.createAndOpenCsv(targetFolder);
+            }),
+        );
+      }),
+    );
+  }
+
+  onunload() {}
+
+  getFileColumnConfig(filePath: string, columnCount: number): ColumnConfig {
+    return normalizeColumnConfig(this.settings.files[filePath], columnCount);
+  }
+
+  async setFileColumnConfig(filePath: string, columnCount: number, config: ColumnConfig): Promise<void> {
+    this.settings.files[filePath] = normalizeColumnConfig(config, columnCount);
+    await this.saveSettings();
+  }
+
+  private async loadSettings(): Promise<void> {
+    const loaded = await this.loadData();
+    this.settings = {
+      ...DEFAULT_PLUGIN_DATA,
+      ...(loaded ?? {}),
+      files: {
+        ...DEFAULT_PLUGIN_DATA.files,
+        ...(loaded?.files ?? {}),
+      },
+    };
+  }
+
+  private async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
+  }
+
+  private async cleanupMissingFiles(): Promise<void> {
+    let changed = false;
+    for (const filePath of Object.keys(this.settings.files)) {
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+      if (file) continue;
+      delete this.settings.files[filePath];
+      changed = true;
+    }
+    if (changed) {
+      await this.saveSettings();
+    }
+  }
+
+  private resolveTargetFolder(file?: TAbstractFile | null): TFolder | null {
+    if (file instanceof TFolder) return file;
+    if (file instanceof TFile) return file.parent;
+    const activeFile = this.app.workspace.getActiveFile();
+    return activeFile?.parent ?? this.app.vault.getRoot();
+  }
+
+  private createAndOpenCsv(targetFolder?: TFolder | null): void {
+    const folder = targetFolder ?? this.resolveTargetFolder(null);
+    const folderPath = folder?.path === "/" ? "" : (folder?.path ?? "");
+    const defaultName = this.getAvailableCsvName(folderPath);
+
+    const modal = new NewCsvModal(this, defaultName, async (rawValue) => {
+      const trimmed = rawValue.trim();
+      if (!trimmed) {
+        new Notice("File name is required");
+        return;
+      }
+
+      const finalName = trimmed.toLowerCase().endsWith(".csv") ? trimmed : `${trimmed}.csv`;
+      const filePath = normalizePath(folderPath ? `${folderPath}/${finalName}` : finalName);
+      if (this.app.vault.getAbstractFileByPath(filePath)) {
+        new Notice("A file with that name already exists");
+        return;
+      }
+
+      const file = await this.app.vault.create(filePath, "Column 1\n");
+      await this.app.workspace.getLeaf(true).openFile(file);
+      new Notice(`Created ${file.name}`);
+      modal.close();
+    });
+
+    modal.open();
+  }
+
+  private getAvailableCsvName(folderPath: string): string {
+    let index = 0;
+    let name = "";
+    do {
+      name = index === 0 ? "Untitled.csv" : `Untitled ${index}.csv`;
+      index += 1;
+    } while (this.app.vault.getAbstractFileByPath(normalizePath(folderPath ? `${folderPath}/${name}` : name)));
+    return name;
+  }
 }

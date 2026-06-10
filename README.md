@@ -1,90 +1,90 @@
-# Obsidian Sample Plugin
+# Tablite
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+A fast, feature-rich CSV/TSV editor for [Obsidian](https://obsidian.md). Edit tabular data directly in your vault with an Excel-like experience.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+[中文文档](README_zh.md)
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+![Tablite Screenshot](assets/screenshot.png)
 
-## First time developing plugins?
+## Features
 
-Quick starting guide for new plugin devs:
+- **Virtual scrolling & progressive loading** — handles large files smoothly with chunked rendering
+- **Inline editing** — double-click any cell to edit
+- **Cell selection & cross highlight** — single-click to select, with row/column cross highlight (toggleable)
+- **Column type detection** — auto-detects STRING, NUMBER, DATE types per column
+- **Column sorting** — click header to sort (multi-column supported)
+- **Smart column filtering**
+  - Text columns: free-text filter
+  - Enum columns (< 12 unique values): multi-select dropdown with checkboxes
+  - Number columns: min/max range filter
+  - Date columns: date range picker
+- **Global search** — search across all cells with highlight and navigation
+- **Auto delimiter detection** — comma, semicolon, tab, pipe
+- **Excel export compatibility** — auto-trims trailing empty columns from bloated spreadsheet exports
+- **Auto encoding detection** — UTF-8, GBK, Windows-1252, Shift-JIS
+- **Header detection** — auto-detects whether first row is a header, with manual toggle
+- **Column management** — hide/show, reorder via drag & drop, freeze columns
+- **Column resizing** — drag column borders to resize
+- **Persistent column config** — column widths, order, visibility, and freeze state are saved per file
+- **Context menu** — right-click to insert/delete rows and columns
+- **Undo/Redo** — full edit history (up to 50 steps)
+- **Obsidian-native styling** — respects your theme colors and dark/light mode
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Installation
 
-## Releasing new releases
+### From Community Plugins (coming soon)
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+Search for **Tablite** in Obsidian Settings → Community Plugins → Browse.
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+### Via BRAT
 
-## Adding your plugin to the community plugin list
+1. Install [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin
+2. In BRAT settings, select **Add Beta Plugin**
+3. Enter `laofahai/obsidian-tablite`
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+### Manual Installation
 
-## How to use
+1. Download `tablite-x.x.x.zip` from the [latest release](https://github.com/laofahai/obsidian-tablite/releases)
+2. Extract the zip into `<vault>/.obsidian/plugins/`
+3. Restart Obsidian and enable **Tablite** in Settings → Community Plugins
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+## Usage
 
-## Manually installing the plugin
+Open any `.csv` or `.tsv` file in your vault — Tablite automatically opens it as an editable table.
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+| Action | How |
+|---|---|
+| Edit a cell | Double-click |
+| Select a cell | Single-click |
+| Sort column | Click header name (multi-sort with Shift+click) |
+| Rename header | Double-click header name |
+| Filter column | Use the filter input below header (type varies by column) |
+| Resize column | Drag the right edge of header |
+| Reorder columns | Drag & drop column headers |
+| Hide/show columns | Use the Columns panel in toolbar |
+| Freeze columns | Set freeze count in toolbar |
+| Insert/delete row or column | Right-click → context menu |
+| Undo / Redo | `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` |
+| Search | `Ctrl/Cmd+F` or search box in toolbar |
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+## Tech Stack
 
-## Funding URL
+- [Preact](https://preactjs.com/) — lightweight UI
+- [TanStack Table](https://tanstack.com/table) — headless table logic (sorting, filtering)
+- [TanStack Virtual](https://tanstack.com/virtual) — row virtualization
+- [PapaParse](https://www.papaparse.com/) — CSV parsing/serialization
+- [jschardet](https://github.com/nicstredicern/jschardet) — encoding detection
 
-You can include funding URLs where people who use your plugin can financially support it.
+## Development
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+```bash
+git clone https://github.com/laofahai/obsidian-tablite.git
+cd obsidian-tablite
+npm install
+npm run dev    # watch mode
+npm run build  # production build
 ```
 
-If you have multiple URLs, you can also do:
+## License
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
-
-## API Documentation
-
-See https://docs.obsidian.md
+MIT
