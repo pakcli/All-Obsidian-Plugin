@@ -10,6 +10,7 @@ import {
   normalizePath,
 } from "obsidian";
 import { CsvView, CSV_VIEW_TYPE } from "./csv-view";
+import { SampleSettingTab } from "./settings";
 import {
   DEFAULT_PLUGIN_DATA,
   normalizeColumnConfig,
@@ -77,7 +78,7 @@ class NewCsvModal extends Modal {
 }
 
 export default class TablitePlugin extends Plugin {
-  private settings: TablitePluginData = DEFAULT_PLUGIN_DATA;
+  public settings: TablitePluginData = DEFAULT_PLUGIN_DATA;
 
   async onload() {
     await this.loadSettings();
@@ -85,6 +86,7 @@ export default class TablitePlugin extends Plugin {
 
     this.registerView(CSV_VIEW_TYPE, (leaf) => new CsvView(leaf, this));
     this.registerExtensions(["csv", "tsv"], CSV_VIEW_TYPE);
+    this.addSettingTab(new SampleSettingTab(this.app, this));
     this.addCommand({
       id: "create-new-csv",
       name: "Create new CSV file",
@@ -154,7 +156,7 @@ export default class TablitePlugin extends Plugin {
     };
   }
 
-  private async saveSettings(): Promise<void> {
+  public async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
   }
 

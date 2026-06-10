@@ -275,6 +275,8 @@ export function App({
     [data.length, deleteRow],
   );
 
+
+
   const toggleColumnVisibility = useCallback((colIndex: number) => {
     setColumnConfig((prev) => {
       const isHidden = prev.hidden.includes(colIndex);

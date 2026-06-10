@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf, type TFile } from "obsidian";
+import { TextFileView, WorkspaceLeaf, Notice, type TFile } from "obsidian";
 import { render, h } from "preact";
 import { App } from "./components/App";
 import TablitePlugin from "./main";
@@ -61,11 +61,11 @@ export class CsvView extends TextFileView {
     this.data = "";
   }
 
-  onOpen(): void {
+  async onOpen(): Promise<void> {
     this.rootEl = this.contentEl.createDiv({ cls: "tablite-root" });
   }
 
-  onClose(): void {
+  async onClose(): Promise<void> {
     if (this.rootEl) {
       render(null, this.rootEl);
     }
@@ -94,9 +94,30 @@ export class CsvView extends TextFileView {
           if (!filePath) return;
           await this.plugin.setFileColumnConfig(filePath, nextColumnCount, config);
         },
-        onDataChange: (newData: string) => {
+        onDataChange: async (newData: string) => {
           this.data = newData;
-          this.requestSave();
+          const isDebug = this.plugin.settings.debug;
+          if (isDebug) {
+            new Notice("Tablite: Saving CSV...");
+            console.log("Tablite Debug: onDataChange triggered, data length:", newData.length);
+          }
+          try {
+            if (this.file) {
+              await this.app.vault.modify(this.file, newData);
+              if (isDebug) {
+                new Notice("Tablite: Save successful!");
+                console.log("Tablite Debug: app.vault.modify succeeded");
+              }
+            } else {
+              if (isDebug) {
+                new Notice("Tablite Save Error: this.file is null!");
+                console.error("Tablite Debug: this.file is null");
+              }
+            }
+          } catch (err) {
+            new Notice("Tablite Save Error! Check console for details.");
+            console.error("Tablite Debug: app.vault.modify failed with error:", err);
+          }
         },
       }),
       this.rootEl,

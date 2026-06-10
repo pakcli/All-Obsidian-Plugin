@@ -1,10 +1,10 @@
 import esbuild from "esbuild";
-import { writeFileSync, readFileSync } from "fs";
+import { writeFileSync, readFileSync, existsSync, mkdirSync, copyFileSync } from "fs";
 import process from "process";
 
 const prod = process.argv[2] === "production";
 
-// Plugin to extract CSS to styles.css
+// Plugin to extract CSS to dist/styles.css and copy manifest.json
 const cssPlugin = {
   name: "css-extract",
   setup(build) {
@@ -15,9 +15,15 @@ const cssPlugin = {
       return { contents: "", loader: "js" };
     });
     build.onEnd(() => {
+      if (!existsSync("dist")) {
+        mkdirSync("dist");
+      }
       if (cssChunks.length > 0) {
-        writeFileSync("styles.css", cssChunks.join("\n"));
+        writeFileSync("dist/styles.css", cssChunks.join("\n"));
         cssChunks.length = 0;
+      }
+      if (existsSync("manifest.json")) {
+        copyFileSync("manifest.json", "dist/manifest.json");
       }
     });
   },
@@ -32,7 +38,7 @@ const context = await esbuild.context({
   logLevel: "info",
   sourcemap: prod ? false : "inline",
   treeShaking: true,
-  outfile: "main.js",
+  outfile: "dist/main.js",
   plugins: [cssPlugin],
   alias: {
     "react": "preact/compat",

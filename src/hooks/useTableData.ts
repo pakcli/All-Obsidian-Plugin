@@ -43,109 +43,81 @@ export function useTableData(
   const updateCell = useCallback(
     (rowIndex: number, colIndex: number, value: string) => {
       pushHistory();
-      setData((prev) => {
-        const next = prev.map((r) => [...r]);
-        next[rowIndex][colIndex] = value;
-        setHeaders((hh) => {
-          notify(hh, next);
-          return hh;
-        });
-        return next;
-      });
+      const nextData = data.map((r) => [...r]);
+      nextData[rowIndex][colIndex] = value;
+      setData(nextData);
+      notify(headers, nextData);
     },
-    [pushHistory, notify],
+    [pushHistory, data, headers, notify],
   );
 
   const updateHeader = useCallback(
     (colIndex: number, value: string) => {
       pushHistory();
-      setHeaders((prev) => {
-        const next = [...prev];
-        next[colIndex] = value;
-        setData((dd) => {
-          notify(next, dd);
-          return dd;
-        });
-        return next;
-      });
+      const nextHeaders = [...headers];
+      nextHeaders[colIndex] = value;
+      setHeaders(nextHeaders);
+      notify(nextHeaders, data);
     },
-    [pushHistory, notify],
+    [pushHistory, headers, data, notify],
   );
 
   const insertRow = useCallback(
     (afterIndex: number) => {
       pushHistory();
-      setData((prev) => {
-        const newRow = new Array(headers.length).fill("");
-        const next = [...prev];
-        next.splice(afterIndex + 1, 0, newRow);
-        setHeaders((hh) => {
-          notify(hh, next);
-          return hh;
-        });
-        return next;
-      });
+      const nextData = [...data];
+      const newRow = new Array(headers.length).fill("");
+      nextData.splice(afterIndex + 1, 0, newRow);
+      setData(nextData);
+      notify(headers, nextData);
     },
-    [pushHistory, headers.length, notify],
+    [pushHistory, data, headers, notify],
   );
 
   const deleteRow = useCallback(
     (index: number) => {
       pushHistory();
-      setData((prev) => {
-        const filtered = prev.filter((_, i) => i !== index);
-        const next = filtered.length > 0
-          ? filtered
-          : [new Array(Math.max(1, headers.length)).fill("")];
-        setHeaders((hh) => {
-          notify(hh, next);
-          return hh;
-        });
-        return next;
-      });
+      const filtered = data.filter((_, i) => i !== index);
+      const nextData = filtered.length > 0
+        ? filtered
+        : [new Array(Math.max(1, headers.length)).fill("")];
+      setData(nextData);
+      notify(headers, nextData);
     },
-    [pushHistory, headers.length, notify],
+    [pushHistory, data, headers, notify],
   );
 
   const insertColumn = useCallback(
     (afterIndex: number) => {
       pushHistory();
-      setHeaders((prev) => {
-        const next = [...prev];
-        next.splice(afterIndex + 1, 0, `Column ${next.length + 1}`);
-        setData((dd) => {
-          const nextData = dd.map((row) => {
-            const r = [...row];
-            r.splice(afterIndex + 1, 0, "");
-            return r;
-          });
-          notify(next, nextData);
-          return nextData;
-        });
-        return next;
+      const nextHeaders = [...headers];
+      nextHeaders.splice(afterIndex + 1, 0, `Column ${nextHeaders.length + 1}`);
+      const nextData = data.map((row) => {
+        const r = [...row];
+        r.splice(afterIndex + 1, 0, "");
+        return r;
       });
+      setHeaders(nextHeaders);
+      setData(nextData);
+      notify(nextHeaders, nextData);
     },
-    [pushHistory, notify],
+    [pushHistory, headers, data, notify],
   );
 
   const deleteColumn = useCallback(
     (index: number) => {
       pushHistory();
-      setHeaders((prev) => {
-        const filteredHeaders = prev.filter((_, i) => i !== index);
-        const nextHeaders = filteredHeaders.length > 0 ? filteredHeaders : ["Column 1"];
-        setData((dd) => {
-          const filteredData = dd.map((row) => row.filter((_, i) => i !== index));
-          const nextData = filteredHeaders.length > 0
-            ? filteredData
-            : filteredData.map(() => [""]);
-          notify(nextHeaders, nextData);
-          return nextData;
-        });
-        return nextHeaders;
-      });
+      const filteredHeaders = headers.filter((_, i) => i !== index);
+      const nextHeaders = filteredHeaders.length > 0 ? filteredHeaders : ["Column 1"];
+      const filteredData = data.map((row) => row.filter((_, i) => i !== index));
+      const nextData = filteredHeaders.length > 0
+        ? filteredData
+        : filteredData.map(() => [""]);
+      setHeaders(nextHeaders);
+      setData(nextData);
+      notify(nextHeaders, nextData);
     },
-    [pushHistory, notify],
+    [pushHistory, headers, data, notify],
   );
 
   const undo = useCallback(() => {

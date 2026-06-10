@@ -2,7 +2,7 @@
   "name": "tablite",
   "version": "0.3.0",
   "description": "A fast CSV/TSV editor with virtual scrolling, inline editing, column filtering, and auto encoding detection.",
-  "main": "main.js",
+  "main": "dist/main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs production"

@@ -7,10 +7,12 @@ export interface ColumnConfig {
 
 export interface TablitePluginData {
   files: Record<string, ColumnConfig>;
+  debug: boolean;
 }
 
 export const DEFAULT_PLUGIN_DATA: TablitePluginData = {
   files: {},
+  debug: false,
 };
 
 export function createDefaultColumnConfig(columnCount: number): ColumnConfig {
