@@ -1,0 +1,32 @@
+name: Deploy docs to FTP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 21.x
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Build with VitePress
+        run: |
+          pnpm run docs:build
+          touch docs/.vitepress/dist/.nojekyll
+      - name: Deploy to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: docs/.vitepress/dist/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}

@@ -1,0 +1,48 @@
+name: Publish
+on:
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Get release version
+        id: get-version
+        run: |
+          # If changesets are pending, get the next bumped version from them.
+          # If no changesets (publish run), the release PR already bumped package.json.
+          if pnpm changeset status --output=.changeset/status.json 2>/dev/null; then
+            NEXT=$(node -e "try { const s = require('./.changeset/status.json'); console.log(s.releases[0].newVersion) } catch(e) { console.log('') }")
+          fi
+          CURRENT=$(node -p "require('./package.json').version")
+          echo "version=${NEXT:-$CURRENT}" >> $GITHUB_OUTPUT
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: pnpm run ci:publish
+          version: pnpm run ci:version
+          title: "release: Release ${{ steps.get-version.outputs.version }}"
+          commit: "release: Release ${{ steps.get-version.outputs.version }}"
+          createGithubReleases: false # this is handled inside ci:publish script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
