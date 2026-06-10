@@ -51,6 +51,8 @@ interface TableProps {
   onDeleteRow: (index: number) => void;
   onInsertColumn: (afterIndex: number) => void;
   onDeleteColumn: (index: number) => void;
+  autocompleteColumns?: string;
+  filePath?: string;
 }
 
 interface RangeFilterValue {
@@ -185,10 +187,27 @@ export function Table({
   onInsertColumn,
   onDeleteColumn,
   sortedRowIndicesRef,
+  autocompleteColumns,
+  filePath,
 }: TableProps) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  const autocompleteCols = useMemo(() => {
+    const setting = autocompleteColumns || "";
+    return setting.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  }, [autocompleteColumns]);
+
+  const uniqueValues = useMemo(() => {
+    const colValuesMap: Record<number, string[]> = {};
+    headers.forEach((_, colIndex) => {
+      colValuesMap[colIndex] = Array.from(
+        new Set(data.map((row) => row[colIndex]).filter((v) => v !== undefined && v !== null && v !== ""))
+      );
+    });
+    return colValuesMap;
+  }, [data, headers]);
 
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
@@ -270,15 +289,22 @@ export function Table({
               onMoveColumn={onColumnOrderChange}
             />
           ),
-          cell: ({ row }) => (
-            <Cell
-              value={row.original[sourceIndex] ?? ""}
-              rowIndex={row.index}
-              colIndex={sourceIndex}
-              searchQueryRef={searchQueryRef}
-              onUpdate={(rowIndex, colIndex, value) => onUpdateCellRef.current(rowIndex, colIndex, value)}
-            />
-          ),
+          cell: ({ row }) => {
+            const isAutocomplete = autocompleteCols.includes(headers[sourceIndex].toLowerCase());
+            return (
+              <Cell
+                value={row.original[sourceIndex] ?? ""}
+                rowIndex={row.index}
+                colIndex={sourceIndex}
+                searchQueryRef={searchQueryRef}
+                onUpdate={(rowIndex, colIndex, value) => onUpdateCellRef.current(rowIndex, colIndex, value)}
+                isAutocomplete={isAutocomplete}
+                values={uniqueValues[sourceIndex]}
+                filePath={filePath}
+                columnName={headers[sourceIndex]}
+              />
+            );
+          },
         }),
       ),
     ],
@@ -290,6 +316,8 @@ export function Table({
       columnTypes,
       onColumnOrderChange,
       onColumnSizingChange,
+      autocompleteCols,
+      uniqueValues,
     ],
   );
 

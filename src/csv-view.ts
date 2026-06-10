@@ -90,6 +90,7 @@ export class CsvView extends TextFileView {
         initialEncoding: this.detectedEncoding,
         filePath,
         initialColumnConfig: this.plugin.getFileColumnConfig(filePath, columnCount),
+        autocompleteColumns: this.plugin.settings.autocompleteColumns,
         onColumnConfigChange: async (config, nextColumnCount) => {
           if (!filePath) return;
           await this.plugin.setFileColumnConfig(filePath, nextColumnCount, config);

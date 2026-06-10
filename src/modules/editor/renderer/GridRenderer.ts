@@ -1,4 +1,4 @@
-import { createGrid, GridApi, GridOptions, themeQuartz } from "ag-grid-community";
+import { createGrid, GridApi, GridOptions, themeQuartz, ICellEditorComp, ICellEditorParams } from "ag-grid-community";
 import { merge } from "lodash";
 import { App, Plugin } from "obsidian";
 import { RendererConfig, RendererContext } from "./rendererRegistry";
@@ -7,6 +7,67 @@ import { EventRef } from "obsidian";
 import { Settings } from "../../settings/Settings";
 import { ViewDefinition } from "../parser";
 import { ModernCellParser } from "../../syntaxHighlight/cellParser/ModernCellParser";
+
+class AutocompleteCellEditor implements ICellEditorComp {
+    private eInput: HTMLInputElement;
+    private eDatalist: HTMLDataListElement;
+    private container: HTMLDivElement;
+
+    init(params: ICellEditorParams & { values?: string[] }) {
+        this.container = document.createElement('div');
+        this.container.style.width = '100%';
+        this.container.style.height = '100%';
+        this.container.style.display = 'flex';
+        this.container.style.alignItems = 'center';
+
+        this.eInput = document.createElement('input');
+        this.eInput.value = params.value ?? '';
+        this.eInput.style.width = '100%';
+        this.eInput.style.height = '100%';
+        this.eInput.style.border = 'none';
+        this.eInput.style.outline = 'none';
+        this.eInput.style.background = 'transparent';
+        this.eInput.style.color = 'inherit';
+        this.eInput.style.fontSize = 'inherit';
+        this.eInput.style.fontFamily = 'inherit';
+        this.eInput.style.padding = '0 8px';
+
+        const datalistId = 'dl-' + Math.random().toString(36).substring(2, 9);
+        this.eInput.setAttribute('list', datalistId);
+
+        this.eDatalist = document.createElement('datalist');
+        this.eDatalist.id = datalistId;
+
+        const values = params.values || [];
+        values.forEach((val: string) => {
+            const option = document.createElement('option');
+            option.value = val;
+            this.eDatalist.appendChild(option);
+        });
+
+        this.container.appendChild(this.eInput);
+        this.container.appendChild(this.eDatalist);
+    }
+
+    getGui() {
+        return this.container;
+    }
+
+    afterGuiAttached() {
+        this.eInput.focus();
+        this.eInput.select();
+    }
+
+    getValue() {
+        return this.eInput.value;
+    }
+
+    isPopup() {
+        return false;
+    }
+
+    destroy() {}
+}
 
 interface DataParam {
     data: Record<string, unknown>[],
@@ -149,10 +210,28 @@ export class GridRendererCommunicator {
         }
         if (columns && columns.length) {
             const visibleColumns = columns.filter(c => c !== '__rowid' && c !== 'rowid' && !c.startsWith('__rowid_'));
-            this.gridApi.setGridOption('columnDefs', visibleColumns.map(field => ({ 
-                field,
-                editable: isEditable
-            })))
+            
+            const autocompleteSetting = this.settings.get('autocompleteColumns' as any) || '';
+            const autocompleteCols = autocompleteSetting.split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+
+            this.gridApi.setGridOption('columnDefs', visibleColumns.map(field => {
+                const isAutocomplete = autocompleteCols.includes(field.toLowerCase());
+                const colDef: any = { 
+                    field,
+                    editable: isEditable
+                };
+                if (isAutocomplete) {
+                    colDef.cellClass = 'sqlseal-wikilink-cell';
+                    if (isEditable) {
+                        colDef.cellEditor = AutocompleteCellEditor;
+                        const uniqueValues = Array.from(new Set(data.map(row => row[field]).filter(val => val !== undefined && val !== null && val !== '')));
+                        colDef.cellEditorParams = {
+                            values: uniqueValues
+                        };
+                    }
+                }
+                return colDef;
+            }))
         }
         this.gridApi.setGridOption('enableCellTextSelection', !isEditable)
         this.gridApi.setGridOption('rowData', data)

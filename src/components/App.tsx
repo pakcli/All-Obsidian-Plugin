@@ -21,6 +21,7 @@ interface AppProps {
   initialColumnConfig: ColumnConfig;
   onColumnConfigChange: (config: ColumnConfig, columnCount: number) => void | Promise<void>;
   onDataChange: (data: string) => void;
+  autocompleteColumns?: string;
 }
 
 interface ActiveCell {
@@ -119,6 +120,7 @@ export function App({
   initialColumnConfig,
   onColumnConfigChange,
   onDataChange,
+  autocompleteColumns,
 }: AppProps) {
   // Use pre-parsed result from csv-view — no redundant re-parsing
   const [delimiter, setDelimiter] = useState<Delimiter>(initialDelimiter);
@@ -129,6 +131,31 @@ export function App({
   const [selection, setSelection] = useState<SelectionRange | null>(null);
   const [hasHeader, setHasHeader] = useState<boolean>(initialParsed.hasHeader);
   const sortedRowIndicesRef = useRef<number[] | null>(null);
+  const [ctrlPressed, setCtrlPressed] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Control" || e.key === "Meta") {
+        setCtrlPressed(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Control" || e.key === "Meta") {
+        setCtrlPressed(false);
+      }
+    };
+    const handleBlur = () => {
+      setCtrlPressed(false);
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keyup", handleKeyUp, true);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keyup", handleKeyUp, true);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, []);
 
   const initialState = useMemo<TableState>(
     () => ensureEditableState({ headers: initialParsed.headers, data: initialParsed.data }),
@@ -430,7 +457,7 @@ export function App({
   return (
     <div
       ref={containerRef}
-      class="tablite-container"
+      class={`tablite-container ${ctrlPressed ? "sqlseal-ctrl-pressed" : ""}`}
       data-file-path={filePath}
       tabIndex={0}
     >
@@ -487,6 +514,8 @@ export function App({
         onInsertColumn={handleInsertColumn}
         onDeleteColumn={handleDeleteColumn}
         sortedRowIndicesRef={sortedRowIndicesRef}
+        autocompleteColumns={autocompleteColumns}
+        filePath={filePath}
       />
     </div>
   );

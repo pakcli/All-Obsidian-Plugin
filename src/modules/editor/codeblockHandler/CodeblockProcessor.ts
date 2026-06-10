@@ -7,6 +7,7 @@ import {
 	Modal,
 	Notice,
 } from "obsidian";
+import { resolveWikiLink } from "../../../utils/wiki";
 import { Sync } from "../../sync/sync/sync";
 import { RendererRegistry, RenderReturn } from "../renderer/rendererRegistry";
 import { ParserResult, parseWithDefaults, TableDefinition } from "../parser";
@@ -51,6 +52,20 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 	query: string;
 
 	async onload() {
+		this.registerDomEvent(window, 'keydown', (e: KeyboardEvent) => {
+			if (e.key === 'Control' || e.key === 'Meta') {
+				this.el.classList.add('sqlseal-ctrl-pressed');
+			}
+		});
+		this.registerDomEvent(window, 'keyup', (e: KeyboardEvent) => {
+			if (e.key === 'Control' || e.key === 'Meta') {
+				this.el.classList.remove('sqlseal-ctrl-pressed');
+			}
+		});
+		this.registerDomEvent(window, 'blur', () => {
+			this.el.classList.remove('sqlseal-ctrl-pressed');
+		});
+
 		try {
 			const defaults: ParserResult = {
 				flags: {
@@ -230,6 +245,51 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 							this.handleCellValueChanged(event);
 						});
 					}
+
+					// Set the cell clicked listener for Ctrl+Click wikilink behavior
+					gridApi.setGridOption('onCellClicked', (event: any) => {
+						const mouseEvent = event.event as MouseEvent;
+						if (mouseEvent && (mouseEvent.ctrlKey || mouseEvent.metaKey)) {
+							const field = event.colDef.field;
+							const autocompleteSetting = this.settings.get('autocompleteColumns' as any) || '';
+							const autocompleteCols = autocompleteSetting.split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+							
+							if (field && autocompleteCols.includes(field.toLowerCase())) {
+								const value = event.value;
+								if (value && typeof value === 'string' && value.trim()) {
+									const resolvedLink = resolveWikiLink(this.app, value.trim(), field);
+									this.app.workspace.openLinkText(resolvedLink, this.sourceKey, true);
+								}
+							}
+						}
+					});
+
+					// Set the cell mouseover listener for Ctrl+Hover wikilink behavior
+					gridApi.setGridOption('onCellMouseOver', (event: any) => {
+						const mouseEvent = event.event as MouseEvent;
+						if (mouseEvent && (mouseEvent.ctrlKey || mouseEvent.metaKey)) {
+							const field = event.colDef.field;
+							const autocompleteSetting = this.settings.get('autocompleteColumns' as any) || '';
+							const autocompleteCols = autocompleteSetting.split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+							
+							if (field && autocompleteCols.includes(field.toLowerCase())) {
+								const value = event.value;
+								if (value && typeof value === 'string' && value.trim()) {
+									const resolvedLink = resolveWikiLink(this.app, value.trim(), field);
+									if (resolvedLink) {
+										this.app.workspace.trigger("hover-link", {
+											event: mouseEvent,
+											source: "sqlseal",
+											hoverParent: this.el,
+											targetEl: mouseEvent.target as HTMLElement,
+											linktext: resolvedLink,
+											sourcePath: this.sourceKey,
+										});
+									}
+								}
+							}
+						}
+					});
 				}
 			}
 
