@@ -367,9 +367,6 @@ export function App({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setColumnConfig((prev) => normalizeColumnConfig(prev, headers.length));
-  }, [headers.length]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
