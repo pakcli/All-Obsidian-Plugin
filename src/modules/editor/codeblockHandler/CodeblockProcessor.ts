@@ -233,6 +233,7 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 				flags: this.flags,
 				frontmatter: variables,
 				isEditable: this.isEditable,
+				queryText: this.query,
 			});
 
 			// Setup onpage edit handlers

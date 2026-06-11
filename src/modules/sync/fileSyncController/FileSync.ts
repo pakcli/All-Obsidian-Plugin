@@ -63,7 +63,10 @@ export class SealFileSync {
     }
 
     async init() {
-        const files = this.app.vault.getMarkdownFiles();
+        const files = this.app.vault.getFiles().filter(f => {
+            const ext = f.extension.toLowerCase();
+            return ext === 'md' || ext === 'csv' || ext === 'tsv' || ext === 'json' || ext === 'json5' || ext === 'jsonl';
+        });
 
         await Promise.all(this.tablePlugins.map(p => p.onInit()))
 

@@ -16,6 +16,7 @@ export interface SQLSealSettings {
     defaultView: 'grid' | 'markdown' | 'html';
     gridItemsPerPage: number;
     autocompleteColumns: string;
+    codeblockViews?: Record<string, Record<string, string>>;
 }
 
 export const DEFAULT_SETTINGS: SQLSealSettings = {
@@ -29,7 +30,8 @@ export const DEFAULT_SETTINGS: SQLSealSettings = {
     disableTagAutoDetection: false,
     defaultView: 'grid',
     gridItemsPerPage: 20,
-    autocompleteColumns: 'item_name, merchant'
+    autocompleteColumns: 'item_name, merchant',
+    codeblockViews: {}
 };
 
 

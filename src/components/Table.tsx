@@ -248,7 +248,24 @@ export function Table({
     () => [
       {
         id: "__row_num",
-        header: () => <div class="tablite-row-num">#</div>,
+        header: () => (
+          <div
+            class="tablite-row-num"
+            style={{ cursor: "pointer" }}
+            onClick={(e) => {
+              e.preventDefault();
+              onActiveCellChange({ row: 0, col: 0 });
+              onSelectionChange({
+                startRow: 0,
+                startCol: 0,
+                endRow: data.length - 1,
+                endCol: headers.length - 1,
+              });
+            }}
+          >
+            #
+          </div>
+        ),
         size: 50,
         minSize: 40,
         enableSorting: false,
@@ -327,6 +344,9 @@ export function Table({
       onColumnSizingChange,
       autocompleteCols,
       uniqueValues,
+      data,
+      onActiveCellChange,
+      onSelectionChange,
     ],
   );
 
@@ -397,8 +417,22 @@ export function Table({
 
   const handleCellMouseDown = useCallback(
     (event: MouseEvent, rowIndex: number, colIndex: number) => {
-      if (colIndex < 0) return; // row number column
       if (event.button !== 0) return; // left click only
+
+      if (colIndex < 0) {
+        // Row selection mode (clicked on row number column)
+        isDraggingRef.current = true;
+        dragStartRef.current = { row: rowIndex, col: -1 };
+        onActiveCellChange({ row: rowIndex, col: 0 });
+        onSelectionChange({
+          startRow: rowIndex,
+          startCol: 0,
+          endRow: rowIndex,
+          endCol: headers.length - 1,
+        });
+        event.preventDefault();
+        return;
+      }
 
       if (event.shiftKey && activeCell) {
         // Shift+click: extend selection from activeCell
@@ -418,7 +452,7 @@ export function Table({
       onActiveCellChange({ row: rowIndex, col: colIndex });
       onSelectionChange(null);
     },
-    [activeCell, onActiveCellChange, onSelectionChange],
+    [activeCell, headers.length, onActiveCellChange, onSelectionChange],
   );
 
   useEffect(() => {
@@ -429,21 +463,35 @@ export function Table({
 
       // Find cell under cursor
       const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
-      const td = target?.closest<HTMLElement>("[data-row-index][data-col-index]");
+      const td = target?.closest<HTMLElement>("[data-row-index]");
       if (!td) return;
 
       const rowIndex = Number(td.dataset.rowIndex);
-      const colIndex = Number(td.dataset.colIndex);
-      if (Number.isNaN(rowIndex) || Number.isNaN(colIndex) || colIndex < 0) return;
+      const colIndexAttr = td.getAttribute("data-col-index");
+      const colIndex = colIndexAttr !== null && colIndexAttr !== "" ? Number(colIndexAttr) : -1;
+      
+      if (Number.isNaN(rowIndex)) return;
 
       const start = dragStartRef.current;
-      if (rowIndex !== start.row || colIndex !== start.col) {
+      if (start.col === -1) {
+        // Row drag selection mode
         onSelectionChange({
           startRow: start.row,
-          startCol: start.col,
+          startCol: 0,
           endRow: rowIndex,
-          endCol: colIndex,
+          endCol: headers.length - 1,
         });
+      } else {
+        // Normal cell drag selection mode
+        const targetCol = colIndex >= 0 ? colIndex : 0;
+        if (rowIndex !== start.row || targetCol !== start.col) {
+          onSelectionChange({
+            startRow: start.row,
+            startCol: start.col,
+            endRow: rowIndex,
+            endCol: targetCol,
+          });
+        }
       }
     };
 
@@ -457,7 +505,7 @@ export function Table({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [onSelectionChange]);
+  }, [onSelectionChange, headers.length]);
 
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
@@ -591,10 +639,19 @@ export function Table({
                 const isRowNum = header.column.id === "__row_num";
                 const colIdx = isRowNum ? -1 : Number(header.column.id.replace("col_", ""));
                 const isColHL = crossHighlight && activeCell != null && colIdx === activeCell.col;
+                const isColSelected = !isRowNum && (selection
+                  ? (colIdx >= Math.min(selection.startCol, selection.endCol) && colIdx <= Math.max(selection.startCol, selection.endCol))
+                  : (activeCell?.col === colIdx));
+
+                let thClass = "tablite-th";
+                if (isColHL) thClass += " tablite-col-highlight";
+                if (position < frozenCount + 1) thClass += " tablite-frozen-cell";
+                if (isColSelected) thClass += " tablite-col-selected";
+
                 return (
                   <th
                     key={header.id}
-                    class={`tablite-th${isColHL ? " tablite-col-highlight" : ""}${position < frozenCount + 1 ? " tablite-frozen-cell" : ""}`}
+                    class={thClass}
                     style={{
                       display: "flex",
                       width: header.getSize(),
@@ -636,18 +693,26 @@ export function Table({
                 }}
               >
                 {row.getVisibleCells().map((cell, position) => {
-                  const isRowNum = cell.column.id === "__row_num";
-                  const colIdx = isRowNum ? -1 : Number(cell.column.id.replace("col_", ""));
-                  const isActive = !isRowNum && activeCell?.row === row.index && activeCell?.col === colIdx;
-                  const isSelected = !isRowNum && !isActive && isCellSelected(row.index, colIdx);
-                  const isRowHL = crossHighlight && !isRowNum && activeCell != null && activeCell.row === row.index;
-                  const isColHL = crossHighlight && !isRowNum && activeCell != null && activeCell.col === colIdx;
-
-                  let className = "tablite-td";
-                  if (isActive && !selection) className += " tablite-td-active";
-                  else if (isActive || isSelected) className += " tablite-td-selected";
-                  else if (isRowHL || isColHL) className += " tablite-td-cross";
-                  if (position < frozenCount + 1) className += " tablite-frozen-cell";
+                   const isRowNum = cell.column.id === "__row_num";
+                   const colIdx = isRowNum ? -1 : Number(cell.column.id.replace("col_", ""));
+                   const isActive = !isRowNum && activeCell?.row === row.index && activeCell?.col === colIdx;
+                   const isSelected = !isRowNum && !isActive && isCellSelected(row.index, colIdx);
+                   const isRowHL = crossHighlight && !isRowNum && activeCell != null && activeCell.row === row.index;
+                   const isColHL = crossHighlight && !isRowNum && activeCell != null && activeCell.col === colIdx;
+ 
+                   const isRowSelected = selection
+                     ? (row.index >= Math.min(selection.startRow, selection.endRow) && row.index <= Math.max(selection.startRow, selection.endRow))
+                     : (activeCell?.row === row.index);
+ 
+                   let className = "tablite-td";
+                   if (isRowNum) {
+                     if (isRowSelected) className += " tablite-row-num-selected";
+                   } else {
+                     if (isActive && !selection) className += " tablite-td-active";
+                     else if (isActive || isSelected) className += " tablite-td-selected";
+                     else if (isRowHL || isColHL) className += " tablite-td-cross";
+                   }
+                   if (position < frozenCount + 1) className += " tablite-frozen-cell";
 
                   return (
                     <td

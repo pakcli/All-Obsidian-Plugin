@@ -356,6 +356,17 @@
   background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary)) !important;
 }
 
+.tablite-row-num-selected {
+  background: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-secondary)) !important;
+  color: var(--interactive-accent) !important;
+  font-weight: bold;
+}
+
+.tablite-th.tablite-col-selected {
+  background: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-secondary)) !important;
+  color: var(--interactive-accent) !important;
+}
+
 /* ─── Row Numbers ─── */
 .tablite-row-num {
   padding: 0;
