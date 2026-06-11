@@ -3,6 +3,7 @@ import type { Column } from "@tanstack/react-table";
 
 interface HeaderCellProps {
   name: string;
+  displayName: string;
   colIndex: number;
   column: Column<string[], unknown>;
   onUpdateHeader: (colIndex: number, value: string) => void;
@@ -12,26 +13,18 @@ interface HeaderCellProps {
 
 export function HeaderCell({
   name,
+  displayName,
   colIndex,
   column,
   onUpdateHeader,
   onResize,
   onMoveColumn,
 }: HeaderCellProps) {
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(name);
   const [selectOpen, setSelectOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const resizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
-
-  useEffect(() => {
-    if (!editing) return;
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, [editing]);
 
   useEffect(() => {
     if (!selectOpen) return;
@@ -43,11 +36,6 @@ export function HeaderCell({
     document.addEventListener("mousedown", onClick, true);
     return () => document.removeEventListener("mousedown", onClick, true);
   }, [selectOpen]);
-
-  const commitEdit = useCallback(() => {
-    setEditing(false);
-    if (editValue !== name) onUpdateHeader(colIndex, editValue);
-  }, [colIndex, editValue, name, onUpdateHeader]);
 
   const sortDir = column.getIsSorted();
   const sortIndicator = sortDir === "asc" ? " ▲" : sortDir === "desc" ? " ▼" : "";
@@ -83,24 +71,7 @@ export function HeaderCell({
     [colIndex, column, onResize],
   );
 
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        class="tablite-header-input"
-        value={editValue}
-        onInput={(event) => setEditValue((event.target as HTMLInputElement).value)}
-        onBlur={commitEdit}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") commitEdit();
-          if (event.key === "Escape") {
-            setEditing(false);
-            setEditValue(name);
-          }
-        }}
-      />
-    );
-  }
+  // Editing logic removed as formatting is managed globally via Settings
 
   const rawFilterValue = column.getFilterValue();
   const filterValue = typeof rawFilterValue === "string" ? rawFilterValue : "";
@@ -142,12 +113,8 @@ export function HeaderCell({
         <span
           class="tablite-header-name"
           onClick={() => column.toggleSorting(undefined, true)}
-          onDblClick={() => {
-            setEditValue(name);
-            setEditing(true);
-          }}
         >
-          {name}
+          {displayName}
           {sortIndicator}
         </span>
         <span class="tablite-header-type">{dataType}</span>

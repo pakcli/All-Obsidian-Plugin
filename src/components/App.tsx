@@ -258,7 +258,7 @@ export function App({
       setIsViewsLoaded(true);
     };
     loadViews();
-  }, [filePath, headers.length]);
+  }, [filePath]);
 
   useEffect(() => {
     if (!isViewsLoaded || !activeView) return;
@@ -361,6 +361,8 @@ export function App({
       };
     });
   }, []);
+
+
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -666,6 +668,7 @@ export function App({
         onAddView={handleAddView}
         onDuplicateView={handleDuplicateView}
         onDeleteView={handleDeleteView}
+        autocompleteColumns={autocompleteColumns}
       />
       <Table
         headers={headers}

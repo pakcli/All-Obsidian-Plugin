@@ -7,6 +7,7 @@ import { EventRef } from "obsidian";
 import { Settings } from "../../settings/Settings";
 import { ViewDefinition } from "../parser";
 import { ModernCellParser } from "../../syntaxHighlight/cellParser/ModernCellParser";
+import { formatHeaderName, parseAutocompleteSettings, resolveHeaderName } from "../../../utils/views";
 
 class AutocompleteCellEditor implements ICellEditorComp {
     private eInput: HTMLInputElement;
@@ -212,12 +213,13 @@ export class GridRendererCommunicator {
             const visibleColumns = columns.filter(c => c !== '__rowid' && c !== 'rowid' && !c.startsWith('__rowid_'));
             
             const autocompleteSetting = this.settings.get('autocompleteColumns' as any) || '';
-            const autocompleteCols = autocompleteSetting.split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+            const { columns: autocompleteCols } = parseAutocompleteSettings(autocompleteSetting);
 
             this.gridApi.setGridOption('columnDefs', visibleColumns.map(field => {
                 const isAutocomplete = autocompleteCols.includes(field.toLowerCase());
                 const colDef: any = { 
                     field,
+                    headerName: resolveHeaderName(field, autocompleteSetting),
                     editable: isEditable
                 };
                 if (isAutocomplete) {

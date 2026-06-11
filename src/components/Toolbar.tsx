@@ -1,7 +1,7 @@
 import type { RefObject } from "preact";
 import { useRef, useEffect, useMemo } from "preact/hooks";
 import type { Delimiter } from "../parser/detect";
-import { PromptModal } from "../utils/views";
+import { PromptModal, formatHeaderName, resolveHeaderName } from "../utils/views";
 
 interface ToolbarProps {
   encoding: string;
@@ -38,6 +38,7 @@ interface ToolbarProps {
   onAddView?: (viewName: string) => void;
   onDuplicateView?: (viewName: string) => void;
   onDeleteView?: () => void;
+  autocompleteColumns?: string;
 }
 
 const DELIMITER_LABELS: Record<string, string> = {
@@ -82,6 +83,7 @@ export function Toolbar({
   onAddView,
   onDuplicateView,
   onDeleteView,
+  autocompleteColumns,
 }: ToolbarProps) {
   const undoBtnRef = useRef<HTMLButtonElement>(null);
   const redoBtnRef = useRef<HTMLButtonElement>(null);
@@ -306,7 +308,7 @@ export function Toolbar({
                   checked={!hiddenColumns.includes(index)}
                   onChange={() => onToggleColumnVisibility(index)}
                 />
-                <span>{name}</span>
+                <span>{resolveHeaderName(name, autocompleteColumns || "")}</span>
               </label>
             ))}
           </div>

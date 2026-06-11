@@ -8,6 +8,7 @@ import {
 	Notice,
 } from "obsidian";
 import { resolveWikiLink } from "../../../utils/wiki";
+import { parseAutocompleteSettings } from "../../../utils/views";
 import { Sync } from "../../sync/sync/sync";
 import { RendererRegistry, RenderReturn } from "../renderer/rendererRegistry";
 import { ParserResult, parseWithDefaults, TableDefinition } from "../parser";
@@ -252,7 +253,7 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 						if (mouseEvent && (mouseEvent.ctrlKey || mouseEvent.metaKey)) {
 							const field = event.colDef.field;
 							const autocompleteSetting = this.settings.get('autocompleteColumns' as any) || '';
-							const autocompleteCols = autocompleteSetting.split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+							const { columns: autocompleteCols } = parseAutocompleteSettings(autocompleteSetting);
 							
 							if (field && autocompleteCols.includes(field.toLowerCase())) {
 								const value = event.value;
@@ -270,7 +271,7 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 						if (mouseEvent && (mouseEvent.ctrlKey || mouseEvent.metaKey)) {
 							const field = event.colDef.field;
 							const autocompleteSetting = this.settings.get('autocompleteColumns' as any) || '';
-							const autocompleteCols = autocompleteSetting.split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+							const { columns: autocompleteCols } = parseAutocompleteSettings(autocompleteSetting);
 							
 							if (field && autocompleteCols.includes(field.toLowerCase())) {
 								const value = event.value;

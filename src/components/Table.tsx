@@ -15,6 +15,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Cell } from "./Cell";
 import { HeaderCell } from "./HeaderCell";
+import { formatHeaderName, parseAutocompleteSettings, resolveHeaderName } from "../utils/views";
 
 interface ActiveCell {
   row: number;
@@ -202,7 +203,8 @@ export function Table({
 
   const autocompleteCols = useMemo(() => {
     const setting = autocompleteColumns || "";
-    return setting.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const { columns } = parseAutocompleteSettings(setting);
+    return columns;
   }, [autocompleteColumns]);
 
   const uniqueValues = useMemo(() => {
@@ -283,6 +285,7 @@ export function Table({
           header: ({ column }) => (
             <HeaderCell
               name={headers[sourceIndex]}
+              displayName={resolveHeaderName(headers[sourceIndex], autocompleteColumns || "")}
               colIndex={sourceIndex}
               column={column}
               onUpdateHeader={(colIndex, value) => onUpdateHeaderRef.current(colIndex, value)}

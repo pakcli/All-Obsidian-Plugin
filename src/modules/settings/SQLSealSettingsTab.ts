@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting, Plugin, Notice } from 'obsidian';
 import { SettingsModule } from './module';
 import { Settings } from './Settings';
 import { SettingsControls } from './settingsTabSection/SettingsControls';
+import { parseAutocompleteSettings, formatHeaderName } from '../../utils/views';
 
 export interface SQLSealSettings {
     enableViewer: boolean;
@@ -109,29 +110,88 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 
 		const renderColumnList = () => {
 			listContainer.empty();
-			const cols = (this.settings.get('autocompleteColumns' as any) || '')
-				.split(',')
-				.map((s: string) => s.trim())
-				.filter(Boolean);
+			const settingStr = this.settings.get('autocompleteColumns' as any) || '';
+			const { configs } = parseAutocompleteSettings(settingStr);
 
-			cols.forEach((col: string, index: number) => {
+			configs.forEach((cfg, index) => {
 				const row = listContainer.createDiv({ cls: 'sqlseal-settings-column-row' });
 				row.style.display = 'flex';
 				row.style.alignItems = 'center';
 				row.style.gap = '10px';
 				row.style.marginBottom = '8px';
 
-				const input = row.createEl('input', { type: 'text', value: col });
-				input.style.flex = '1';
-				input.addEventListener('change', () => {
-					cols[index] = input.value.trim();
-					this.settings.set('autocompleteColumns' as any, cols.filter(Boolean).join(', '));
+				// Column Name input
+				const colInput = row.createEl('input', { 
+					type: 'text', 
+					value: cfg.column, 
+					placeholder: 'Column name...' 
+				});
+				colInput.style.flex = '1';
+				colInput.addEventListener('change', () => {
+					cfg.column = colInput.value.trim();
+					if (cfg.replacementEnabled && !cfg.replacement.trim()) {
+						repInput.value = formatHeaderName(cfg.column);
+						cfg.replacement = repInput.value;
+					}
+					this.settings.set('autocompleteColumns' as any, JSON.stringify(configs.filter(c => c.column.trim())));
+				});
+
+				// Text Replacement Toggle
+				const repLabel = row.createEl('label');
+				repLabel.style.display = 'flex';
+				repLabel.style.alignItems = 'center';
+				repLabel.style.gap = '4px';
+				
+				const repCheckbox = repLabel.createEl('input', {
+					type: 'checkbox'
+				});
+				repCheckbox.checked = cfg.replacementEnabled;
+				repLabel.createSpan({ text: 'Replace' });
+				
+				repCheckbox.addEventListener('change', () => {
+					cfg.replacementEnabled = repCheckbox.checked;
+					repInput.disabled = !cfg.replacementEnabled;
+					if (cfg.replacementEnabled && !cfg.replacement.trim()) {
+						repInput.value = formatHeaderName(cfg.column);
+						cfg.replacement = repInput.value;
+					}
+					this.settings.set('autocompleteColumns' as any, JSON.stringify(configs.filter(c => c.column.trim())));
+				});
+
+				// Replacement Text input
+				const repInput = row.createEl('input', { 
+					type: 'text', 
+					value: cfg.replacement || formatHeaderName(cfg.column), 
+					placeholder: 'Replacement text...' 
+				});
+				repInput.style.flex = '1';
+				repInput.disabled = !cfg.replacementEnabled;
+				repInput.addEventListener('change', () => {
+					cfg.replacement = repInput.value.trim();
+					this.settings.set('autocompleteColumns' as any, JSON.stringify(configs.filter(c => c.column.trim())));
+				});
+
+				// Wikilink-able Toggle
+				const wikiLabel = row.createEl('label');
+				wikiLabel.style.display = 'flex';
+				wikiLabel.style.alignItems = 'center';
+				wikiLabel.style.gap = '4px';
+				
+				const wikiCheckbox = wikiLabel.createEl('input', {
+					type: 'checkbox'
+				});
+				wikiCheckbox.checked = cfg.wikilinkEnabled;
+				wikiLabel.createSpan({ text: 'Wikilink' });
+				
+				wikiCheckbox.addEventListener('change', () => {
+					cfg.wikilinkEnabled = wikiCheckbox.checked;
+					this.settings.set('autocompleteColumns' as any, JSON.stringify(configs.filter(c => c.column.trim())));
 				});
 
 				const deleteBtn = row.createEl('button', { text: 'Delete', cls: 'mod-warning' });
 				deleteBtn.addEventListener('click', () => {
-					cols.splice(index, 1);
-					this.settings.set('autocompleteColumns' as any, cols.filter(Boolean).join(', '));
+					configs.splice(index, 1);
+					this.settings.set('autocompleteColumns' as any, JSON.stringify(configs));
 					renderColumnList();
 				});
 			});
@@ -148,8 +208,13 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 			const handleAdd = () => {
 				const newVal = addInput.value.trim();
 				if (newVal) {
-					cols.push(newVal);
-					this.settings.set('autocompleteColumns' as any, cols.filter(Boolean).join(', '));
+					configs.push({
+						column: newVal,
+						replacementEnabled: true,
+						replacement: formatHeaderName(newVal),
+						wikilinkEnabled: true
+					});
+					this.settings.set('autocompleteColumns' as any, JSON.stringify(configs));
 					renderColumnList();
 				}
 			};
