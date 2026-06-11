@@ -5,6 +5,8 @@ export interface ColumnConfig {
   hidden: number[];
   sizing: Record<string, number>;
   frozenCount: number;
+  filters?: any[];
+  sorting?: any[];
 }
 
 export interface TablitePluginData extends SQLSealSettings {
@@ -24,6 +26,8 @@ export function createDefaultColumnConfig(columnCount: number): ColumnConfig {
     hidden: [],
     sizing: {},
     frozenCount: 0,
+    filters: [],
+    sorting: [],
   };
 }
 
@@ -60,6 +64,8 @@ export function normalizeColumnConfig(
     hidden,
     sizing,
     frozenCount,
+    filters: config.filters ?? [],
+    sorting: config.sorting ?? [],
   };
 }
 
@@ -69,6 +75,13 @@ export function remapColumnConfigForInsert(
   columnCountAfterInsert: number,
 ): ColumnConfig {
   const shift = (index: number) => (index >= insertIndex ? index + 1 : index);
+  const shiftId = (id: string) => {
+    if (id.startsWith('col_')) {
+      const idx = Number(id.replace('col_', ''));
+      return `col_${idx >= insertIndex ? idx + 1 : idx}`;
+    }
+    return id;
+  };
 
   const order = config.order.map(shift);
   order.splice(Math.min(insertIndex, order.length), 0, insertIndex);
@@ -81,12 +94,17 @@ export function remapColumnConfigForInsert(
     }),
   );
 
+  const filters = (config.filters ?? []).map(f => ({ ...f, id: shiftId(f.id) }));
+  const sorting = (config.sorting ?? []).map(s => ({ ...s, id: shiftId(s.id) }));
+
   return normalizeColumnConfig(
     {
       order,
       hidden,
       sizing,
       frozenCount: config.frozenCount,
+      filters,
+      sorting,
     },
     columnCountAfterInsert,
   );
@@ -98,6 +116,13 @@ export function remapColumnConfigForDelete(
   columnCountAfterDelete: number,
 ): ColumnConfig {
   const shift = (index: number) => (index > deleteIndex ? index - 1 : index);
+  const shiftId = (id: string) => {
+    if (id.startsWith('col_')) {
+      const idx = Number(id.replace('col_', ''));
+      return `col_${idx > deleteIndex ? idx - 1 : idx}`;
+    }
+    return id;
+  };
 
   const order = config.order
     .filter((index) => index !== deleteIndex)
@@ -116,12 +141,21 @@ export function remapColumnConfigForDelete(
       }),
   );
 
+  const filters = (config.filters ?? [])
+    .filter(f => f.id !== `col_${deleteIndex}`)
+    .map(f => ({ ...f, id: shiftId(f.id) }));
+  const sorting = (config.sorting ?? [])
+    .filter(s => s.id !== `col_${deleteIndex}`)
+    .map(s => ({ ...s, id: shiftId(s.id) }));
+
   return normalizeColumnConfig(
     {
       order,
       hidden,
       sizing,
       frozenCount: config.frozenCount,
+      filters,
+      sorting,
     },
     columnCountAfterDelete,
   );

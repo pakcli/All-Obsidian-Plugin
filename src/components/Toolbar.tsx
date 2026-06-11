@@ -1,6 +1,7 @@
 import type { RefObject } from "preact";
 import { useRef, useEffect, useMemo } from "preact/hooks";
 import type { Delimiter } from "../parser/detect";
+import { PromptModal } from "../utils/views";
 
 interface ToolbarProps {
   encoding: string;
@@ -31,6 +32,12 @@ interface ToolbarProps {
   onFrozenCountChange: (count: number) => void;
   onUndo: () => void;
   onRedo: () => void;
+  views?: Record<string, any>;
+  activeView?: string;
+  onViewChange?: (viewName: string) => void;
+  onAddView?: (viewName: string) => void;
+  onDuplicateView?: (viewName: string) => void;
+  onDeleteView?: () => void;
 }
 
 const DELIMITER_LABELS: Record<string, string> = {
@@ -69,6 +76,12 @@ export function Toolbar({
   onFrozenCountChange,
   onUndo,
   onRedo,
+  views,
+  activeView,
+  onViewChange,
+  onAddView,
+  onDuplicateView,
+  onDeleteView,
 }: ToolbarProps) {
   const undoBtnRef = useRef<HTMLButtonElement>(null);
   const redoBtnRef = useRef<HTMLButtonElement>(null);
@@ -79,6 +92,7 @@ export function Toolbar({
   const searchPrevRef = useRef<HTMLButtonElement>(null);
   const searchNextRef = useRef<HTMLButtonElement>(null);
   const freezeRef = useRef<HTMLSelectElement>(null);
+  const viewSelectRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     const undoBtn = undoBtnRef.current;
@@ -91,6 +105,7 @@ export function Toolbar({
     const searchPrevBtn = searchPrevRef.current;
     const searchNextBtn = searchNextRef.current;
     const freezeSelect = freezeRef.current;
+    const viewSelect = viewSelectRef.current;
 
     const handleUndo = () => onUndo();
     const handleRedo = () => onRedo();
@@ -109,6 +124,53 @@ export function Toolbar({
       else onSearchNext();
     };
 
+    const handleViewSelect = () => {
+      if (!viewSelect) return;
+      const val = viewSelect.value;
+      if (val === "__action_add") {
+        const globalApp = (window as any).app;
+        if (globalApp) {
+          const modal = new PromptModal(
+            globalApp,
+            "Create New View",
+            "Enter view name...",
+            "",
+            (name: string) => {
+              if (name.trim()) {
+                onAddView?.(name.trim());
+              }
+            }
+          );
+          modal.open();
+        }
+        viewSelect.value = activeView || "Default";
+      } else if (val === "__action_duplicate") {
+        const globalApp = (window as any).app;
+        if (globalApp) {
+          const modal = new PromptModal(
+            globalApp,
+            "Duplicate View",
+            "Enter duplicate view name...",
+            `${activeView || "Default"} Copy`,
+            (name: string) => {
+              if (name.trim()) {
+                onDuplicateView?.(name.trim());
+              }
+            }
+          );
+          modal.open();
+        }
+        viewSelect.value = activeView || "Default";
+      } else if (val === "__action_delete") {
+        if (confirm(`Are you sure you want to delete the view "${activeView}"?`)) {
+          onDeleteView?.();
+        }
+        viewSelect.value = activeView || "Default";
+      } else {
+        onViewChange?.(val);
+      }
+    };
+
     undoBtn?.addEventListener("click", handleUndo);
     redoBtn?.addEventListener("click", handleRedo);
     delimiterSelect?.addEventListener("change", handleDelimiter);
@@ -120,6 +182,7 @@ export function Toolbar({
     freezeSelect?.addEventListener("change", handleFreeze);
     searchInput?.addEventListener("input", handleSearch);
     searchInput?.addEventListener("keydown", handleSearchKeys);
+    viewSelect?.addEventListener("change", handleViewSelect);
 
     return () => {
       undoBtn?.removeEventListener("click", handleUndo);
@@ -133,6 +196,7 @@ export function Toolbar({
       freezeSelect?.removeEventListener("change", handleFreeze);
       searchInput?.removeEventListener("input", handleSearch);
       searchInput?.removeEventListener("keydown", handleSearchKeys);
+      viewSelect?.removeEventListener("change", handleViewSelect);
     };
   }, [
     onCrossHighlightChange,
@@ -146,6 +210,12 @@ export function Toolbar({
     onSearchPrev,
     onUndo,
     searchInputRef,
+    onAddView,
+    onDuplicateView,
+    onDeleteView,
+    onViewChange,
+    activeView,
+    views,
   ]);
 
   const orderedHeaders = useMemo(
@@ -189,6 +259,20 @@ export function Toolbar({
           <option value="windows-1252">Windows-1252</option>
           <option value="shift_jis">Shift-JIS</option>
         </select>
+
+        {views && (
+          <select ref={viewSelectRef} class="tablite-select" value={activeView}>
+            {Object.keys(views).map((name) => (
+              <option key={name} value={name}>
+                View: {name}
+              </option>
+            ))}
+            <option disabled>──────────</option>
+            <option value="__action_add">+ Add new view...</option>
+            <option value="__action_duplicate">📄 Duplicate current...</option>
+            <option value="__action_delete">🗑️ Delete current</option>
+          </select>
+        )}
 
         <span class="tablite-separator" />
 

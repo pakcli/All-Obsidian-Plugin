@@ -53,6 +53,10 @@ interface TableProps {
   onDeleteColumn: (index: number) => void;
   autocompleteColumns?: string;
   filePath?: string;
+  sorting: SortingState;
+  columnFilters: ColumnFiltersState;
+  onSortingChange: (updater: any) => void;
+  onColumnFiltersChange: (updater: any) => void;
 }
 
 interface RangeFilterValue {
@@ -189,10 +193,12 @@ export function Table({
   sortedRowIndicesRef,
   autocompleteColumns,
   filePath,
+  sorting,
+  columnFilters,
+  onSortingChange,
+  onColumnFiltersChange,
 }: TableProps) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const autocompleteCols = useMemo(() => {
     const setting = autocompleteColumns || "";
@@ -330,8 +336,8 @@ export function Table({
     data,
     columns,
     state: { sorting, columnFilters },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: onSortingChange,
+    onColumnFiltersChange: onColumnFiltersChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedRowModel: getFacetedRowModel(),

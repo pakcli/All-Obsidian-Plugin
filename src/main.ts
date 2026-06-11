@@ -15,6 +15,7 @@ import {
   type ColumnConfig,
   type TablitePluginData,
 } from "./types";
+import { handleArtifactRename } from "./utils/views";
 
 import {
   AllCommunityModule,
@@ -123,10 +124,12 @@ export default class TablitePlugin extends Plugin {
         if (!(file instanceof TFile)) return;
         if (!(file.extension === "csv" || file.extension === "tsv")) return;
         const config = this.settings.files[oldPath];
-        if (!config) return;
-        this.settings.files[file.path] = config;
-        delete this.settings.files[oldPath];
-        await this.saveSettings();
+        if (config) {
+          this.settings.files[file.path] = config;
+          delete this.settings.files[oldPath];
+          await this.saveSettings();
+        }
+        await handleArtifactRename(this.app, oldPath, file.path);
       }),
     );
 

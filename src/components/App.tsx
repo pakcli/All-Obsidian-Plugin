@@ -11,6 +11,8 @@ import {
   remapColumnConfigForInsert,
   type ColumnConfig,
 } from "../types";
+import { getArtifactPath, ensureFolderExists } from "../utils/views";
+import { Notice } from "obsidian";
 
 interface AppProps {
   initialData: string;
@@ -132,6 +134,9 @@ export function App({
   const [hasHeader, setHasHeader] = useState<boolean>(initialParsed.hasHeader);
   const sortedRowIndicesRef = useRef<number[] | null>(null);
   const [ctrlPressed, setCtrlPressed] = useState(false);
+  const [views, setViews] = useState<Record<string, ColumnConfig>>({});
+  const [activeView, setActiveView] = useState<string>("Default");
+  const [isViewsLoaded, setIsViewsLoaded] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -192,6 +197,171 @@ export function App({
   const [columnConfig, setColumnConfig] = useState<ColumnConfig>(() =>
     normalizeColumnConfig(initialColumnConfig, initialState.headers.length),
   );
+
+  const saveViewsArtifact = useCallback(async (updatedViews: Record<string, ColumnConfig>, currentActive: string) => {
+    const globalApp = (window as any).app;
+    if (!globalApp || !filePath) return;
+    const artifactPath = getArtifactPath(filePath);
+    
+    const parentIndex = artifactPath.lastIndexOf('/');
+    if (parentIndex !== -1) {
+      const parentPath = artifactPath.substring(0, parentIndex);
+      await ensureFolderExists(globalApp, parentPath);
+    }
+
+    const payload = {
+      activeView: currentActive,
+      views: updatedViews
+    };
+    const content = JSON.stringify(payload, null, 2);
+    
+    const file = globalApp.vault.getFileByPath(artifactPath);
+    if (file) {
+      await globalApp.vault.modify(file, content);
+    } else {
+      await globalApp.vault.create(artifactPath, content);
+    }
+  }, [filePath]);
+
+  useEffect(() => {
+    const loadViews = async () => {
+      const globalApp = (window as any).app;
+      if (!globalApp || !filePath) {
+        setIsViewsLoaded(true);
+        return;
+      }
+      const artifactPath = getArtifactPath(filePath);
+      const file = globalApp.vault.getFileByPath(artifactPath);
+      if (file) {
+        try {
+          const content = await globalApp.vault.read(file);
+          const parsed = JSON.parse(content);
+          if (parsed && parsed.views && parsed.activeView) {
+            setViews(parsed.views);
+            setActiveView(parsed.activeView);
+            if (parsed.views[parsed.activeView]) {
+              setColumnConfig(normalizeColumnConfig(parsed.views[parsed.activeView], headers.length));
+            }
+            setIsViewsLoaded(true);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to load view artifact", e);
+        }
+      }
+      
+      const defaultViews = {
+        "Default": normalizeColumnConfig(initialColumnConfig, headers.length)
+      };
+      setViews(defaultViews);
+      setActiveView("Default");
+      setIsViewsLoaded(true);
+    };
+    loadViews();
+  }, [filePath, headers.length]);
+
+  useEffect(() => {
+    if (!isViewsLoaded || !activeView) return;
+    
+    const stored = views[activeView];
+    if (stored) {
+      if (
+        JSON.stringify(stored.order) === JSON.stringify(columnConfig.order) &&
+        JSON.stringify(stored.hidden) === JSON.stringify(columnConfig.hidden) &&
+        JSON.stringify(stored.sizing) === JSON.stringify(columnConfig.sizing) &&
+        stored.frozenCount === columnConfig.frozenCount &&
+        JSON.stringify(stored.filters || []) === JSON.stringify(columnConfig.filters || []) &&
+        JSON.stringify(stored.sorting || []) === JSON.stringify(columnConfig.sorting || [])
+      ) {
+        return;
+      }
+    }
+
+    const nextViews = {
+      ...views,
+      [activeView]: columnConfig
+    };
+    setViews(nextViews);
+    saveViewsArtifact(nextViews, activeView);
+  }, [columnConfig, activeView, views, isViewsLoaded, saveViewsArtifact]);
+
+  const handleViewChange = useCallback((viewName: string) => {
+    if (views[viewName]) {
+      setActiveView(viewName);
+      setColumnConfig(normalizeColumnConfig(views[viewName], headers.length));
+      saveViewsArtifact(views, viewName);
+    }
+  }, [views, headers.length, saveViewsArtifact]);
+
+  const handleAddView = useCallback((viewName: string) => {
+    const cleanName = viewName.trim();
+    if (!cleanName) return;
+    const nextViews = {
+      ...views,
+      [cleanName]: normalizeColumnConfig({
+        order: Array.from({ length: headers.length }, (_, i) => i),
+        hidden: [],
+        sizing: {},
+        frozenCount: 0
+      }, headers.length)
+    };
+    setViews(nextViews);
+    setActiveView(cleanName);
+    setColumnConfig(nextViews[cleanName]);
+    saveViewsArtifact(nextViews, cleanName);
+  }, [views, headers.length, saveViewsArtifact]);
+
+  const handleDuplicateView = useCallback((viewName: string) => {
+    const cleanName = viewName.trim();
+    if (!cleanName) return;
+    const nextViews = {
+      ...views,
+      [cleanName]: { ...columnConfig }
+    };
+    setViews(nextViews);
+    setActiveView(cleanName);
+    saveViewsArtifact(nextViews, cleanName);
+  }, [views, columnConfig, saveViewsArtifact]);
+
+  const handleDeleteView = useCallback(() => {
+    const viewKeys = Object.keys(views);
+    if (viewKeys.length <= 1) {
+      new Notice("Cannot delete the only view.");
+      return;
+    }
+    const nextViews = { ...views };
+    delete nextViews[activeView];
+    const nextActive = Object.keys(nextViews)[0];
+    setViews(nextViews);
+    setActiveView(nextActive);
+    setColumnConfig(normalizeColumnConfig(nextViews[nextActive], headers.length));
+    saveViewsArtifact(nextViews, nextActive);
+  }, [views, activeView, headers.length, saveViewsArtifact]);
+
+  const handleColumnFiltersChange = useCallback((updaterOrValue: any) => {
+    setColumnConfig((prev) => {
+      const nextFilters = typeof updaterOrValue === 'function'
+        ? updaterOrValue(prev.filters || [])
+        : updaterOrValue;
+      return {
+        ...prev,
+        filters: nextFilters
+      };
+    });
+  }, []);
+
+  const handleSortingChange = useCallback((updaterOrValue: any) => {
+    setColumnConfig((prev) => {
+      const nextSorting = typeof updaterOrValue === 'function'
+        ? updaterOrValue(prev.sorting || [])
+        : updaterOrValue;
+      return {
+        ...prev,
+        sorting: nextSorting
+      };
+    });
+  }, []);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -490,6 +660,12 @@ export function App({
         onFrozenCountChange={updateFrozenCount}
         onUndo={undo}
         onRedo={redo}
+        views={views}
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        onAddView={handleAddView}
+        onDuplicateView={handleDuplicateView}
+        onDeleteView={handleDeleteView}
       />
       <Table
         headers={headers}
@@ -516,6 +692,10 @@ export function App({
         sortedRowIndicesRef={sortedRowIndicesRef}
         autocompleteColumns={autocompleteColumns}
         filePath={filePath}
+        sorting={columnConfig.sorting || []}
+        columnFilters={columnConfig.filters || []}
+        onSortingChange={handleSortingChange}
+        onColumnFiltersChange={handleColumnFiltersChange}
       />
     </div>
   );
