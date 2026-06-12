@@ -12,12 +12,28 @@ export interface ColumnConfig {
 export interface TablitePluginData extends SQLSealSettings {
   files: Record<string, ColumnConfig>;
   debug: boolean;
+  scannerApiProvider: "claude" | "gemini" | "openrouter";
+  scannerApiKey: string;
+  scannerApiModel: string;
+  scannerTxnIdPrefix: string;
+  scannerItemIdPrefix: string;
+  scannerIdUseSeparator: boolean;
+  scannerIdSeparator: string;
+  scannerIdSuffixType: "4numbers" | "4letters" | "4mixed";
 }
 
 export const DEFAULT_PLUGIN_DATA: TablitePluginData = {
   ...DEFAULT_SQLSEAL_SETTINGS,
   files: {},
   debug: false,
+  scannerApiProvider: "gemini",
+  scannerApiKey: "",
+  scannerApiModel: "gemini-2.5-flash",
+  scannerTxnIdPrefix: "TXN_BCAZ",
+  scannerItemIdPrefix: "ITM",
+  scannerIdUseSeparator: true,
+  scannerIdSeparator: "_",
+  scannerIdSuffixType: "4numbers",
 };
 
 export function createDefaultColumnConfig(columnCount: number): ColumnConfig {

@@ -1,15 +1,89 @@
 import { App, TFile, TFolder } from "obsidian";
 import Papa from "papaparse";
 
+export interface RedactionShape {
+  type: "box" | "circle";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface ReceiptDraft {
   id: string;
   createdAt: number;
   updatedAt: number;
   date: string; // YYYY-MM-DD
+  time?: string; // HH:MM
   merchant: string;
   category: string;
   rawItemsText: string;
   imagePaths: string[]; // paths relative to vault root, e.g. "draft/assets/xxx.png"
+  redactedPaths?: Record<string, string>; // maps original image path -> redacted image path
+  redactions?: Record<string, RedactionShape[]>; // maps original image path -> array of shapes
+}
+
+function parseSuffix(suffix: string, type: "4numbers" | "4letters" | "4mixed"): number {
+  if (type === "4numbers") {
+    return parseInt(suffix, 10) || 0;
+  } else if (type === "4letters") {
+    let num = 0;
+    const clean = suffix.toUpperCase();
+    for (let i = 0; i < clean.length; i++) {
+      num = num * 26 + (clean.charCodeAt(i) - 65);
+    }
+    return num;
+  } else { // 4mixed
+    return parseInt(suffix, 36) || 0;
+  }
+}
+
+export function getSuffixForIndex(index: number, type: "4numbers" | "4letters" | "4mixed"): string {
+  if (type === "4numbers") {
+    return (index + 1).toString().padStart(4, "0");
+  } else if (type === "4letters") {
+    let str = "";
+    let temp = index;
+    for (let i = 0; i < 4; i++) {
+      const digit = temp % 26;
+      str = String.fromCharCode(65 + digit) + str;
+      temp = Math.floor(temp / 26);
+    }
+    return str;
+  } else { // 4mixed (base 36)
+    return (index + 1).toString(36).toUpperCase().padStart(4, "0");
+  }
+}
+
+export function getNextIdIndex(
+  existingIds: string[],
+  suffixType: "4numbers" | "4letters" | "4mixed"
+): number {
+  let maxVal = -1;
+  let regex: RegExp;
+  if (suffixType === "4numbers") {
+    regex = /\d{4}$/;
+  } else if (suffixType === "4letters") {
+    regex = /[A-Z]{4}$/i;
+  } else {
+    regex = /[A-Z0-9]{4}$/i;
+  }
+
+  for (const id of existingIds) {
+    if (!id) continue;
+    const match = id.match(regex);
+    if (match) {
+      const val = parseSuffix(match[0], suffixType);
+      let idxVal = val;
+      if (suffixType === "4numbers" || suffixType === "4mixed") {
+        idxVal = val - 1;
+      }
+      if (idxVal > maxVal) {
+        maxVal = idxVal;
+      }
+    }
+  }
+  return maxVal + 1;
 }
 
 export interface ReceiptItem {
@@ -328,114 +402,193 @@ export async function saveTransaction(
   app: App,
   draft: ReceiptDraft,
   savePathInput: string,
-  items: ReceiptItem[]
+  items: ReceiptItem[],
+  settings: {
+    scannerTxnIdPrefix: string;
+    scannerItemIdPrefix: string;
+    scannerIdUseSeparator: boolean;
+    scannerIdSeparator: string;
+    scannerIdSuffixType: "4numbers" | "4letters" | "4mixed";
+  }
 ): Promise<void> {
-  const dateStr = draft.date || new Date().toISOString().substring(0, 10);
+  let dateStr = draft.date || new Date().toISOString().substring(0, 10);
+  let timeStr = draft.time || "";
+
+  if (dateStr.includes(" ")) {
+    const parts = dateStr.split(" ");
+    dateStr = parts[0];
+    if (!timeStr) {
+      timeStr = parts[1] || "";
+    }
+  }
+
   const year = dateStr.substring(0, 4);
   const month = dateStr.substring(0, 7); // YYYY-MM
 
-  // Resolve save path (replace YYYY with the year)
+  // Resolve parent path from the savePathInput
   const resolvedSavePath = savePathInput.replace(/YYYY/g, year);
-  
-  // Extract parent directory of the save path
   let parentPath = "";
   const lastSlash = resolvedSavePath.lastIndexOf("/");
   if (lastSlash !== -1) {
     parentPath = resolvedSavePath.substring(0, lastSlash);
   }
 
-  // Ensure the parent directory exists
-  if (parentPath) {
-    await ensureDirectoryExists(app, parentPath);
-  }
+  // 1. Promote images from draft/ to [parentPath]/transaction/assets/original/ and redacted/
+  const promotedOriginalPaths: string[] = [];
+  const promotedRedactedPaths: string[] = [];
+  const originalAssetsDir = parentPath ? `${parentPath}/transaction/assets/original` : "transaction/assets/original";
+  const redactedAssetsDir = parentPath ? `${parentPath}/transaction/assets/redacted` : "transaction/assets/redacted";
 
-  // 1. Promote images from draft/ to [parentPath]/transaction/assets/
-  const promotedImagePaths: string[] = [];
-  const assetsDir = parentPath ? `${parentPath}/transaction/assets` : "transaction/assets";
+  // Ensure directories exist
+  await ensureDirectoryExists(app, originalAssetsDir);
+  await ensureDirectoryExists(app, redactedAssetsDir);
 
   for (const srcPath of draft.imagePaths) {
+    // 1.a Promote original image
     if (srcPath.startsWith("draft/")) {
       const filename = srcPath.substring(srcPath.lastIndexOf("/") + 1);
-      const destPath = `${assetsDir}/${filename}`;
-
-      // Ensure dest directory exists
-      await ensureDirectoryExists(app, assetsDir);
-
+      const destOriginalPath = `${originalAssetsDir}/${filename}`;
       try {
         if (await app.vault.adapter.exists(srcPath)) {
           const imgData = await app.vault.adapter.readBinary(srcPath);
-          await app.vault.adapter.writeBinary(destPath, imgData);
-          // Delete from source draft directory
+          await app.vault.adapter.writeBinary(destOriginalPath, imgData);
           await app.vault.adapter.remove(srcPath);
-          promotedImagePaths.push(destPath);
+          promotedOriginalPaths.push(destOriginalPath);
         } else {
-          console.warn(`Source draft image not found: ${srcPath}`);
+          console.warn(`Source draft original image not found: ${srcPath}`);
+          promotedOriginalPaths.push(srcPath);
         }
       } catch (err) {
-        console.error(`Failed to promote image ${srcPath} to ${destPath}`, err);
-        promotedImagePaths.push(srcPath); // Fallback: keep original reference
+        console.error(`Failed to promote original image ${srcPath} to ${destOriginalPath}`, err);
+        promotedOriginalPaths.push(srcPath);
       }
     } else {
-      promotedImagePaths.push(srcPath);
+      promotedOriginalPaths.push(srcPath);
+    }
+
+    // 1.b Promote redacted image
+    const redactedSrcPath = draft.redactedPaths?.[srcPath];
+    if (redactedSrcPath) {
+      if (redactedSrcPath.startsWith("draft/")) {
+        const filename = redactedSrcPath.substring(redactedSrcPath.lastIndexOf("/") + 1);
+        const destRedactedPath = `${redactedAssetsDir}/${filename}`;
+        try {
+          if (await app.vault.adapter.exists(redactedSrcPath)) {
+            const imgData = await app.vault.adapter.readBinary(redactedSrcPath);
+            await app.vault.adapter.writeBinary(destRedactedPath, imgData);
+            await app.vault.adapter.remove(redactedSrcPath);
+            promotedRedactedPaths.push(destRedactedPath);
+          } else {
+            console.warn(`Source draft redacted image not found: ${redactedSrcPath}`);
+            promotedRedactedPaths.push(redactedSrcPath);
+          }
+        } catch (err) {
+          console.error(`Failed to promote redacted image ${redactedSrcPath} to ${destRedactedPath}`, err);
+          promotedRedactedPaths.push(redactedSrcPath);
+        }
+      } else {
+        promotedRedactedPaths.push(redactedSrcPath);
+      }
+    } else {
+      promotedRedactedPaths.push("");
     }
   }
 
   const grandTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
 
-  // 2. Append to transactions_YYYY.csv
-  // Path: resolvedSavePath
-  // Schema: date, merchant, category, grand_total, image_paths
-  let transCSVExists = await app.vault.adapter.exists(resolvedSavePath);
-  let transCSVContent = "";
-  if (transCSVExists) {
-    transCSVContent = await app.vault.adapter.read(resolvedSavePath);
-  } else {
-    transCSVContent = "date,merchant,category,grand_total,image_paths\n";
-  }
-
-  // Append new row
-  const newTransRow = [
-    dateStr,
-    draft.merchant,
-    draft.category,
-    grandTotal,
-    promotedImagePaths.join(";")
-  ].map(escapeCSV).join(",");
-
-  // Ensure file ends with newline
-  if (transCSVContent && !transCSVContent.endsWith("\n")) {
-    transCSVContent += "\n";
-  }
-  transCSVContent += newTransRow + "\n";
-  await app.vault.adapter.write(resolvedSavePath, transCSVContent);
-
-  // 3. Append to items_YYYY.csv
-  // Path: [parentPath]/items_YYYY.csv
+  // 2. Append to items_YYYY.csv (acting as the sole ledger file for both transactions and items)
   const itemsCSVPath = parentPath ? `${parentPath}/items_${year}.csv` : `items_${year}.csv`;
   let itemsCSVExists = await app.vault.adapter.exists(itemsCSVPath);
-  let itemsCSVContent = "";
+  
+  let existingRows: any[] = [];
+  let headers: string[] = [];
+
+  const defaultHeaders = [
+    "id",
+    "txn_id",
+    "date",
+    "time",
+    "merchant",
+    "item_name",
+    "qty",
+    "price_idr",
+    "price_usd",
+    "price_myr",
+    "category",
+    "original_image_path",
+    "redacted_image_path"
+  ];
+
   if (itemsCSVExists) {
-    itemsCSVContent = await app.vault.adapter.read(itemsCSVPath);
+    try {
+      const fileContent = await app.vault.adapter.read(itemsCSVPath);
+      const parsed = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
+      existingRows = parsed.data as any[];
+      headers = parsed.meta.fields || [];
+    } catch (e) {
+      console.error("Failed to parse existing items CSV to scan IDs", e);
+    }
+  }
+
+  // If headers list is empty, use default headers
+  if (headers.length === 0) {
+    headers = [...defaultHeaders];
   } else {
-    itemsCSVContent = "date,merchant,item_name,qty,price_idr,subtotal\n";
+    // Ensure all default headers exist in headers
+    for (const defHeader of defaultHeaders) {
+      if (!headers.includes(defHeader)) {
+        headers.push(defHeader);
+      }
+    }
   }
 
-  if (itemsCSVContent && !itemsCSVContent.endsWith("\n")) {
-    itemsCSVContent += "\n";
-  }
+  const existingItemIds = existingRows.map(r => r.id).filter(Boolean);
+  const existingTxnIds = existingRows.map(r => r.txn_id).filter(Boolean);
 
+  // Generate IDs
+  const separator = settings.scannerIdUseSeparator ? settings.scannerIdSeparator : "";
+  
+  const nextTxnIndex = getNextIdIndex(existingTxnIds, settings.scannerIdSuffixType);
+  const txnId = settings.scannerTxnIdPrefix + separator + getSuffixForIndex(nextTxnIndex, settings.scannerIdSuffixType);
+  
+  let nextItemIndex = getNextIdIndex(existingItemIds, settings.scannerIdSuffixType);
+
+  const originalImagePathMerged = promotedOriginalPaths.filter(Boolean).join(";");
+  const redactedImagePathMerged = promotedRedactedPaths.filter(Boolean).join(";");
+
+  const newRows: any[] = [];
   for (const item of items) {
-    const itemRow = [
-      dateStr,
-      draft.merchant,
-      item.name,
-      item.qty,
-      item.price,
-      item.subtotal
-    ].map(escapeCSV).join(",");
-    itemsCSVContent += itemRow + "\n";
+    const itemId = settings.scannerItemIdPrefix + separator + getSuffixForIndex(nextItemIndex++, settings.scannerIdSuffixType);
+
+    const newRowObj: Record<string, any> = {};
+    for (const h of headers) {
+      newRowObj[h] = "";
+    }
+
+    newRowObj["id"] = itemId;
+    newRowObj["txn_id"] = txnId;
+    newRowObj["date"] = dateStr;
+    newRowObj["time"] = timeStr;
+    newRowObj["merchant"] = draft.merchant;
+    newRowObj["item_name"] = item.name;
+    newRowObj["qty"] = item.qty.toString();
+    newRowObj["price_idr"] = item.price.toString();
+    newRowObj["category"] = draft.category;
+    newRowObj["original_image_path"] = originalImagePathMerged;
+    newRowObj["redacted_image_path"] = redactedImagePathMerged;
+
+    newRows.push(newRowObj);
   }
-  await app.vault.adapter.write(itemsCSVPath, itemsCSVContent);
+
+  const combinedRows = [...existingRows, ...newRows];
+  const csvOutput = Papa.unparse({
+    fields: headers,
+    data: combinedRows
+  }, {
+    newline: "\n"
+  });
+
+  await app.vault.adapter.write(itemsCSVPath, csvOutput);
 
   // 4. Update merchants.csv
   // Path: [parentPath]/merchants.csv

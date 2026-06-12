@@ -84,6 +84,8 @@ export function Cell({
   const sq = searchQueryRef.current ?? "";
   const isMatch = sq.length > 0 && value.toLowerCase().includes(sq.toLowerCase());
 
+  const isImagePathColumn = columnName === "original_image_path" || columnName === "redacted_image_path";
+
   const handleCellClick = (e: MouseEvent) => {
     if (isAutocomplete && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -92,6 +94,19 @@ export function Cell({
       if (globalApp && value && typeof value === 'string' && value.trim()) {
         const resolvedLink = resolveWikiLink(globalApp, value.trim(), columnName || "");
         globalApp.workspace.openLinkText(resolvedLink, filePath || "", true);
+      }
+    } else if (isImagePathColumn && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const globalApp = (window as any).app;
+      if (globalApp && value && typeof value === 'string' && value.trim()) {
+        const paths = value.split(";").map(p => p.trim()).filter(Boolean);
+        for (const p of paths) {
+          const file = globalApp.vault.getFileByPath(p);
+          if (file) {
+            globalApp.workspace.getLeaf("tab").openFile(file);
+          }
+        }
       }
     }
   };
@@ -112,12 +127,30 @@ export function Cell({
           });
         }
       }
+    } else if (isImagePathColumn && (e.ctrlKey || e.metaKey)) {
+      const globalApp = (window as any).app;
+      if (globalApp && value && typeof value === 'string' && value.trim()) {
+        const paths = value.split(";").map(p => p.trim()).filter(Boolean);
+        const firstPath = paths[0];
+        if (firstPath) {
+          globalApp.workspace.trigger("hover-link", {
+            event: e,
+            source: "tablite-csv-view",
+            hoverParent: e.currentTarget as HTMLElement,
+            targetEl: e.target as HTMLElement,
+            linktext: firstPath,
+            sourcePath: filePath || "",
+          });
+        }
+      }
     }
   };
 
   return (
     <div
-      class={`tablite-cell ${isMatch ? "tablite-cell-match" : ""} ${isAutocomplete ? "sqlseal-wikilink-cell" : ""}`}
+      class={`tablite-cell ${isMatch ? "tablite-cell-match" : ""} ${
+        isAutocomplete ? "sqlseal-wikilink-cell" : ""
+      } ${isImagePathColumn ? "tablite-image-path-cell" : ""}`}
       onDblClick={() => {
         setEditValue(value);
         setEditing(true);

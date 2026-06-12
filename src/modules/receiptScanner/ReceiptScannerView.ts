@@ -34,6 +34,7 @@ export class ReceiptScannerView extends ItemView {
     render(
       h(ReceiptScanner, {
         app: this.app,
+        plugin: this.plugin,
         onClose: () => {
           this.app.workspace.detachLeavesOfType(RECEIPT_SCANNER_VIEW_TYPE);
         }

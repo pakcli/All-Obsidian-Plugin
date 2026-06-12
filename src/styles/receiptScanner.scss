@@ -674,3 +674,244 @@
         }
     }
 }
+
+/* ==========================================
+   Privacy Redaction Paint Editor & Warnings
+   ========================================== */
+
+.receipt-scanner-images-list-container {
+    border-top: 1px dashed var(--background-modifier-border);
+    padding-top: var(--size-4-3);
+}
+
+.image-row-item {
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    transition: border-color 0.2s ease;
+
+    &.is-expanded {
+        border-color: var(--interactive-accent);
+    }
+}
+
+.image-row-header {
+    background-color: var(--background-secondary) !important;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background-color: var(--background-modifier-hover) !important;
+    }
+}
+
+.image-filename {
+    color: var(--text-normal);
+}
+
+.redaction-status-badge {
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.redaction-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    padding: 4px;
+}
+
+.redaction-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 4px;
+
+    .tool-group, .toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .toggle-label {
+        font-size: 0.8em;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    button {
+        padding: 4px 10px;
+        font-size: 0.85em;
+        border-radius: var(--radius-s);
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-secondary);
+        color: var(--text-muted);
+        cursor: pointer;
+
+        &.mod-active {
+            background-color: var(--interactive-accent);
+            color: var(--text-on-accent);
+            border-color: transparent;
+        }
+
+        &:hover:not(.mod-active) {
+            color: var(--text-normal);
+            background-color: var(--background-modifier-hover);
+        }
+    }
+
+    .danger-btn {
+        color: var(--text-error);
+        border-color: var(--text-error);
+        background: transparent;
+
+        &:hover {
+            background-color: rgba(var(--text-error-rgb), 0.1) !important;
+            color: var(--text-error) !important;
+        }
+    }
+}
+
+.redaction-canvas-container {
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    background-size: 16px 16px;
+    background-position: center;
+}
+
+.privacy-warning-banner {
+    animation: pulse-border 2s infinite alternate;
+    transition: background-color 0.3s ease;
+}
+
+@keyframes pulse-border {
+    0% {
+        box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* ==========================================
+   API Settings Modal Styling
+   ========================================== */
+
+.receipt-scanner-settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; // Above general views
+    animation: fadeIn 0.2s ease-out;
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+}
+
+.receipt-scanner-settings-modal {
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-l);
+    width: 420px;
+    max-width: 90%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--size-4-3) var(--size-4-4);
+        background-color: var(--background-secondary);
+        border-bottom: 1px solid var(--background-modifier-border);
+
+        h3 {
+            margin: 0;
+            font-size: 1.15em;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-s);
+            transition: all 0.15s ease;
+
+            &:hover {
+                color: var(--text-normal);
+                background-color: var(--background-modifier-hover);
+            }
+        }
+    }
+
+    .modal-body {
+        padding: var(--size-4-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--size-4-3);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--size-4-2);
+        padding: var(--size-4-3) var(--size-4-4);
+        background-color: var(--background-secondary);
+        border-top: 1px solid var(--background-modifier-border);
+
+        button {
+            padding: var(--size-4-2) var(--size-4-4);
+            border-radius: var(--radius-s);
+            cursor: pointer;
+            font-weight: 500;
+            border: 1px solid var(--background-modifier-border);
+            font-size: 0.9em;
+
+            &.mod-cta {
+                background-color: var(--interactive-accent);
+                color: var(--text-on-accent);
+                border: none;
+
+                &:hover {
+                    background-color: var(--interactive-accent-hover);
+                }
+            }
+
+            &:not(.mod-cta) {
+                background: transparent;
+                color: var(--text-muted);
+
+                &:hover {
+                    background-color: var(--background-modifier-hover);
+                    color: var(--text-normal);
+                }
+            }
+        }
+    }
+}
