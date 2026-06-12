@@ -9,6 +9,7 @@ import {
   normalizePath,
 } from "obsidian";
 import { CsvView, CSV_VIEW_TYPE } from "./csv-view";
+import { ReceiptScannerView, RECEIPT_SCANNER_VIEW_TYPE } from "./modules/receiptScanner/ReceiptScannerView";
 import {
   DEFAULT_PLUGIN_DATA,
   normalizeColumnConfig,
@@ -100,6 +101,21 @@ export default class TablitePlugin extends Plugin {
     // Register Tablite CSV File Editor View
     this.registerView(CSV_VIEW_TYPE, (leaf) => new CsvView(leaf, this));
     this.registerExtensions(["csv", "tsv"], CSV_VIEW_TYPE);
+
+    // Register Receipt Scanner View
+    this.registerView(RECEIPT_SCANNER_VIEW_TYPE, (leaf) => new ReceiptScannerView(leaf, this));
+
+    this.addRibbonIcon("receipt", "Open Receipt Scanner", () => {
+      void this.activateReceiptScannerView();
+    });
+
+    this.addCommand({
+      id: "open-receipt-scanner",
+      name: "Open Receipt Scanner",
+      callback: () => {
+        void this.activateReceiptScannerView();
+      },
+    });
 
     this.addCommand({
       id: "create-new-csv",
@@ -232,6 +248,19 @@ export default class TablitePlugin extends Plugin {
     });
 
     modal.open();
+  }
+
+  async activateReceiptScannerView() {
+    const { workspace } = this.app;
+    let leaf = workspace.getLeavesOfType(RECEIPT_SCANNER_VIEW_TYPE)[0];
+    if (!leaf) {
+      leaf = workspace.getLeaf("tab");
+      await leaf.setViewState({
+        type: RECEIPT_SCANNER_VIEW_TYPE,
+        active: true,
+      });
+    }
+    workspace.revealLeaf(leaf);
   }
 
   private getAvailableCsvName(folderPath: string): string {
