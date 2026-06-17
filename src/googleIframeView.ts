@@ -20,8 +20,30 @@ export function cleanGoogleUrl(url: string): string {
   }
 }
 
+export function extractGoogleFileId(url: string): string | null {
+  if (!url) return null;
+  // Match standard /d/FILE_ID/ pattern
+  const dMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (dMatch && dMatch[1]) return dMatch[1];
+
+  // Match folders/FOLDER_ID pattern
+  const folderMatch = url.match(/\/folders\/([a-zA-Z0-9-_]+)/);
+  if (folderMatch && folderMatch[1]) return folderMatch[1];
+
+  return null;
+}
+
 export function urlsMatch(url1: string, url2: string): boolean {
   if (!url1 || !url2) return url1 === url2;
+
+  // 1. Match by Google File ID if both contain one
+  const id1 = extractGoogleFileId(url1);
+  const id2 = extractGoogleFileId(url2);
+  if (id1 && id2) {
+    return id1 === id2;
+  }
+
+  // 2. Fallback to cleaned URL match
   const clean1 = cleanGoogleUrl(url1).replace(/\/+$/, '');
   const clean2 = cleanGoogleUrl(url2).replace(/\/+$/, '');
   return clean1 === clean2;
