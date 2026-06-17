@@ -20,6 +20,12 @@ export interface TablitePluginData extends SQLSealSettings {
   scannerIdUseSeparator: boolean;
   scannerIdSeparator: string;
   scannerIdSuffixType: "4numbers" | "4letters" | "4mixed";
+  scannerMerchantPath: string;
+  scannerMerchantCol: string;
+  scannerCategoryPath: string;
+  scannerCategoryCol: string;
+  scannerClearAfterSave: boolean;
+  scannerFinanceFolderPath: string;
 }
 
 export const DEFAULT_PLUGIN_DATA: TablitePluginData = {
@@ -34,6 +40,12 @@ export const DEFAULT_PLUGIN_DATA: TablitePluginData = {
   scannerIdUseSeparator: true,
   scannerIdSeparator: "_",
   scannerIdSuffixType: "4numbers",
+  scannerMerchantPath: "Finance/merchants.csv",
+  scannerMerchantCol: "merchant",
+  scannerCategoryPath: "Finance/budget.csv",
+  scannerCategoryCol: "category",
+  scannerClearAfterSave: true,
+  scannerFinanceFolderPath: "Finance",
 };
 
 export function createDefaultColumnConfig(columnCount: number): ColumnConfig {

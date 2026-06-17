@@ -1,8 +1,9 @@
-import { App, PluginSettingTab, Setting, Plugin, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Plugin, Notice, TFolder } from 'obsidian';
 import { SettingsModule } from './module';
 import { Settings } from './Settings';
 import { SettingsControls } from './settingsTabSection/SettingsControls';
 import { parseAutocompleteSettings, formatHeaderName } from '../../utils/views';
+import { CsvFileSuggest, FolderSuggest, GenericTextSuggest } from '../../utils/suggesters';
 
 export interface SQLSealSettings {
     enableViewer: boolean;
@@ -17,6 +18,12 @@ export interface SQLSealSettings {
     gridItemsPerPage: number;
     autocompleteColumns: string;
     codeblockViews?: Record<string, Record<string, string>>;
+    scannerMerchantPath?: string;
+    scannerMerchantCol?: string;
+    scannerCategoryPath?: string;
+    scannerCategoryCol?: string;
+    scannerClearAfterSave?: boolean;
+    scannerFinanceFolderPath?: string;
 }
 
 export const DEFAULT_SETTINGS: SQLSealSettings = {
@@ -205,6 +212,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 
 			const addInput = addRow.createEl('input', { type: 'text', placeholder: 'New column name...' });
 			addInput.style.flex = '1';
+			const addInputSuggest = new GenericTextSuggest(this.app, addInput, []);
 
 			const addBtn = addRow.createEl('button', { text: 'Add Column', cls: 'mod-cta' });
 			const handleAdd = () => {
@@ -234,19 +242,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 				try {
 					const scanned = await scanVaultColumns(this.app);
 					new Notice(`Scanned vault and found ${scanned.length} columns!`);
-					
-					const dlId = 'scanned-cols-dl';
-					let dl = listContainer.querySelector('#' + dlId) as HTMLDataListElement;
-					if (!dl) {
-						dl = listContainer.createEl('datalist');
-						dl.id = dlId;
-					}
-					dl.empty();
-					scanned.forEach(colName => {
-						const opt = dl.createEl('option');
-						opt.value = colName;
-					});
-					addInput.setAttribute('list', dlId);
+					addInputSuggest.setItems(scanned);
 					addInput.placeholder = 'Type column name or select from list...';
 					addInput.focus();
 				} catch (err) {
@@ -292,7 +288,191 @@ export class SQLSealSettingsTab extends PluginSettingTab {
                     // this.callChanges()
                 }));
 
+        containerEl.createEl('h3', { text: 'Receipt Scanner Autocomplete Suggestions' });
+        containerEl.createEl('p', {
+            text: 'Configure the source CSV files and columns used to populate autocomplete suggestions for Merchant and Category fields in the Receipt Scanner.',
+            cls: 'setting-item-description'
+        });
 
+        const tableContainer = containerEl.createDiv();
+        tableContainer.style.margin = '12px 0';
+        tableContainer.style.overflowX = 'auto';
+
+        const table = tableContainer.createEl('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.border = '1px solid var(--background-modifier-border)';
+
+        const thead = table.createEl('thead');
+        const headerRow = thead.createEl('tr');
+        headerRow.style.backgroundColor = 'var(--background-secondary)';
+        headerRow.style.borderBottom = '2px solid var(--background-modifier-border)';
+
+        const thStyle = 'padding: 8px 12px; font-weight: bold; text-align: left; border-right: 1px solid var(--background-modifier-border);';
+        
+        const thSuggestion = headerRow.createEl('th');
+        thSuggestion.setAttribute('style', thStyle);
+        thSuggestion.style.width = '120px';
+        thSuggestion.setText('Suggestion');
+
+        const thPath = headerRow.createEl('th');
+        thPath.setAttribute('style', thStyle);
+        thPath.setText('CSV File Path');
+
+        const thCol = headerRow.createEl('th');
+        thCol.setAttribute('style', thStyle);
+        thCol.style.width = '180px';
+        thCol.setText('Column Name');
+
+        const tbody = table.createEl('tbody');
+        const tdStyle = 'padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border); border-right: 1px solid var(--background-modifier-border);';
+
+        const readCSVHeaders = async (filePath: string): Promise<string[]> => {
+            if (!filePath) return [];
+            try {
+                const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
+                if (abstractFile && (abstractFile as any).extension) {
+                    const content = await this.app.vault.read(abstractFile as any);
+                    const ext = (abstractFile as any).extension.toLowerCase();
+                    const delimiter = ext === 'tsv' ? '\t' : ',';
+                    const firstLine = content.split('\n')[0];
+                    if (firstLine) {
+                        return firstLine.split(delimiter)
+                            .map(h => h.trim().replace(/^["']|["']$/g, ''))
+                            .filter(Boolean);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to read headers for autocomplete:", filePath, e);
+            }
+            return [];
+        };
+
+        // Merchant Row
+        const rowMerchant = tbody.createEl('tr');
+        
+        const tdMerchantLabel = rowMerchant.createEl('td');
+        tdMerchantLabel.setAttribute('style', tdStyle);
+        tdMerchantLabel.style.fontWeight = 'bold';
+        tdMerchantLabel.setText('Merchant');
+
+        const tdMerchantPath = rowMerchant.createEl('td');
+        tdMerchantPath.setAttribute('style', tdStyle);
+        const inputMerchantPath = tdMerchantPath.createEl('input', { type: 'text' });
+        inputMerchantPath.style.width = '100%';
+        inputMerchantPath.value = this.settings.get('scannerMerchantPath') || '';
+        inputMerchantPath.placeholder = 'e.g. Finance/merchants.csv';
+        new CsvFileSuggest(this.app, inputMerchantPath);
+        inputMerchantPath.addEventListener('change', async () => {
+            this.settings.set('scannerMerchantPath', inputMerchantPath.value.trim());
+            if ((this.plugin as any).saveSettings) {
+                await (this.plugin as any).saveSettings();
+            }
+            await updateMerchantColumns();
+        });
+
+        const tdMerchantCol = rowMerchant.createEl('td');
+        tdMerchantCol.setAttribute('style', tdStyle);
+        const inputMerchantCol = tdMerchantCol.createEl('input', { type: 'text' });
+        inputMerchantCol.style.width = '100%';
+        inputMerchantCol.value = this.settings.get('scannerMerchantCol') || '';
+        inputMerchantCol.placeholder = 'e.g. merchant';
+        const merchantColSuggest = new GenericTextSuggest(this.app, inputMerchantCol, []);
+        inputMerchantCol.addEventListener('change', async () => {
+            this.settings.set('scannerMerchantCol', inputMerchantCol.value.trim());
+            if ((this.plugin as any).saveSettings) {
+                await (this.plugin as any).saveSettings();
+            }
+        });
+
+        const updateMerchantColumns = async () => {
+            const path = inputMerchantPath.value.trim();
+            const headers = await readCSVHeaders(path);
+            merchantColSuggest.setItems(headers);
+        };
+        inputMerchantPath.addEventListener('focus', updateMerchantColumns);
+
+        // Category Row
+        const rowCategory = tbody.createEl('tr');
+
+        const tdCategoryLabel = rowCategory.createEl('td');
+        tdCategoryLabel.setAttribute('style', tdStyle);
+        tdCategoryLabel.style.fontWeight = 'bold';
+        tdCategoryLabel.setText('Category');
+
+        const tdCategoryPath = rowCategory.createEl('td');
+        tdCategoryPath.setAttribute('style', tdStyle);
+        const inputCategoryPath = tdCategoryPath.createEl('input', { type: 'text' });
+        inputCategoryPath.style.width = '100%';
+        inputCategoryPath.value = this.settings.get('scannerCategoryPath') || '';
+        inputCategoryPath.placeholder = 'e.g. Finance/budget.csv';
+        new CsvFileSuggest(this.app, inputCategoryPath);
+        inputCategoryPath.addEventListener('change', async () => {
+            this.settings.set('scannerCategoryPath', inputCategoryPath.value.trim());
+            if ((this.plugin as any).saveSettings) {
+                await (this.plugin as any).saveSettings();
+            }
+            await updateCategoryColumns();
+        });
+
+        const tdCategoryCol = rowCategory.createEl('td');
+        tdCategoryCol.setAttribute('style', tdStyle);
+        const inputCategoryCol = tdCategoryCol.createEl('input', { type: 'text' });
+        inputCategoryCol.style.width = '100%';
+        inputCategoryCol.value = this.settings.get('scannerCategoryCol') || '';
+        inputCategoryCol.placeholder = 'e.g. category';
+        const categoryColSuggest = new GenericTextSuggest(this.app, inputCategoryCol, []);
+        inputCategoryCol.addEventListener('change', async () => {
+            this.settings.set('scannerCategoryCol', inputCategoryCol.value.trim());
+            if ((this.plugin as any).saveSettings) {
+                await (this.plugin as any).saveSettings();
+            }
+        });
+
+        const updateCategoryColumns = async () => {
+            const path = inputCategoryPath.value.trim();
+            const headers = await readCSVHeaders(path);
+            categoryColSuggest.setItems(headers);
+        };
+        inputCategoryPath.addEventListener('focus', updateCategoryColumns);
+
+        // Run initial columns loading
+        setTimeout(() => {
+            updateMerchantColumns();
+            updateCategoryColumns();
+        }, 50);
+
+        // Receipt Scanner Folder & Save Behavior Settings
+        containerEl.createEl('h3', { text: 'Receipt Scanner Folder & Save Behavior' });
+
+        new Setting(containerEl)
+            .setName('Finance Folder Path')
+            .setDesc('Customize the folder where your transaction and ledger CSV files are saved. Autocomplete suggestions are loaded from folders in your vault.')
+            .addText(text => {
+                text.setValue(this.settings.get('scannerFinanceFolderPath') || 'Finance');
+                text.setPlaceholder('e.g. Finance');
+                new FolderSuggest(this.app, text.inputEl);
+                text.inputEl.addEventListener('change', async () => {
+                    const val = text.getValue().trim();
+                    this.settings.set('scannerFinanceFolderPath', val);
+                    if ((this.plugin as any).saveSettings) {
+                        await (this.plugin as any).saveSettings();
+                    }
+                });
+            });
+
+        new Setting(containerEl)
+            .setName('Clear Inputs After Save')
+            .setDesc('If enabled, scanning inputs and draft contents will be cleared/emptied after saving the transaction to the CSV. Disable to keep the data in the form.')
+            .addToggle(toggle => toggle
+                .setValue(this.settings.get('scannerClearAfterSave') !== false)
+                .onChange(async (value) => {
+                    this.settings.set('scannerClearAfterSave', value);
+                    if ((this.plugin as any).saveSettings) {
+                        await (this.plugin as any).saveSettings();
+                    }
+                    this.display();
+                }));
     }
 
     // private callChanges() {

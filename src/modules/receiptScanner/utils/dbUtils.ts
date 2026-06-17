@@ -443,11 +443,19 @@ export async function saveTransaction(
   await ensureDirectoryExists(app, originalAssetsDir);
   await ensureDirectoryExists(app, redactedAssetsDir);
 
+  // Generate prefix for files: date_time_merchant
+  const cleanDate = (dateStr || "").replace(/[^0-9-]/g, "");
+  const cleanTime = (timeStr || "").replace(/:/g, "-").replace(/[^0-9-]/g, "");
+  const cleanMerchant = sanitizeFilename(draft.merchant || "").replace(/\s+/g, "_");
+  const filePrefix = [cleanDate, cleanTime, cleanMerchant].filter(Boolean).join("_") + "_";
+
   for (const srcPath of draft.imagePaths) {
     // 1.a Promote original image
     if (srcPath.startsWith("draft/")) {
       const filename = srcPath.substring(srcPath.lastIndexOf("/") + 1);
-      const destOriginalPath = `${originalAssetsDir}/${filename}`;
+      const baseFilename = filename.replace(/^draft_\d+_/, "").replace(/^draft_/, "");
+      const destFilename = `${filePrefix}${baseFilename}`;
+      const destOriginalPath = `${originalAssetsDir}/${destFilename}`;
       try {
         if (await app.vault.adapter.exists(srcPath)) {
           const imgData = await app.vault.adapter.readBinary(srcPath);
@@ -471,7 +479,9 @@ export async function saveTransaction(
     if (redactedSrcPath) {
       if (redactedSrcPath.startsWith("draft/")) {
         const filename = redactedSrcPath.substring(redactedSrcPath.lastIndexOf("/") + 1);
-        const destRedactedPath = `${redactedAssetsDir}/${filename}`;
+        const baseFilename = filename.replace(/^draft_\d+_/, "").replace(/^draft_/, "");
+        const destFilename = `${filePrefix}${baseFilename}`;
+        const destRedactedPath = `${redactedAssetsDir}/${destFilename}`;
         try {
           if (await app.vault.adapter.exists(redactedSrcPath)) {
             const imgData = await app.vault.adapter.readBinary(redactedSrcPath);

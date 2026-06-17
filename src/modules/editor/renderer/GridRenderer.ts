@@ -8,11 +8,12 @@ import { Settings } from "../../settings/Settings";
 import { ViewDefinition } from "../parser";
 import { ModernCellParser } from "../../syntaxHighlight/cellParser/ModernCellParser";
 import { formatHeaderName, parseAutocompleteSettings, resolveHeaderName } from "../../../utils/views";
+import { GenericTextSuggest } from "../../../utils/suggesters";
 
 class AutocompleteCellEditor implements ICellEditorComp {
     private eInput: HTMLInputElement;
-    private eDatalist: HTMLDataListElement;
     private container: HTMLDivElement;
+    private suggester: GenericTextSuggest | null = null;
 
     init(params: ICellEditorParams & { values?: string[] }) {
         this.container = document.createElement('div');
@@ -33,21 +34,12 @@ class AutocompleteCellEditor implements ICellEditorComp {
         this.eInput.style.fontFamily = 'inherit';
         this.eInput.style.padding = '0 8px';
 
-        const datalistId = 'dl-' + Math.random().toString(36).substring(2, 9);
-        this.eInput.setAttribute('list', datalistId);
-
-        this.eDatalist = document.createElement('datalist');
-        this.eDatalist.id = datalistId;
-
-        const values = params.values || [];
-        values.forEach((val: string) => {
-            const option = document.createElement('option');
-            option.value = val;
-            this.eDatalist.appendChild(option);
-        });
-
         this.container.appendChild(this.eInput);
-        this.container.appendChild(this.eDatalist);
+
+        const globalApp = (window as any).app;
+        if (globalApp) {
+            this.suggester = new GenericTextSuggest(globalApp, this.eInput, params.values || []);
+        }
     }
 
     getGui() {
@@ -67,7 +59,9 @@ class AutocompleteCellEditor implements ICellEditorComp {
         return false;
     }
 
-    destroy() {}
+    destroy() {
+        this.suggester = null;
+    }
 }
 
 interface DataParam {

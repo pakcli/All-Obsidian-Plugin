@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "preact/hooks";
 import type { RefObject } from "preact";
 import { Fragment } from "preact";
 import { resolveWikiLink } from "../utils/wiki";
+import { GenericTextSuggest } from "../utils/suggesters";
 
 interface CellProps {
   value: string;
@@ -43,21 +44,51 @@ export function Cell({
     }
   }, [editing]);
 
+  const suggestRef = useRef<GenericTextSuggest | null>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current && isAutocomplete) {
+      const el = inputRef.current;
+      const globalApp = (window as any).app;
+      if (globalApp) {
+        try {
+          suggestRef.current = new GenericTextSuggest(globalApp, el, values || []);
+        } catch (e) {
+          console.error("Error creating cell suggest:", e);
+        }
+      }
+    }
+    return () => {
+      suggestRef.current = null;
+    };
+  }, [editing, isAutocomplete]);
+
+  useEffect(() => {
+    if (suggestRef.current) {
+      suggestRef.current.setItems(values || []);
+    }
+  }, [values]);
+
   if (editing) {
-    const datalistId = useMemo(() => "dl-" + Math.random().toString(36).substring(2, 9), []);
     return (
       <Fragment>
         <input
           ref={inputRef}
           class="tablite-cell-input"
           value={editValue}
-          list={isAutocomplete ? datalistId : undefined}
           onInput={(e) => setEditValue((e.target as HTMLInputElement).value)}
           onBlur={() => {
-            setEditing(false);
-            if (editValue !== value) {
-              onUpdate(rowIndex, colIndex, editValue);
-            }
+            setTimeout(() => {
+              if (inputRef.current) {
+                const latestVal = inputRef.current.value;
+                setEditing(false);
+                if (latestVal !== value) {
+                  onUpdate(rowIndex, colIndex, latestVal);
+                }
+              } else {
+                setEditing(false);
+              }
+            }, 200);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -70,13 +101,6 @@ export function Cell({
             }
           }}
         />
-        {isAutocomplete && (
-          <datalist id={datalistId}>
-            {(values || []).map((val) => (
-              <option key={val} value={val} />
-            ))}
-          </datalist>
-        )}
       </Fragment>
     );
   }
