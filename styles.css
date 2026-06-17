@@ -1,8 +1,28 @@
-/*
+/* Force the Google Workspace webview to fill the full height of the leaf */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* The leaf content wrapper */
+.workspace-leaf-content[data-type="google-iframe"] {
+  padding: 0 !important;
+  height: 100%;
+}
 
-If your plugin does not need CSS, delete this file.
+/* The .view-content div that Obsidian wraps our contentEl in */
+.workspace-leaf-content[data-type="google-iframe"] .view-content {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
 
-*/
+/* The webview itself */
+.workspace-leaf-content[data-type="google-iframe"] .view-content webview {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
