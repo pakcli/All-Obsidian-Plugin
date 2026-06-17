@@ -5,6 +5,28 @@ import { getFileWebViewLink } from './googleDriveApi';
 
 export const GOOGLE_IFRAME_VIEW_TYPE = 'google-iframe';
 
+export function cleanGoogleUrl(url: string): string {
+  if (!url) return url;
+  // Strip trailing quotes or symbols that might be matched by regex
+  url = url.replace(/['"()]+$/g, '');
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete('usp');
+    return parsed.toString();
+  } catch {
+    return url.replace(/([?&])usp=[^&]+/g, '')
+              .replace(/\?&/g, '?')
+              .replace(/[?&]$/g, '');
+  }
+}
+
+export function urlsMatch(url1: string, url2: string): boolean {
+  if (!url1 || !url2) return url1 === url2;
+  const clean1 = cleanGoogleUrl(url1).replace(/\/+$/, '');
+  const clean2 = cleanGoogleUrl(url2).replace(/\/+$/, '');
+  return clean1 === clean2;
+}
+
 // ─────────────────────────────────────────────
 //  URL Input Modal
 // ─────────────────────────────────────────────
@@ -105,23 +127,139 @@ export default class GoogleIframeView extends ItemView {
   async onOpen() {
     const container = this.contentEl;
     container.empty();
-    // Use position:relative so the absolute webview can fill it
-    container.style.cssText = 'position:relative;padding:0;margin:0;width:100%;height:100%;overflow:hidden;';
+    container.style.cssText = 'display:flex;flex-direction:column;padding:0;margin:0;width:100%;height:100%;overflow:hidden;';
 
-    // Electron <webview> needs EXPLICIT pixel height — percentage heights are ignored
+    // ── Navigation toolbar ───────────────────────────────────────────────
+    const toolbar = container.createEl('div', { cls: 'gview-toolbar' });
+
+    // Back
+    const backBtn = toolbar.createEl('button', { cls: 'gview-nav-btn', title: 'Back' });
+    backBtn.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>`;
+
+    // Forward
+    const fwdBtn = toolbar.createEl('button', { cls: 'gview-nav-btn', title: 'Forward' });
+    fwdBtn.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>`;
+
+    // Reload
+    const reloadBtn = toolbar.createEl('button', { cls: 'gview-nav-btn', title: 'Reload' });
+    reloadBtn.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
+
+    // URL bar (flex fills remaining space)
+    const urlBar = toolbar.createEl('div', { cls: 'gview-url-bar' });
+    const urlText = urlBar.createEl('span', { cls: 'gview-url-text', text: this.currentUrl });
+
+    // ── Right-side action buttons ────────────────────────────────────────
+    toolbar.createEl('div', { cls: 'gview-toolbar-sep' });
+
+    // ★ Bookmark star — saves URL to plugin cache + shows notice
+    const starBtn = toolbar.createEl('button', { cls: 'gview-nav-btn gview-star-btn', title: 'Save bookmark' });
+    starBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+
+    // Split pane — open same URL in a vertical split
+    const splitBtn = toolbar.createEl('button', { cls: 'gview-nav-btn', title: 'Split view' });
+    splitBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 3h18v18H3V3zm8 2H5v14h6V5zm8 0h-6v14h6V5z"/></svg>`;
+
+    // Open in system browser
+    const openExternalBtn = toolbar.createEl('button', { cls: 'gview-nav-btn', title: 'Open in browser' });
+    openExternalBtn.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>`;
+
+
+
+    // ── Webview ──────────────────────────────────────────────────────────
+    const webviewWrap = container.createEl('div', { cls: 'gview-webview-wrap' });
+    webviewWrap.style.cssText = 'position:relative;flex:1;min-height:0;overflow:hidden;';
+
     const webview = document.createElement('webview') as HTMLElement;
     webview.setAttribute('allowpopups', '');
-    webview.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border:none;';
+    webview.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
 
+    webviewWrap.appendChild(webview);
+    this.webviewEl = webview;
+
+    // ★ Star: save current URL to plugin cache (turns gold when saved)
+    const updateStarState = () => {
+      const url = this.currentUrl;
+      const isSaved = url && this.plugin.settings.urlCache &&
+        Object.values(this.plugin.settings.urlCache).includes(url);
+      starBtn.classList.toggle('gview-star-saved', !!isSaved);
+      starBtn.title = isSaved ? 'Bookmarked ✓' : 'Save bookmark';
+    };
+
+    // ── Helpers to update nav button state ───────────────────────────────
+    const updateNavBtns = () => {
+      const wv = webview as any;
+      backBtn.disabled   = !wv.canGoBack?.();
+      fwdBtn.disabled    = !wv.canGoForward?.();
+      
+      let currentSrc = this.currentUrl;
+      if (wv && typeof wv.getURL === 'function') {
+        try {
+          currentSrc = wv.getURL() || wv.src || this.currentUrl;
+        } catch (e) {
+          currentSrc = wv.src || this.currentUrl;
+        }
+      } else if (wv) {
+        currentSrc = wv.src || this.currentUrl;
+      }
+      this.currentUrl = currentSrc;
+
+      urlText.textContent = currentSrc;
+      urlText.title       = currentSrc;
+      updateStarState();
+    };
+
+    // ── Wire toolbar buttons ─────────────────────────────────────────────
+    backBtn.addEventListener('click', () => { (webview as any).goBack?.(); });
+    fwdBtn.addEventListener('click',  () => { (webview as any).goForward?.(); });
+    reloadBtn.addEventListener('click', () => { (webview as any).reload?.(); });
+
+    openExternalBtn.addEventListener('click', () => {
+      const url = this.currentUrl;
+      if (url) {
+        try { require('electron').shell.openExternal(url); }
+        catch { window.open(url, '_blank'); }
+      }
+    });
+
+    starBtn.addEventListener('click', async () => {
+      const url = this.currentUrl;
+      const title = this.currentTitle || url;
+      if (!url) return;
+      if (!this.plugin.settings.urlCache) this.plugin.settings.urlCache = {};
+      // Use title as key so it shows up nicely in the cache settings panel
+      const key = `_bookmark_${title}`;
+      this.plugin.settings.urlCache[key] = url;
+      await this.plugin.saveSettings();
+      updateStarState();
+      const { Notice } = await import('obsidian');
+      new Notice(`★ Bookmarked: ${title}`);
+    });
+
+    // ⊞ Split: open same URL in a new vertical split pane
+    splitBtn.addEventListener('click', async () => {
+      const url = this.currentUrl;
+      if (!url) return;
+      const { GOOGLE_IFRAME_VIEW_TYPE: TYPE } = await import('./googleIframeView');
+      const newLeaf = this.app.workspace.getLeaf('split');
+      await newLeaf.setViewState({
+        type: TYPE,
+        state: { url, title: this.currentTitle, file: '' },
+      });
+      this.app.workspace.revealLeaf(newLeaf);
+    });
+
+
+
+    // ── Webview navigation events ────────────────────────────────────────
     webview.addEventListener('page-title-updated', (e: any) => {
       this.currentTitle = e.title ?? this.currentTitle;
       (this.leaf as any).updateHeader?.();
     });
+    webview.addEventListener('did-navigate',         updateNavBtns);
+    webview.addEventListener('did-navigate-in-page', updateNavBtns);
+    webview.addEventListener('did-finish-load',      updateNavBtns);
 
-    container.appendChild(webview);
-    this.webviewEl = webview;
-
-    // ResizeObserver: set exact pixel height whenever the container resizes
+    // ── ResizeObserver: set pixel height on wrap ─────────────────────────
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const h = entry.contentRect.height;
@@ -132,33 +270,52 @@ export default class GoogleIframeView extends ItemView {
         }
       }
     });
-    observer.observe(container);
-    // Clean up observer when view closes
+    observer.observe(webviewWrap);
     this.register(() => observer.disconnect());
 
-    // If URL was already loaded (setState ran before onOpen)
+    // ── Initial nav (if setState already ran) ────────────────────────────
     if (this.currentUrl) {
       (webview as any).src = this.currentUrl;
+      urlText.textContent  = this.currentUrl;
     }
+
+    // Initial button state after webview is ready
+    webview.addEventListener('dom-ready', updateNavBtns);
+
+    // Disable buttons until webview is ready
+    backBtn.disabled = true;
+    fwdBtn.disabled  = true;
   }
+
+
 
 
   async setState(state: any, result: ViewStateResult): Promise<void> {
     // ── Duplicate-tab guard ──────────────────────────────────────────────────
-    // If this file is already open in another leaf, close this new leaf and
-    // bring the existing one to focus instead.
-    if (state?.file) {
+    // If this file is already open in another leaf AND it is still on the same URL,
+    // close this new leaf and bring the existing one to focus instead.
+    const file = state?.file || state?.filePath;
+    if (file) {
       const existingLeaves = this.app.workspace.getLeavesOfType(GOOGLE_IFRAME_VIEW_TYPE);
       for (const other of existingLeaves) {
         if (other === this.leaf) continue; // skip self
         const otherState = other.getViewState()?.state as any;
-        if (otherState?.file === state.file) {
-          // Defer so the current leaf finishes construction before being removed
-          setTimeout(() => {
-            this.app.workspace.revealLeaf(other);
-            this.leaf.detach();
-          }, 0);
-          return; // skip rest of setState for this duplicate
+        const otherFile = otherState?.file || otherState?.filePath;
+        if (otherFile === file) {
+          const otherView = other.view as any;
+          const otherCurrentUrl = (otherView && typeof otherView.getCurrentUrl === 'function')
+            ? otherView.getCurrentUrl()
+            : otherState?.url;
+
+          const targetUrl = state.url || this.plugin.settings.urlCache?.[file];
+          if (urlsMatch(otherCurrentUrl, targetUrl)) {
+            // Defer so the current leaf finishes construction before being removed
+            setTimeout(() => {
+              this.app.workspace.revealLeaf(other);
+              this.leaf.detach();
+            }, 0);
+            return; // skip rest of setState for this duplicate
+          }
         }
       }
     }
@@ -294,16 +451,28 @@ export default class GoogleIframeView extends ItemView {
   }
 
 
+  getCurrentUrl(): string {
+    if (this.webviewEl) {
+      try {
+        const wv = this.webviewEl as any;
+        if (typeof wv.getURL === 'function') {
+          return wv.getURL() || this.currentUrl;
+        }
+      } catch {}
+    }
+    return this.currentUrl;
+  }
+
   getState(): Record<string, unknown> {
     return {
       file: this.filePath,
-      url: this.currentUrl,
+      url: this.getCurrentUrl(),
       title: this.currentTitle,
     };
   }
 
   navigateTo(url: string, title?: string, filePath?: string) {
-    if (url) this.currentUrl = url;
+    if (url) this.currentUrl = cleanGoogleUrl(url);
     if (title) this.currentTitle = title;
     if (filePath) this.filePath = filePath;
     if (this.webviewEl) (this.webviewEl as any).src = this.currentUrl;

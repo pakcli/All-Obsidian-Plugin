@@ -9,7 +9,8 @@ import {
 	TFile,
 } from 'obsidian';
 import { DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab } from './settings';
-import GoogleIframeView, { GOOGLE_IFRAME_VIEW_TYPE } from './googleIframeView';
+import GoogleIframeView, { GOOGLE_IFRAME_VIEW_TYPE, cleanGoogleUrl, urlsMatch } from './googleIframeView';
+import BookmarksView, { BOOKMARKS_VIEW_TYPE } from './bookmarksView';
 
 export default class MyPlugin extends Plugin {
 	// Map to keep a single leaf per Google file
@@ -29,12 +30,20 @@ export default class MyPlugin extends Plugin {
     // Make Obsidian open .gdoc etc. with our custom view
     this.registerExtensions(['gdoc','gsheet','gform','gslides','gdraw'], GOOGLE_IFRAME_VIEW_TYPE);
 
-		// -----------------------------------------------------------------
-		// UI commands (ribbon, status bar, sample commands – unchanged)
-		// -----------------------------------------------------------------
-		this.addRibbonIcon('dice', 'Sample', () => new Notice('This is a notice!'));
+		// Register Chrome Bookmarks sidebar
+		this.registerView(BOOKMARKS_VIEW_TYPE, (leaf) => new BookmarksView(leaf, this));
+
+		// Ribbon icon — opens the bookmarks panel
+		this.addRibbonIcon('bookmark', 'Open bookmarks', () => this.openBookmarksPanel());
+
 		const statusBarItemEl = this.addStatusBarItem();
 		statusBarItemEl.setText('Status bar text');
+
+		this.addCommand({
+			id: 'open-bookmarks-panel',
+			name: 'Open bookmarks panel',
+			callback: () => this.openBookmarksPanel(),
+		});
 
 		this.addCommand({
 			id: 'open-modal-simple',
@@ -61,6 +70,22 @@ export default class MyPlugin extends Plugin {
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}
 
+	private async openBookmarksPanel() {
+		// Reuse existing panel if open
+		const existing = this.app.workspace.getLeavesOfType(BOOKMARKS_VIEW_TYPE);
+		if (existing.length > 0) {
+			this.app.workspace.revealLeaf(existing[0]!);
+			return;
+		}
+		// Open in right sidebar
+		const leaf = this.app.workspace.getRightLeaf(false);
+		if (leaf) {
+			await leaf.setViewState({ type: BOOKMARKS_VIEW_TYPE, active: true });
+			this.app.workspace.revealLeaf(leaf);
+		}
+
+	}
+
 	/** -------------------------------------------------------------
 	 *  Open/Reuse a leaf for Google Workspace files
 	 *  ------------------------------------------------------------- */
@@ -69,13 +94,6 @@ export default class MyPlugin extends Plugin {
 		const ext = file.extension?.toLowerCase();
 		console.log('[GDrive] file-open event. ext:', ext, 'path:', file.path);
 		if (!['gdoc', 'gsheet', 'gform', 'gslides', 'gdraw'].includes(ext)) return;
-
-		// Re‑use an existing leaf if the file is already open
-		const existingLeaf = this.openLeavesMap.get(file.path);
-		if (existingLeaf) {
-			this.app.workspace.revealLeaf(existingLeaf);
-			return;
-		}
 
 		// Extract the Google URL from the file contents
 		const content = await this.app.vault.read(file);
@@ -86,8 +104,28 @@ export default class MyPlugin extends Plugin {
 			new Notice('No Google URL found in the file.');
 			return;
 		}
-		const rawUrl = urlMatch[0];
+		const rawUrl = cleanGoogleUrl(urlMatch[0]);
 		console.log('[GDrive] rawUrl:', rawUrl);
+
+		// Re‑use an existing leaf if the file is already open
+		const existingLeaf = this.openLeavesMap.get(file.path);
+		if (existingLeaf) {
+			const view = existingLeaf.view as any;
+			if (view && typeof view.getCurrentUrl === 'function') {
+				const currentUrl = view.getCurrentUrl();
+				if (urlsMatch(currentUrl, rawUrl)) {
+					this.app.workspace.revealLeaf(existingLeaf);
+					return;
+				} else {
+					// The open leaf has navigated away! Remove it from the map so we open a new tab
+					this.openLeavesMap.delete(file.path);
+				}
+			} else {
+				// Fallback if view is not fully loaded/initialized yet
+				this.app.workspace.revealLeaf(existingLeaf);
+				return;
+			}
+		}
 
 		// Create a new leaf using our custom webview-based view
 		const leaf = this.app.workspace.getLeaf(true);
