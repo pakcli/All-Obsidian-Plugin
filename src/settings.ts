@@ -3,12 +3,19 @@ import MyPlugin from './main';
 import { disconnectGoogle, isGoogleConnected, startOAuthFlow } from './googleAuth';
 import { UrlCleaningRule } from './googleIframeView';
 
+export interface FileColorRule {
+  id: string;
+  extension: string;
+  color: string;
+}
+
 export interface MyPluginSettings {
   mySetting: string;
   urlCache: Record<string, string>;   // vault path → Google URL
   bookmarksPath: string;
   urlCleaningRules: UrlCleaningRule[];
   localBookmarks: any[];
+  colorRules: FileColorRule[];
   // Google OAuth2
   googleClientId: string;
   googleClientSecret: string;
@@ -29,6 +36,13 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
     }
   ],
   localBookmarks: [],
+  colorRules: [
+    { id: '1', extension: 'gdoc', color: '#2b7de9' },
+    { id: '2', extension: 'gsheet', color: '#0f9d58' },
+    { id: '3', extension: 'gslides', color: '#f4b400' },
+    { id: '4', extension: 'gform', color: '#724db6' },
+    { id: '5', extension: 'gdraw', color: '#db4437' },
+  ],
   googleClientId: '',
   googleClientSecret: '',
   googleAccessToken: '',
@@ -155,6 +169,105 @@ export class SampleSettingTab extends PluginSettingTab {
             this.display();
           }));
     }
+
+    // ── Icon Color Themes ─────────────────────────────────────────────────
+    containerEl.createEl('h2', { text: 'Icon color themes' });
+    containerEl.createEl('p', {
+      text: 'Customize background overlays for explorer icons and circles for tab headers.',
+      cls: 'setting-item-description',
+    });
+
+    const rulesContainer = containerEl.createEl('div', { cls: 'color-rules-container' });
+    
+    // Header
+    const headerRow = rulesContainer.createEl('div', { cls: 'color-rules-header-row' });
+    headerRow.createEl('div', { cls: 'color-rule-header-col col-ext', text: 'File format' });
+    headerRow.createEl('div', { cls: 'color-rule-header-col col-color-preview', text: 'Color' });
+    headerRow.createEl('div', { cls: 'color-rule-header-col col-color-picker', text: 'Edit color' });
+    headerRow.createEl('div', { cls: 'color-rule-header-col col-actions', text: 'Delete rule' });
+
+    const colorRules = this.plugin.settings.colorRules ?? [];
+
+    colorRules.forEach((rule, idx) => {
+      const row = rulesContainer.createEl('div', { cls: 'color-rules-row' });
+
+      // Extension Input
+      const extCol = row.createEl('div', { cls: 'color-rule-col col-ext' });
+      const extInput = extCol.createEl('input', { type: 'text' }) as HTMLInputElement;
+      extInput.value = rule.extension;
+      extInput.placeholder = 'e.g. gdoc';
+      extInput.addEventListener('change', async () => {
+        rule.extension = extInput.value.trim().toLowerCase();
+        await this.plugin.saveSettings();
+        this.plugin.refreshDynamicStyles();
+        this.plugin.updateAllTabIcons();
+      });
+
+      // Color Preview
+      const previewCol = row.createEl('div', { cls: 'color-rule-col col-color-preview' });
+      const previewCircle = previewCol.createEl('div', { cls: 'color-preview-circle' });
+      previewCircle.style.cssText = `width: 20px; height: 20px; border-radius: 50%; background-color: ${rule.color}; border: 1px solid var(--background-modifier-border);`;
+
+      // Color Picker/Input
+      const pickerCol = row.createEl('div', { cls: 'color-rule-col col-color-picker' });
+      const pickerInput = pickerCol.createEl('input', { type: 'color' }) as HTMLInputElement;
+      pickerInput.value = rule.color;
+      pickerInput.style.cssText = 'width: 40px; height: 25px; padding: 0; border: none; cursor: pointer; background: none; margin-right: 8px;';
+      
+      const textInput = pickerCol.createEl('input', { type: 'text' }) as HTMLInputElement;
+      textInput.value = rule.color;
+      textInput.style.cssText = 'width: 80px;';
+
+      const updateColor = async (newColor: string) => {
+        rule.color = newColor;
+        previewCircle.style.backgroundColor = newColor;
+        pickerInput.value = newColor;
+        textInput.value = newColor;
+        await this.plugin.saveSettings();
+        this.plugin.refreshDynamicStyles();
+        this.plugin.updateAllTabIcons();
+      };
+
+      pickerInput.addEventListener('input', () => updateColor(pickerInput.value));
+      textInput.addEventListener('change', () => {
+        let val = textInput.value.trim();
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+          updateColor(val);
+        } else {
+          textInput.value = rule.color;
+        }
+      });
+
+      // Actions (Delete)
+      const actionsCol = row.createEl('div', { cls: 'color-rule-col col-actions' });
+      const deleteBtn = actionsCol.createEl('button', { text: 'Delete', cls: 'mod-warning' });
+      deleteBtn.addEventListener('click', async () => {
+        this.plugin.settings.colorRules.splice(idx, 1);
+        await this.plugin.saveSettings();
+        this.plugin.refreshDynamicStyles();
+        this.plugin.updateAllTabIcons();
+        this.display(); // Re-render setting tab
+      });
+    });
+
+    // Add Rule button
+    const addRuleSetting = new Setting(containerEl)
+      .addButton(btn => btn
+        .setButtonText('Add Rule')
+        .setCta()
+        .onClick(async () => {
+          if (!this.plugin.settings.colorRules) {
+            this.plugin.settings.colorRules = [];
+          }
+          const nextId = (Date.now()).toString();
+          this.plugin.settings.colorRules.push({
+            id: nextId,
+            extension: '',
+            color: '#2b7de9'
+          });
+          await this.plugin.saveSettings();
+          this.display(); // Re-render settings tab
+        }));
 
     // ── Bookmarks integration ─────────────────────────────────────────────
     containerEl.createEl('h2', { text: 'Chrome / Edge bookmarks' });

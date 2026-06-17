@@ -652,6 +652,7 @@ export default class GoogleIframeView extends ItemView {
     if (filePath) this.filePath = filePath;
     if (this.webviewEl) (this.webviewEl as any).src = this.currentUrl;
     (this.leaf as any).updateHeader?.();
+    this.updateTabIcon();
   }
 
   async onClose() {
@@ -694,6 +695,25 @@ export default class GoogleIframeView extends ItemView {
       
       const iconEl = leaf.tabHeaderEl.querySelector('.workspace-tab-header-inner-icon');
       if (!iconEl) return;
+
+      const color = getColorForRule(this.plugin, this.filePath, this.currentUrl);
+      if (color) {
+        let circle = iconEl.querySelector('.tab-color-circle') as HTMLElement;
+        if (!circle) {
+          iconEl.empty();
+          circle = document.createElement('div');
+          circle.className = 'tab-color-circle';
+          circle.style.width = '14px';
+          circle.style.height = '14px';
+          circle.style.borderRadius = '50%';
+          circle.style.display = 'inline-block';
+          circle.style.verticalAlign = 'middle';
+          circle.style.margin = 'auto';
+          iconEl.appendChild(circle);
+        }
+        circle.style.backgroundColor = color;
+        return;
+      }
 
       if (!this.currentUrl || !this.currentUrl.startsWith('http')) {
         return;
@@ -814,6 +834,40 @@ export default class GoogleIframeView extends ItemView {
       }, 400);
     }
   }
+}
+
+export function getColorForRule(plugin: any, filePath: string, url: string): string | null {
+  const rules = plugin?.settings?.colorRules || [];
+  if (rules.length === 0) return null;
+
+  if (filePath) {
+    const ext = filePath.split('.').pop()?.toLowerCase();
+    if (ext) {
+      const rule = rules.find((r: any) => r.extension.toLowerCase().trim() === ext);
+      if (rule) return rule.color;
+    }
+  }
+
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname === 'docs.google.com') {
+        let ext = '';
+        if (parsed.pathname.startsWith('/document')) ext = 'gdoc';
+        else if (parsed.pathname.startsWith('/spreadsheets')) ext = 'gsheet';
+        else if (parsed.pathname.startsWith('/presentation')) ext = 'gslides';
+        else if (parsed.pathname.startsWith('/forms')) ext = 'gform';
+        else if (parsed.pathname.startsWith('/drawings')) ext = 'gdraw';
+        
+        if (ext) {
+          const rule = rules.find((r: any) => r.extension.toLowerCase().trim() === ext);
+          if (rule) return rule.color;
+        }
+      }
+    } catch {}
+  }
+
+  return null;
 }
 
 export function getFaviconUrl(urlStr: string): string {

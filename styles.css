@@ -360,9 +360,114 @@
   align-items: center;
   gap: 6px;
 }
+
 .bookmarks-search-wrap.is-hidden {
   display: none !important;
 }
+
 .bookmarks-icon-btn.is-active {
   color: var(--interactive-accent);
+}
+
+/* ── Color Rules Table in Settings ───────────────────────────────────── */
+.color-rules-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--background-primary);
+}
+
+.color-rules-header-row {
+  display: flex;
+  background: var(--background-secondary-alt);
+  padding: 8px 12px;
+  font-weight: bold;
+  font-size: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.color-rules-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border-glow);
+  gap: 12px;
+}
+
+.color-rules-row:last-child {
+  border-bottom: none;
+}
+
+.color-rule-header-col,
+.color-rule-col {
+  display: flex;
+  align-items: center;
+}
+
+.col-ext {
+  flex: 2;
+}
+
+.col-color-preview {
+  flex: 1;
+  justify-content: center;
+}
+
+.col-color-picker {
+  flex: 2;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.col-actions {
+  flex: 1.5;
+  justify-content: flex-end;
+}
+
+.color-rule-col input[type="text"] {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+.color-rule-col input[type="text"]:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.color-preview-circle {
+  transition: background-color 0.1s ease;
+}
+
+/* ── Google Drive File Icon Circles ──────────────────────────────────── */
+/* Base style for dynamically-injected colored icon circles in file explorer */
+.gdrive-icon-circle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  margin-right: 4px !important;
+  vertical-align: middle !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 10px !important;
+  position: relative !important;
+}
+
+/* Make file title rows flex so circle + text align properly */
+.nav-file-title:has(.gdrive-icon-circle) {
+  display: flex !important;
+  align-items: center !important;
 }
