@@ -9,7 +9,15 @@ import {
 	TFile,
 } from 'obsidian';
 import { DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab } from './settings';
-import GoogleIframeView, { GOOGLE_IFRAME_VIEW_TYPE, cleanGoogleUrl, urlsMatch } from './googleIframeView';
+import GoogleIframeView, {
+	GOOGLE_IFRAME_VIEW_TYPE,
+	cleanGoogleUrl,
+	urlsMatch,
+	getRealBookmarksPath,
+	readChromeBookmarks,
+	writeChromeBookmarks,
+	getMaxIdInTree,
+} from './googleIframeView';
 import BookmarksView, { BOOKMARKS_VIEW_TYPE } from './bookmarksView';
 
 export default class MyPlugin extends Plugin {
@@ -68,6 +76,87 @@ export default class MyPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new SampleSettingTab(this.app, this));
+
+		// Auto-initialize the bookmarks view in the left sidebar on startup
+		this.app.workspace.onLayoutReady(async () => {
+			await this.syncLocalBookmarksToChrome();
+			this.initBookmarksView();
+		});
+	}
+
+	private async initBookmarksView() {
+		const existing = this.app.workspace.getLeavesOfType(BOOKMARKS_VIEW_TYPE);
+		if (existing.length > 0) return;
+
+		const leaf = this.app.workspace.getLeftLeaf(false);
+		if (leaf) {
+			await leaf.setViewState({ type: BOOKMARKS_VIEW_TYPE, active: false });
+		}
+	}
+
+	private async syncLocalBookmarksToChrome() {
+		const bpath = getRealBookmarksPath(this);
+		if (!bpath) return;
+		try {
+			const data = readChromeBookmarks(bpath);
+			const local = this.settings.localBookmarks || [];
+			if (local.length === 0) return;
+
+			let modified = false;
+
+			const existsInNode = (node: any, url: string): boolean => {
+				if (node.type === 'url' && urlsMatch(node.url, url, this.settings.urlCleaningRules)) {
+					return true;
+				}
+				if (node.children) {
+					for (const child of node.children) {
+						if (existsInNode(child, url)) return true;
+					}
+				}
+				return false;
+			};
+
+			const roots = [data.roots.bookmark_bar, data.roots.other, data.roots.synced].filter(Boolean);
+
+			if (!data.roots.other) {
+				data.roots.other = {
+					children: [],
+					date_added: (Date.now() * 1000 + 11644473600000000).toString(),
+					date_modified: (Date.now() * 1000 + 11644473600000000).toString(),
+					id: '2',
+					name: 'Other bookmarks',
+					type: 'folder'
+				};
+				modified = true;
+			}
+			if (!data.roots.other.children) {
+				data.roots.other.children = [];
+				modified = true;
+			}
+
+			for (const item of local) {
+				let exists = false;
+				for (const r of roots) {
+					if (existsInNode(r, item.url || '')) {
+						exists = true;
+						break;
+					}
+				}
+				if (!exists) {
+					const maxId = getMaxIdInTree(roots);
+					item.id = (maxId + 1).toString();
+					data.roots.other.children.push(item);
+					modified = true;
+				}
+			}
+
+			if (modified) {
+				console.log('[GDrive] Syncing local bookmarks back to Chrome file...');
+				writeChromeBookmarks(bpath, data);
+			}
+		} catch (e) {
+			console.warn('[GDrive] Bookmark sync error:', e);
+		}
 	}
 
 	private async openBookmarksPanel() {
@@ -77,13 +166,12 @@ export default class MyPlugin extends Plugin {
 			this.app.workspace.revealLeaf(existing[0]!);
 			return;
 		}
-		// Open in right sidebar
-		const leaf = this.app.workspace.getRightLeaf(false);
+		// Open in left sidebar (next to File Explorer)
+		const leaf = this.app.workspace.getLeftLeaf(false);
 		if (leaf) {
 			await leaf.setViewState({ type: BOOKMARKS_VIEW_TYPE, active: true });
 			this.app.workspace.revealLeaf(leaf);
 		}
-
 	}
 
 	/** -------------------------------------------------------------
@@ -104,7 +192,7 @@ export default class MyPlugin extends Plugin {
 			new Notice('No Google URL found in the file.');
 			return;
 		}
-		const rawUrl = cleanGoogleUrl(urlMatch[0]);
+		const rawUrl = cleanGoogleUrl(urlMatch[0], this.settings.urlCleaningRules);
 		console.log('[GDrive] rawUrl:', rawUrl);
 
 		// Re‑use an existing leaf if the file is already open
@@ -113,7 +201,7 @@ export default class MyPlugin extends Plugin {
 			const view = existingLeaf.view as any;
 			if (view && typeof view.getCurrentUrl === 'function') {
 				const currentUrl = view.getCurrentUrl();
-				if (urlsMatch(currentUrl, rawUrl)) {
+				if (urlsMatch(currentUrl, rawUrl, this.settings.urlCleaningRules)) {
 					this.app.workspace.revealLeaf(existingLeaf);
 					return;
 				} else {

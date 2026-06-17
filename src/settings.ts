@@ -1,10 +1,14 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import MyPlugin from './main';
 import { disconnectGoogle, isGoogleConnected, startOAuthFlow } from './googleAuth';
+import { UrlCleaningRule } from './googleIframeView';
 
 export interface MyPluginSettings {
   mySetting: string;
   urlCache: Record<string, string>;   // vault path → Google URL
+  bookmarksPath: string;
+  urlCleaningRules: UrlCleaningRule[];
+  localBookmarks: any[];
   // Google OAuth2
   googleClientId: string;
   googleClientSecret: string;
@@ -16,6 +20,15 @@ export interface MyPluginSettings {
 export const DEFAULT_SETTINGS: MyPluginSettings = {
   mySetting: 'default',
   urlCache: {},
+  bookmarksPath: '',
+  urlCleaningRules: [
+    {
+      id: 'default-notebooklm',
+      domainPrefix: 'https://notebooklm.google.com/',
+      suffix: 'pli=1',
+    }
+  ],
+  localBookmarks: [],
   googleClientId: '',
   googleClientSecret: '',
   googleAccessToken: '',
@@ -142,5 +155,139 @@ export class SampleSettingTab extends PluginSettingTab {
             this.display();
           }));
     }
+
+    // ── Bookmarks integration ─────────────────────────────────────────────
+    containerEl.createEl('h2', { text: 'Chrome / Edge bookmarks' });
+    
+    // Detect available bookmark profiles dynamically
+    const profiles = detectBookmarkProfiles();
+    const options: Record<string, string> = {};
+    profiles.forEach(p => {
+      options[p.path] = p.name;
+    });
+    options['custom'] = 'Custom path...';
+    options[''] = 'Default (Auto-detect)';
+
+    const currentPath = this.plugin.settings.bookmarksPath || '';
+    const isCustom = currentPath !== '' && !options[currentPath];
+
+    new Setting(containerEl)
+      .setName('Browser profile')
+      .setDesc('Select the browser profile to load bookmarks from')
+      .addDropdown(dropdown => {
+        dropdown.addOptions(options);
+        dropdown.setValue(isCustom ? 'custom' : currentPath);
+        dropdown.onChange(async (val) => {
+          if (val === 'custom') {
+            if (!isCustom) this.plugin.settings.bookmarksPath = '';
+          } else {
+            this.plugin.settings.bookmarksPath = val;
+          }
+          await this.plugin.saveSettings();
+          this.display(); // re-render to show/hide custom path input
+          
+          // Trigger refresh of bookmarks view if open
+          const leaves = this.app.workspace.getLeavesOfType('chrome-bookmarks');
+          leaves.forEach(leaf => (leaf.view as any)?.loadAndRender?.());
+        });
+      });
+
+    if (isCustom || currentPath === 'custom') {
+      new Setting(containerEl)
+        .setName('Custom Bookmarks path')
+        .setDesc('Absolute path to your browser Bookmarks file')
+        .addText(text => text
+          .setPlaceholder('C:\\Users\\...\\Bookmarks')
+          .setValue(isCustom ? this.plugin.settings.bookmarksPath : '')
+          .onChange(async (val) => {
+            this.plugin.settings.bookmarksPath = val.trim();
+            await this.plugin.saveSettings();
+            
+            // Trigger refresh of bookmarks view if open
+            const leaves = this.app.workspace.getLeavesOfType('chrome-bookmarks');
+            leaves.forEach(leaf => (leaf.view as any)?.loadAndRender?.());
+          }));
+    }
   }
+}
+
+// ── Profile detector helper ─────────────────────────────────────────────
+interface BookmarkProfile {
+  name: string;
+  path: string;
+}
+
+function detectBookmarkProfiles(): BookmarkProfile[] {
+  const os = require('os') as typeof import('os');
+  const path = require('path') as typeof import('path');
+  const fs = require('fs') as typeof import('fs');
+  const home = os.homedir();
+
+  const profiles: BookmarkProfile[] = [];
+
+  const addIfExist = (displayName: string, p: string) => {
+    try {
+      if (fs.existsSync(p)) {
+        profiles.push({ name: displayName, path: p });
+      }
+    } catch {}
+  };
+
+  // Google Chrome
+  const chromeUserData = path.join(home, 'AppData', 'Local', 'Google', 'Chrome', 'User Data');
+  try {
+    if (fs.existsSync(chromeUserData)) {
+      const dirs = fs.readdirSync(chromeUserData);
+      for (const d of dirs) {
+        if (d === 'Default' || d.startsWith('Profile ')) {
+          const bp = path.join(chromeUserData, d, 'Bookmarks');
+          addIfExist(`Chrome - ${d}`, bp);
+        }
+      }
+    }
+  } catch {}
+
+  // Google Chrome Beta
+  const chromeBetaUserData = path.join(home, 'AppData', 'Local', 'Google', 'Chrome Beta', 'User Data');
+  try {
+    if (fs.existsSync(chromeBetaUserData)) {
+      const dirs = fs.readdirSync(chromeBetaUserData);
+      for (const d of dirs) {
+        if (d === 'Default' || d.startsWith('Profile ')) {
+          const bp = path.join(chromeBetaUserData, d, 'Bookmarks');
+          addIfExist(`Chrome Beta - ${d}`, bp);
+        }
+      }
+    }
+  } catch {}
+
+  // Microsoft Edge
+  const edgeUserData = path.join(home, 'AppData', 'Local', 'Microsoft', 'Edge', 'User Data');
+  try {
+    if (fs.existsSync(edgeUserData)) {
+      const dirs = fs.readdirSync(edgeUserData);
+      for (const d of dirs) {
+        if (d === 'Default' || d.startsWith('Profile ')) {
+          const bp = path.join(edgeUserData, d, 'Bookmarks');
+          addIfExist(`Edge - ${d}`, bp);
+        }
+      }
+    }
+  } catch {}
+
+  // macOS Chrome candidates
+  const macChrome = path.join(home, 'Library', 'Application Support', 'Google', 'Chrome');
+  try {
+    if (fs.existsSync(macChrome)) {
+      const dirs = fs.readdirSync(macChrome);
+      for (const d of dirs) {
+        if (d === 'Default' || d.startsWith('Profile ')) {
+          const bp = path.join(macChrome, d, 'Bookmarks');
+          addIfExist(`Chrome (Mac) - ${d}`, bp);
+        }
+      }
+    }
+  } catch {}
+
+  return profiles;
 }
