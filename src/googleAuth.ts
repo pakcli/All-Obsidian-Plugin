@@ -1,7 +1,7 @@
 import { requestUrl, Notice } from 'obsidian';
 import type MyPlugin from './main';
 
-const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+const SCOPES = 'https://www.googleapis.com/auth/drive';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const AUTH_BASE = 'https://accounts.google.com/o/oauth2/v2/auth';
 const REDIRECT_PORT = 42813;
