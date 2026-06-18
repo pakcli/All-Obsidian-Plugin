@@ -3,7 +3,9 @@
    ─────────────────────────────────────────────── */
 .workspace-leaf-content[data-type="google-iframe"] {
   padding: 0 !important;
-  height: 100%;
+  margin: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
 }
 /* Hide Obsidian's default view header (the row with title + back/fwd arrows) */
 .workspace-leaf-content[data-type="google-iframe"] .view-header {
@@ -27,35 +29,46 @@
 
 /* ── Navigation toolbar ───────────────────────────────────────────────── */
 .gview-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
-  background: var(--background-secondary);
-  border-bottom: 1px solid var(--background-modifier-border);
-  flex-shrink: 0;
-  z-index: 10;
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  padding: 4px 6px !important;
+  margin: 0 !important;
+  background: var(--background-secondary) !important;
+  border-bottom: 1px solid var(--background-modifier-border) !important;
+  flex-shrink: 0 !important;
+  z-index: 10 !important;
+  box-sizing: border-box !important;
 }
 .gview-nav-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-muted);
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.1s, color 0.1s;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  color: var(--text-muted) !important;
+  padding: 4px !important;
+  margin: 0 !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transition: background 0.1s, color 0.1s !important;
+  height: auto !important;
+  width: auto !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
 }
 .gview-nav-btn:hover:not(:disabled) {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal) !important;
 }
 .gview-nav-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
+  opacity: 0.3 !important;
+  cursor: default !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 .gview-url-bar {
   flex: 1;
@@ -64,13 +77,13 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   padding: 3px 8px;
-  overflow: hidden;
+  overflow: clip;
 }
 .gview-url-text {
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
-  overflow: hidden;
+  overflow: clip;
   text-overflow: ellipsis;
   display: block;
   user-select: text;
