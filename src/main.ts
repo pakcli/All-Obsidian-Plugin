@@ -5,6 +5,7 @@ import {
 	Modal,
 	Notice,
 	Plugin,
+	TAbstractFile,
 	WorkspaceLeaf,
 	TFile,
 } from 'obsidian';
@@ -33,6 +34,29 @@ export default class MyPlugin extends Plugin {
 		// Listen for file‑open events (click in file explorer)
 		this.registerEvent(
 			this.app.workspace.on('file-open', this.handleFileOpen.bind(this)),
+		);
+
+		// Migrate URL cache + open leaves when a Google file is renamed
+		this.registerEvent(
+			this.app.vault.on('rename', async (abstractFile, oldPath) => {
+				if (!(abstractFile instanceof TFile)) return;
+				const ext = abstractFile.extension?.toLowerCase();
+				if (!['gdoc', 'gsheet', 'gform', 'gslides', 'gdraw'].includes(ext)) return;
+
+				// Move cached URL from old path to new path so the file opens without asking for URL again
+				if (this.settings.urlCache?.[oldPath]) {
+					this.settings.urlCache[abstractFile.path] = this.settings.urlCache[oldPath];
+					delete this.settings.urlCache[oldPath];
+					await this.saveSettings();
+				}
+
+				// Move open leaf reference from old path to new path
+				const leaf = this.openLeavesMap.get(oldPath);
+				if (leaf) {
+					this.openLeavesMap.delete(oldPath);
+					this.openLeavesMap.set(abstractFile.path, leaf);
+				}
+			})
 		);
 		// Register custom iframe view for Google embeds
 		this.registerView(GOOGLE_IFRAME_VIEW_TYPE, (leaf) => new GoogleIframeView(leaf, this));
@@ -223,17 +247,50 @@ export default class MyPlugin extends Plugin {
 		console.log('[GDrive] file-open event. ext:', ext, 'path:', file.path);
 		if (!['gdoc', 'gsheet', 'gform', 'gslides', 'gdraw'].includes(ext)) return;
 
-		// Extract the Google URL from the file contents
-		const content = await this.app.vault.read(file);
-		console.log('[GDrive] file content:', content.substring(0, 200));
-		const urlMatch = content.match(/https:\/\/docs\.google\.com\/[^\s)]+/);
-		console.log('[GDrive] urlMatch:', urlMatch);
-		if (!urlMatch) {
-			new Notice('No Google URL found in the file.');
+		// ── Step 1: Check URL cache first (handles renames and Drive streaming files) ──
+		const cachedUrl = this.settings.urlCache?.[file.path];
+		if (cachedUrl) {
+			const cleanedCache = cleanGoogleUrl(cachedUrl, this.settings.urlCleaningRules);
+			const existingLeaf = this.openLeavesMap.get(file.path);
+			if (existingLeaf) {
+				this.app.workspace.revealLeaf(existingLeaf);
+				return;
+			}
+			const leaf = this.app.workspace.getLeaf(true);
+			await leaf.setViewState({
+				type: GOOGLE_IFRAME_VIEW_TYPE,
+				state: { url: cleanedCache, file: file.path, title: file.basename },
+			});
+			const view = leaf.view as unknown as GoogleIframeView;
+			view.navigateTo(cleanedCache, file.basename, file.path);
+			this.openLeavesMap.set(file.path, leaf);
 			return;
 		}
-		const rawUrl = cleanGoogleUrl(urlMatch[0], this.settings.urlCleaningRules);
-		console.log('[GDrive] rawUrl:', rawUrl);
+
+		// ── Step 2: Try to read the Google URL from the file contents ──
+		let rawUrl: string | null = null;
+		try {
+			const content = await this.app.vault.read(file);
+			console.log('[GDrive] file content:', content.substring(0, 200));
+			const urlMatch = content.match(/https:\/\/docs\.google\.com\/[^\s)]+/);
+			if (urlMatch) {
+				rawUrl = cleanGoogleUrl(urlMatch[0], this.settings.urlCleaningRules);
+			}
+		} catch (e) {
+			console.warn('[GDrive] Could not read file content:', e);
+		}
+
+		if (!rawUrl) {
+			// No URL in content and not in cache — setState will show the URL input modal
+			console.log('[GDrive] No URL found in cache or file content for:', file.path);
+			return;
+		}
+		console.log('[GDrive] rawUrl from content:', rawUrl);
+
+		// ── Step 3: Cache the URL and open the file ──
+		if (!this.settings.urlCache) this.settings.urlCache = {};
+		this.settings.urlCache[file.path] = rawUrl;
+		await this.saveSettings();
 
 		// Re‑use an existing leaf if the file is already open
 		const existingLeaf = this.openLeavesMap.get(file.path);
@@ -316,7 +373,8 @@ export default class MyPlugin extends Plugin {
 		let cssContent = '';
 
 		// Base SVG icons per extension (white icons for use on colored circles)
-		const docIconB64 = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjdaIi8+PHBhdGggZD0iTTE0IDJ2NGEyIDIgMCAwIDAgMiAyaDQiLz48L3N2Zz4=';
+		const docIconB64 = 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTUgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi-yVjdaIi8+PHBhdGggZD0iTTE0IDJ2NGEyIDIgMCAwIDAgMiAyaDQiLz48L3N2Zz4=';
+		const showIcons = this.settings.showGoogleWorkspaceIcons !== false;
 
 		for (const rule of rules) {
 			const ext = rule.extension.toLowerCase().trim();
@@ -327,33 +385,45 @@ export default class MyPlugin extends Plugin {
 			cssContent += `.nav-file-title[data-path$=".${ext}"] svg,\n` +
 				`.nav-file-title[data-path$=".${ext}"] .nav-file-icon { display: none !important; }\n`;
 
-			// Inject a colored circle as the icon using a data attribute
-			cssContent += `.nav-file-title[data-path$=".${ext}"] .gdrive-icon-circle { display: inline-flex !important; }\n`;
+			if (showIcons) {
+				// Inject a colored circle as the icon using a data attribute
+				cssContent += `.nav-file-title[data-path$=".${ext}"] .gdrive-icon-circle { display: inline-flex !important; }\n`;
 
-			// Define the circle style for this extension
-			cssContent += `.gdrive-icon-circle[data-ext="${ext}"] {\n` +
-				`  background-color: ${color};\n` +
-				`  background-image: url("data:image/svg+xml;base64,${docIconB64}");\n` +
-				`  background-repeat: no-repeat;\n` +
-				`  background-position: center;\n` +
-				`  background-size: 10px;\n` +
-				`  width: 18px;\n` +
-				`  height: 18px;\n` +
-				`  border-radius: 50%;\n` +
-				`  flex-shrink: 0;\n` +
-				`  display: inline-flex;\n` +
-				`  align-items: center;\n` +
-				`  justify-content: center;\n` +
-				`  margin-right: 4px;\n` +
-				`  vertical-align: middle;\n` +
-				`}\n`;
+				// Define the circle style for this extension
+				cssContent += `.gdrive-icon-circle[data-ext="${ext}"] {\n` +
+					`  background-color: ${color};\n` +
+					`  background-image: url("data:image/svg+xml;base64,${docIconB64}");\n` +
+					`  background-repeat: no-repeat;\n` +
+					`  background-position: center;\n` +
+					`  background-size: 10px;\n` +
+					`  width: 18px;\n` +
+					`  height: 18px;\n` +
+					`  border-radius: 50%;\n` +
+					`  flex-shrink: 0;\n` +
+					`  display: inline-flex;\n` +
+					`  align-items: center;\n` +
+					`  justify-content: center;\n` +
+					`  margin-right: 4px;\n` +
+					`  vertical-align: middle;\n` +
+					`}\n`;
+			} else {
+				// Hide the circle icon entirely
+				cssContent += `.nav-file-title[data-path$=".${ext}"] .gdrive-icon-circle { display: none !important; }\n`;
+				// Shift the text content to the left
+				cssContent += `.nav-file-title[data-path$=".${ext}"] .nav-file-title-content {\n` +
+					`  margin-left: 0 !important;\n` +
+					`  padding-left: 0 !important;\n` +
+					`}\n`;
+			}
 		}
 
-		// Layout fix for file titles with our circles
-		cssContent += `.nav-file-title:has(.gdrive-icon-circle) {\n` +
-			`  display: flex !important;\n` +
-			`  align-items: center !important;\n` +
-			`}\n`;
+		if (showIcons) {
+			// Layout fix for file titles with our circles
+			cssContent += `.nav-file-title:has(.gdrive-icon-circle) {\n` +
+				`  display: flex !important;\n` +
+				`  align-items: center !important;\n` +
+				`}\n`;
+		}
 
 		styleEl.textContent = cssContent;
 
@@ -362,6 +432,11 @@ export default class MyPlugin extends Plugin {
 	}
 
 	injectColorCircles() {
+		if (this.settings.showGoogleWorkspaceIcons === false) {
+			document.querySelectorAll('.gdrive-icon-circle').forEach(el => el.remove());
+			return;
+		}
+
 		const rules = this.settings.colorRules || [];
 		if (rules.length === 0) return;
 
@@ -375,6 +450,14 @@ export default class MyPlugin extends Plugin {
 		// Find all nav-file-title elements in the file explorer
 		const allFileTitles = document.querySelectorAll('.nav-file-title[data-path]');
 		for (const el of Array.from(allFileTitles)) {
+			// Skip elements in rename mode — Obsidian inserts an <input> for inline rename
+			// Always remove our circle during rename so the input field is clean
+			if (el.querySelector('input')) {
+				const existingCircle = el.querySelector('.gdrive-icon-circle');
+				if (existingCircle) existingCircle.remove();
+				continue;
+			}
+
 			const dataPath = el.getAttribute('data-path') || '';
 			const dotIdx = dataPath.lastIndexOf('.');
 			if (dotIdx === -1) continue;

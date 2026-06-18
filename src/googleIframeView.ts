@@ -205,6 +205,10 @@ export default class GoogleIframeView extends ItemView {
     const urlBar = toolbar.createEl('div', { cls: 'gview-url-bar' });
     const urlText = urlBar.createEl('span', { cls: 'gview-url-text', text: this.currentUrl });
 
+    // Prevent horizontal offsets from text selection scrolling
+    urlBar.addEventListener('scroll', () => { urlBar.scrollLeft = 0; });
+    urlText.addEventListener('scroll', () => { urlText.scrollLeft = 0; });
+
     // ── Right-side action buttons ────────────────────────────────────────
     toolbar.createEl('div', { cls: 'gview-toolbar-sep' });
 
@@ -496,12 +500,13 @@ export default class GoogleIframeView extends ItemView {
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    if (state?.file) {
-      this.filePath = state.file;
-      const fileName = state.file.split('/').pop() ?? state.file;
+    // Support both state.file (Obsidian default) and state.filePath (handleFileOpen)
+    const stateFile = state?.file || state?.filePath;
+    if (stateFile) {
+      this.filePath = stateFile;
+      const fileName = stateFile.split('/').pop() ?? stateFile;
       this.currentTitle = fileName.replace(/\.[^.]+$/, '');
     }
-
 
     // Priority 1: URL already in state (saved from a previous session)
     if (state?.url && state.url !== '') {
@@ -514,6 +519,18 @@ export default class GoogleIframeView extends ItemView {
     const cachedUrl = this.plugin.settings.urlCache?.[this.filePath];
     if (cachedUrl) {
       this.navigateTo(cachedUrl);
+      await super.setState(state, result);
+      return;
+    }
+
+    // Priority 2.5: View already has a URL loaded (file was renamed while tab was open).
+    // Obsidian calls setState with the new path before firing vault.on('rename'), so the
+    // cache migration hasn't happened yet. Reuse the current URL and cache it under the new path.
+    if (this.currentUrl && this.currentUrl.startsWith('http')) {
+      if (!this.plugin.settings.urlCache) this.plugin.settings.urlCache = {};
+      this.plugin.settings.urlCache[this.filePath] = this.currentUrl;
+      await this.plugin.saveSettings();
+      // No need to call navigateTo again — webview is already showing the right page
       await super.setState(state, result);
       return;
     }
