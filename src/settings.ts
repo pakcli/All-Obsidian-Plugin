@@ -16,6 +16,7 @@ export interface MyPluginSettings {
   urlCleaningRules: UrlCleaningRule[];
   localBookmarks: any[];
   colorRules: FileColorRule[];
+  showGoogleWorkspaceIcons: boolean;
   // Google OAuth2
   googleClientId: string;
   googleClientSecret: string;
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
     { id: '4', extension: 'gform', color: '#724db6' },
     { id: '5', extension: 'gdraw', color: '#db4437' },
   ],
+  showGoogleWorkspaceIcons: true,
   googleClientId: '',
   googleClientSecret: '',
   googleAccessToken: '',
@@ -172,6 +174,18 @@ export class SampleSettingTab extends PluginSettingTab {
 
     // ── Icon Color Themes ─────────────────────────────────────────────────
     containerEl.createEl('h2', { text: 'Icon color themes' });
+
+    new Setting(containerEl)
+      .setName('Show Google Workspace icons')
+      .setDesc('Show custom colored circle icons next to Google Drive files in the file explorer. If disabled, files will have no icons and titles will shift left.')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showGoogleWorkspaceIcons !== false)
+        .onChange(async (value) => {
+          this.plugin.settings.showGoogleWorkspaceIcons = value;
+          await this.plugin.saveSettings();
+          this.plugin.refreshDynamicStyles();
+        }));
+
     containerEl.createEl('p', {
       text: 'Customize background overlays for explorer icons and circles for tab headers.',
       cls: 'setting-item-description',
