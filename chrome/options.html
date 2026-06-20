@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Split Link Router - 设置</title>
+    <title id="page_title">Split Link Router - Settings</title>
     <style>
       body {
         font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -60,12 +60,17 @@
         margin-left: 6px;
         opacity: 0;
         transition: opacity .2s;
+        font-weight: 600;
+        display: inline-block;
+        margin-top: 12px;
       }
       .saved.show {
         opacity: 1;
       }
       footer {
         margin-top: 32px;
+        border-top: 1px solid #eee;
+        padding-top: 16px;
         color: #888;
         font-size: 12px;
       }
@@ -79,14 +84,31 @@
   </head>
   <body>
     <h1>Split Link Router</h1>
-    <p class="subtitle">
-      用修饰键把外链路由到 Chrome 原生分屏的"副屏" tab。默认只接管你明确指定的点击，不打扰普通浏览。
+    <p class="subtitle" id="subtitle">
+      Route external links to the secondary tab of Chrome's native split-view using modifier keys. By default, it only handles clicks you explicitly specify and won't affect normal browsing.
     </p>
+
+    <!-- Language Dropdown Row -->
+    <div class="row">
+      <div class="info">
+        <div class="name" id="label_language">Language</div>
+        <div class="desc" id="desc_language">Choose the display language for the options page.</div>
+      </div>
+      <div class="ctrl">
+        <select id="language">
+          <option value="en">English</option>
+          <option value="zh">简体中文</option>
+          <option value="ru">Русский</option>
+          <option value="ar">العربية</option>
+          <option value="id">Bahasa Indonesia</option>
+        </select>
+      </div>
+    </div>
 
     <div class="row">
       <div class="info">
-        <div class="name">普通点击行为</div>
-        <div class="desc">无修饰键直接点击外链时的处理方式。默认不拦截，保持 Chrome 原生行为。</div>
+        <div class="name" id="name_defaultAction">Normal click behavior</div>
+        <div class="desc" id="desc_defaultAction">How external links open when clicked normally (without modifier keys). By default, it is not intercepted, preserving Chrome's native behavior.</div>
       </div>
       <div class="ctrl">
         <select id="defaultAction" data-kind="action"></select>
@@ -95,8 +117,8 @@
 
     <div class="row">
       <div class="info">
-        <div class="name">Shift 点击行为</div>
-        <div class="desc">按住 Shift 点击时的打开方式。推荐"复用副屏"：在分屏另一侧 tab 里换 URL。</div>
+        <div class="name" id="name_shiftAction">Shift click behavior</div>
+        <div class="desc" id="desc_shiftAction">How external links open when holding Shift. 'Reuse secondary tab' is recommended: swap the URL in the tab on the other side of the split screen.</div>
       </div>
       <div class="ctrl">
         <select id="shiftAction" data-kind="action-with-disabled"></select>
@@ -105,8 +127,8 @@
 
     <div class="row">
       <div class="info">
-        <div class="name">Cmd / Ctrl 点击行为</div>
-        <div class="desc">按住 Cmd（macOS）或 Ctrl（Win/Linux）点击时的打开方式。默认不拦截（Chrome 原生后台新 tab）。</div>
+        <div class="name" id="name_modifierAction">Cmd / Ctrl click behavior</div>
+        <div class="desc" id="desc_modifierAction">How external links open when holding Cmd (macOS) or Ctrl (Win/Linux). By default, it is not intercepted (Chrome native background new tab).</div>
       </div>
       <div class="ctrl">
         <select id="modifierAction" data-kind="action-with-disabled"></select>
@@ -115,9 +137,9 @@
 
     <div class="row">
       <div class="info">
-        <div class="name">不在分屏时的回退</div>
-        <div class="desc">
-          当"复用副屏"模式触发时，如果当前 tab 还没进入分屏（没有副屏 tab），如何处理。
+        <div class="name" id="name_fallbackWhenNotSplit">Fallback when not split</div>
+        <div class="desc" id="desc_fallbackWhenNotSplit">
+          How to handle a click if the 'Reuse secondary tab' action is triggered but the current tab is not in a split view (no secondary tab exists).
         </div>
       </div>
       <div class="ctrl">
@@ -127,19 +149,19 @@
 
     <div class="row">
       <div class="info">
-        <div class="name">调试日志</div>
-        <div class="desc">在 service worker 的 DevTools Console 打印拦截日志。</div>
+        <div class="name" id="name_debugLog">Debug log</div>
+        <div class="desc" id="desc_debugLog">Print intercept logs in the service worker's DevTools Console.</div>
       </div>
       <div class="ctrl">
-        <label><input type="checkbox" id="debugLog" /> 启用</label>
+        <label id="label_debugLog"><input type="checkbox" id="debugLog" /> Enable</label>
       </div>
     </div>
 
-    <div id="saved" class="saved">已保存 ✓</div>
+    <div id="saved" class="saved">Saved ✓</div>
 
-    <footer>
+    <footer id="footer_text">
       <p>
-        <strong>需要 Chrome 140+</strong>。首次使用：在目标窗口右键 tab → <code>Open in split view</code>，把两个 tab 组成分屏；之后本扩展的"复用"功能就会生效。
+        <strong>Requires Chrome 140+</strong>. First use: right-click a tab in the target window → <code>Open in split view</code> to set up a split screen. After that, this extension's 'Reuse' feature will take effect.
       </p>
     </footer>
 
