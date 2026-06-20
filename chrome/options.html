@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Split Link Router - 设置</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        max-width: 680px;
+        margin: 32px auto;
+        padding: 0 24px;
+        color: #222;
+        line-height: 1.6;
+      }
+      h1 {
+        font-size: 22px;
+        margin-bottom: 4px;
+      }
+      .subtitle {
+        color: #666;
+        font-size: 14px;
+        margin-top: 0;
+      }
+      .row {
+        border-top: 1px solid #eee;
+        padding: 16px 0;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      .row > .info {
+        flex: 1;
+      }
+      .row > .ctrl {
+        flex: 0 0 240px;
+      }
+      .row .name {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .row .desc {
+        color: #666;
+        font-size: 13px;
+        margin-top: 2px;
+      }
+      select,
+      input[type="checkbox"] {
+        font-size: 13px;
+      }
+      select {
+        width: 100%;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #d0d0d0;
+        background: #fff;
+      }
+      .saved {
+        color: #2a8a34;
+        font-size: 12px;
+        margin-left: 6px;
+        opacity: 0;
+        transition: opacity .2s;
+      }
+      .saved.show {
+        opacity: 1;
+      }
+      footer {
+        margin-top: 32px;
+        color: #888;
+        font-size: 12px;
+      }
+      code {
+        background: #f3f3f3;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Split Link Router</h1>
+    <p class="subtitle">
+      用修饰键把外链路由到 Chrome 原生分屏的"副屏" tab。默认只接管你明确指定的点击，不打扰普通浏览。
+    </p>
+
+    <div class="row">
+      <div class="info">
+        <div class="name">普通点击行为</div>
+        <div class="desc">无修饰键直接点击外链时的处理方式。默认不拦截，保持 Chrome 原生行为。</div>
+      </div>
+      <div class="ctrl">
+        <select id="defaultAction" data-kind="action"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info">
+        <div class="name">Shift 点击行为</div>
+        <div class="desc">按住 Shift 点击时的打开方式。推荐"复用副屏"：在分屏另一侧 tab 里换 URL。</div>
+      </div>
+      <div class="ctrl">
+        <select id="shiftAction" data-kind="action-with-disabled"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info">
+        <div class="name">Cmd / Ctrl 点击行为</div>
+        <div class="desc">按住 Cmd（macOS）或 Ctrl（Win/Linux）点击时的打开方式。默认不拦截（Chrome 原生后台新 tab）。</div>
+      </div>
+      <div class="ctrl">
+        <select id="modifierAction" data-kind="action-with-disabled"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info">
+        <div class="name">不在分屏时的回退</div>
+        <div class="desc">
+          当"复用副屏"模式触发时，如果当前 tab 还没进入分屏（没有副屏 tab），如何处理。
+        </div>
+      </div>
+      <div class="ctrl">
+        <select id="fallbackWhenNotSplit"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info">
+        <div class="name">调试日志</div>
+        <div class="desc">在 service worker 的 DevTools Console 打印拦截日志。</div>
+      </div>
+      <div class="ctrl">
+        <label><input type="checkbox" id="debugLog" /> 启用</label>
+      </div>
+    </div>
+
+    <div id="saved" class="saved">已保存 ✓</div>
+
+    <footer>
+      <p>
+        <strong>需要 Chrome 140+</strong>。首次使用：在目标窗口右键 tab → <code>Open in split view</code>，把两个 tab 组成分屏；之后本扩展的"复用"功能就会生效。
+      </p>
+    </footer>
+
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+name: Release Chrome Extension
+
+# 触发方式：推送形如 `chrome-v0.1.0` 的 tag
+on:
+  push:
+    tags:
+      - "chrome-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#chrome-v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Verify manifest.json version matches tag
+        run: |
+          MANIFEST_VERSION=$(node -p "require('./chrome/manifest.json').version")
+          if [ "$MANIFEST_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::manifest.json version ($MANIFEST_VERSION) != tag version (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+
+      - name: Sanity check extension files
+        run: |
+          test -f chrome/manifest.json
+          test -f chrome/background.js
+          test -f chrome/content.js
+          test -f chrome/options.html
+          test -f chrome/options.js
+          test -f chrome/popup.html
+          test -f chrome/popup.js
+          test -f chrome/icons/icon16.png
+          test -f chrome/icons/icon48.png
+          test -f chrome/icons/icon128.png
+          echo "OK"
+
+      - name: Build extension zip
+        run: |
+          cd chrome
+          # 打包时排除源 svg、dev 文件，只留发布所需
+          zip -r "../split-link-router-chrome-${{ steps.version.outputs.version }}.zip" . \
+            -x "icons/icon.svg" "*.DS_Store"
+          cd ..
+          ls -la split-link-router-chrome-${{ steps.version.outputs.version }}.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Chrome Extension ${{ steps.version.outputs.version }}"
+          body: |
+            ## Chrome: Split Link Router ${{ steps.version.outputs.version }}
+
+            ### Install as unpacked extension
+            1. Download and unzip the attached `split-link-router-chrome-${{ steps.version.outputs.version }}.zip`.
+            2. Open `chrome://extensions`, enable Developer mode.
+            3. Click "Load unpacked" and select the unzipped folder.
+
+            Requires **Chrome 140+**. See [chrome/README.md](../blob/${{ steps.version.outputs.tag }}/chrome/README.md) for details.
+          draft: false
+          prerelease: false
+          files: |
+            split-link-router-chrome-${{ steps.version.outputs.version }}.zip

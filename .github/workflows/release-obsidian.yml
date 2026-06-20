@@ -1,0 +1,70 @@
+name: Release Obsidian Plugin
+
+# 触发方式：推送形如 `1.0.0` 的纯数字 tag（Obsidian 社区插件要求 tag == manifest.version）
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          # Tag 本身就是版本号，例如 "1.0.0"
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="$TAG"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Verify manifest.json version matches tag
+        run: |
+          MANIFEST_VERSION=$(node -p "require('./obsidian/manifest.json').version")
+          if [ "$MANIFEST_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::manifest.json version ($MANIFEST_VERSION) != tag version (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+
+      - name: Verify root manifest.json is in sync with obsidian/manifest.json
+        run: |
+          if ! diff -q manifest.json obsidian/manifest.json > /dev/null; then
+            echo "::error::root manifest.json is out of sync with obsidian/manifest.json"
+            diff manifest.json obsidian/manifest.json || true
+            exit 1
+          fi
+
+      - name: Sanity check plugin files
+        run: |
+          test -f obsidian/main.js
+          test -f obsidian/manifest.json
+          test -f obsidian/versions.json
+          echo "OK"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.version }}
+          body: |
+            ## Obsidian: Split Web Viewer Modifier ${{ steps.version.outputs.version }}
+
+            ### Install manually
+            1. Download `main.js`, `manifest.json`, `versions.json` below.
+            2. Put them in `<vault>/.obsidian/plugins/split-web-viewer-modifier/`.
+            3. Enable the plugin in Obsidian.
+
+            See [obsidian/README.md](../blob/${{ steps.version.outputs.tag }}/obsidian/README.md) for details.
+          draft: false
+          prerelease: false
+          files: |
+            obsidian/main.js
+            obsidian/manifest.json
+            obsidian/versions.json
