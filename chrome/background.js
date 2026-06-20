@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS = {
   fallbackWhenNotSplit: "background",
 
   debugLog: false,
+  openNewTabForDifferentUrls: false,
 };
 
 // ---- 设置 ----
@@ -54,6 +55,18 @@ function debug(settings, ...args) {
 }
 
 // ---- 核心路由 ----
+
+/**
+ * Find if there is an existing tab with the exact URL in the current window.
+ */
+async function findTabByUrl(url, windowId) {
+  try {
+    const tabs = await chrome.tabs.query({ windowId });
+    return tabs.find((t) => t.url === url);
+  } catch (e) {
+    return null;
+  }
+}
 
 /**
  * 找到"副屏 tab"：和 sourceTab 在同一个 splitView 的另一个 tab。
@@ -125,6 +138,21 @@ function resolveMode(settings, mod) {
 async function performOpen(mode, url, sourceTab, settings, modifiers) {
   switch (mode) {
     case "reuse": {
+      const existing = await findTabByUrl(url, sourceTab.windowId);
+      if (existing) {
+        await chrome.tabs.update(existing.id, { active: true });
+        return;
+      }
+      if (settings.openNewTabForDifferentUrls) {
+        await chrome.tabs.create({
+          url,
+          windowId: sourceTab.windowId,
+          openerTabId: sourceTab.id,
+          index: sourceTab.index + 1,
+          active: true,
+        });
+        return;
+      }
       const sibling = await findSiblingTab(sourceTab);
       if (sibling) {
         await chrome.tabs.update(sibling.id, { url, active: true });

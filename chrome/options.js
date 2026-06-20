@@ -4,6 +4,7 @@
 
 const DEFAULT_SETTINGS = {
   language: "en",
+  openNewTabForDifferentUrls: false,
   defaultAction: "default",
   shiftAction: "reuse",
   modifierAction: "disabled",
@@ -17,6 +18,8 @@ const TRANSLATIONS = {
     subtitle: "Route external links to the secondary tab of Chrome's native split-view using modifier keys. By default, it only handles clicks you explicitly specify and won't affect normal browsing.",
     label_language: "Language",
     desc_language: "Choose the display language for the options page.",
+    name_openNewTabForDifferentUrls: "Open new tab for each different URL",
+    desc_openNewTabForDifferentUrls: "When enabled, opening a different external link will create a new tab instead of replacing the URL in the current one. Clicking the same URL will always focus its existing tab.",
     name_defaultAction: "Normal click behavior",
     desc_defaultAction: "How external links open when clicked normally (without modifier keys). By default, it is not intercepted, preserving Chrome's native behavior.",
     name_shiftAction: "Shift click behavior",
@@ -51,6 +54,8 @@ const TRANSLATIONS = {
     subtitle: "用修饰键把外链路由到 Chrome 原生分屏的\"副屏\" tab。默认只接管你明确指定的点击，不打扰普通浏览。",
     label_language: "语言 (Language)",
     desc_language: "选择设置页面的显示语言。",
+    name_openNewTabForDifferentUrls: "不同 URL 独立打开新 Tab",
+    desc_openNewTabForDifferentUrls: "启用后，点击不同的外部链接会新建标签页，而不是覆盖已打开的标签页。相同 URL 仍会聚焦其已有的标签页。",
     name_defaultAction: "普通点击行为",
     desc_defaultAction: "无修饰键直接点击外链时的处理方式。默认不拦截，保持 Chrome 原生行为。",
     name_shiftAction: "Shift 点击行为",
@@ -85,6 +90,8 @@ const TRANSLATIONS = {
     subtitle: "Перенаправление внешних ссылок на вторичную вкладку встроенного разделенного экрана Chrome с помощью клавиш-модификаторов. По умолчанию плагин обрабатывает только явно указанные клики.",
     label_language: "Язык (Language)",
     desc_language: "Выберите язык отображения для этой страницы настроек.",
+    name_openNewTabForDifferentUrls: "Новая вкладка для каждого нового URL",
+    desc_openNewTabForDifferentUrls: "Если включено, открытие новой внешней ссылки создаст новую вкладку вместо замены текущей. Клик по тому же URL всегда сфокусирует его существующую вкладку.",
     name_defaultAction: "Обычный клик",
     desc_defaultAction: "Обработка при клике без клавиш-модификаторов. По умолчанию не перехватывается, сохраняя стандартное поведение Chrome.",
     name_shiftAction: "Клик с Shift",
@@ -119,6 +126,8 @@ const TRANSLATIONS = {
     subtitle: "توجيه الروابط الخارجية إلى علامة التبويب الثانوية لعرض التقسيم الأصلي في Chrome باستخدام مفاتيح التعديل. افتراضيًا، يتعامل فقط مع النقرات المحددة.",
     label_language: "اللغة (Language)",
     desc_language: "اختر لغة العرض لصفحة الإعدادات.",
+    name_openNewTabForDifferentUrls: "فتح علامة تبويب جديدة لكل رابط مختلف",
+    desc_openNewTabForDifferentUrls: "عند التفعيل، سيؤدي فتح رابط خارجي مختلف إلى إنشاء علامة تبويب جديدة بدلاً من استبدال الرابط في الحالية. سيؤدي النقر فوق نفس الرابط دائماً إلى التركيز على علامة التبويب الحالية له.",
     name_defaultAction: "سلوك النقرة العادية",
     desc_defaultAction: "طريقة المعالجة عند النقر بدون مفاتيح تعديل. افتراضيًا لا يتم الاعتراض، مع الحفاظ على سلوك كروم الافتراضي.",
     name_shiftAction: "سلوك النقرة مع Shift",
@@ -153,6 +162,8 @@ const TRANSLATIONS = {
     subtitle: "Rute tautan eksternal ke tab sekunder dari layar pisah bawaan Chrome menggunakan tombol pengubah. Secara default, hanya menangani klik yang Anda tentukan secara eksplisit.",
     label_language: "Bahasa (Language)",
     desc_language: "Pilih bahasa tampilan untuk halaman pengaturan ini.",
+    name_openNewTabForDifferentUrls: "Buka tab baru untuk setiap URL berbeda",
+    desc_openNewTabForDifferentUrls: "Jika diaktifkan, membuka tautan eksternal yang berbeda akan membuat tab baru alih-alih mengganti URL di tab yang aktif. Mengklik URL yang sama akan selalu memfokuskan tab yang sudah ada.",
     name_defaultAction: "Perilaku klik biasa",
     desc_defaultAction: "Penanganan ketika mengklik tautan eksternal secara biasa tanpa tombol pengubah. Secara default tidak dicegat, menjaga perilaku bawaan Chrome.",
     name_shiftAction: "Perilaku klik Shift",
@@ -234,6 +245,15 @@ function applyTranslations(lang) {
   
   document.getElementById("label_language").textContent = dict.label_language;
   document.getElementById("desc_language").textContent = dict.desc_language;
+
+  document.getElementById("name_openNewTabForDifferentUrls").textContent = dict.name_openNewTabForDifferentUrls;
+  document.getElementById("desc_openNewTabForDifferentUrls").textContent = dict.desc_openNewTabForDifferentUrls;
+  
+  const openCheckbox = document.getElementById("openNewTabForDifferentUrls");
+  const labelOpen = document.getElementById("label_openNewTabForDifferentUrls");
+  labelOpen.innerHTML = "";
+  labelOpen.appendChild(openCheckbox);
+  labelOpen.appendChild(document.createTextNode(" " + dict.label_debugLog));
 
   document.getElementById("name_defaultAction").textContent = dict.name_defaultAction;
   document.getElementById("desc_defaultAction").textContent = dict.desc_defaultAction;

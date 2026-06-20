@@ -33,7 +33,8 @@ var L = {
     focusPane: !0,
     fallbackToBrowserWhenWebViewerUnavailable: !0,
     detectionFallback: "browser",
-    debugLog: !1
+    debugLog: !1,
+    openNewTabForDifferentUrls: !1
 };
 
 var TRANSLATIONS = {
@@ -42,6 +43,8 @@ var TRANSLATIONS = {
         intro: "Configure open actions for normal clicks, Shift clicks, and Cmd/Ctrl clicks. The options are unified and can be freely combined.",
         langSettingName: "Language",
         langSettingDesc: "Choose the display language for the plugin settings.",
+        newTabForDifferentUrlsName: "Open new tab for each different URL",
+        newTabForDifferentUrlsDesc: "When enabled, clicking a different external link will open a new Web Viewer tab instead of replacing the URL in the current one. The same URL will always reuse its existing tab.",
         clickNormalName: "Normal click behavior",
         clickNormalDesc: "How external links open when clicked normally (without modifier keys). You can follow Web Viewer settings or explicitly specify an action.",
         followSettingOption: "Follow Web Viewer's external link setting",
@@ -82,13 +85,15 @@ var TRANSLATIONS = {
         intro: "为普通点击、Shift 点击、Cmd/Ctrl 点击分别配置打开方式。选项集统一，自由组合。",
         langSettingName: "语言 (Language)",
         langSettingDesc: "选择插件设置的显示语言。",
+        newTabForDifferentUrlsName: "不同 URL 独立打开新 Tab",
+        newTabForDifferentUrlsDesc: "启用后，点击不同的外部链接会新开一个 Web Viewer 标签页，而不是覆盖当前页面。相同 URL 仍会复用其已有的标签页。",
         clickNormalName: "普通点击行为",
         clickNormalDesc: "无修饰键直接点击外链时的打开方式。可以选择跟随 Web Viewer 的外链设置，也可以直接指定一种方式。",
         followSettingOption: "跟随 Web Viewer 的外链设置",
         clickShiftName: "Shift 点击行为",
         clickShiftDesc: "按住 Shift 点击时使用的打开方式。推荐“新开 Web Viewer tab”。",
         clickCmdCtrlName: "Cmd/Ctrl 点击行为",
-        clickCmdCtrlDesc: "按住 Cmd（macOS）或 Ctrl（Windows/Linux）点击时的打开方式。推荐“反转默认目标”：默认进 Web Viewer 时就进浏览器，反之亦然。",
+        clickCmdCtrlDesc: "按住 Cmd（macOS）或 Ctrl（Windows/Linux）点击时的打开方式。推荐“反转默认目标”：默认进 Web Viewer时就进浏览器，反之亦然。",
         toggleDefaultOption: "反转默认目标（Web Viewer ↔ 浏览器）",
         disabledOption: "不拦截（跟随普通点击）",
         splitDirectionName: "分屏方向",
@@ -122,6 +127,8 @@ var TRANSLATIONS = {
         intro: "Настройте действия при открытии для обычных кликов, кликов с Shift и кликов с Cmd/Ctrl. Параметры унифицированы и могут свободно комбинироваться.",
         langSettingName: "Язык (Language)",
         langSettingDesc: "Выберите язык отображения для настроек плагина.",
+        newTabForDifferentUrlsName: "Новая вкладка для каждого нового URL",
+        newTabForDifferentUrlsDesc: "Если включено, клик по новой внешней ссылке откроет новую вкладку Web Viewer вместо замены текущего URL. Тот же URL всегда будет повторно использовать свою вкладку.",
         clickNormalName: "Обычный клик",
         clickNormalDesc: "Как открываются внешние ссылки при обычном клике (без модификаторов). Вы можете следовать настройкам Web Viewer или явно указать действие.",
         followSettingOption: "Следовать настройкам внешних ссылок Web Viewer",
@@ -162,6 +169,8 @@ var TRANSLATIONS = {
         intro: "تكوين إجراءات الفتح للنقرات العادية، والنقرات مع Shift، والنقرات مع Cmd/Ctrl. الخيارات موحدة ويمكن دمجها بحرية.",
         langSettingName: "اللغة (Language)",
         langSettingDesc: "اختر لغة العرض لإعدادات الإضافة.",
+        newTabForDifferentUrlsName: "فتح علامة تبويب جديدة لكل رابط مختلف",
+        newTabForDifferentUrlsDesc: "عند التفعيل، سيؤدي النقر فوق رابط خارجي مختلف إلى فتح علامة تبويب Web Viewer جديدة بدلاً من استبدال الرابط الحالي. سيتم دائماً إعادة استخدام علامة التبويب لنفس الرابط.",
         clickNormalName: "سلوك النقرة العادية",
         clickNormalDesc: "كيفية فتح الروابط الخارجية عند النقر بشكل عادي (بدون مفاتيح تعديل). يمكنك اتباع إعدادات Web Viewer أو تحديد إجراء صراحة.",
         followSettingOption: "اتباع إعدادات الروابط الخارجية لـ Web Viewer",
@@ -202,6 +211,8 @@ var TRANSLATIONS = {
         intro: "Konfigurasikan aksi buka untuk klik biasa, klik Shift, dan klik Cmd/Ctrl. Opsi disatukan dan dapat dikombinasikan dengan bebas.",
         langSettingName: "Bahasa (Language)",
         langSettingDesc: "Pilih bahasa tampilan untuk pengaturan plugin.",
+        newTabForDifferentUrlsName: "Buka tab baru untuk setiap URL berbeda",
+        newTabForDifferentUrlsDesc: "Jika diaktifkan, mengklik tautan eksternal yang berbeda akan membuka tab Web Viewer baru alih-alih mengganti URL di tab yang aktif. URL yang sama akan selalu menggunakan tab yang sudah ada.",
         clickNormalName: "Perilaku klik biasa",
         clickNormalDesc: "Bagaimana tautan eksternal terbuka ketika diklik secara biasa (tanpa tombol pengubah). Anda dapat mengikuti pengaturan Web Viewer atau menentukan aksi secara eksplisit.",
         followSettingOption: "Ikuti pengaturan tautan eksternal Web Viewer",
@@ -273,6 +284,16 @@ var d = class extends l.PluginSettingTab {
                      await this.plugin.saveSettings();
                      this.display(); // reload settings panel
                  });
+            });
+
+        new l.Setting(e)
+            .setName(t_translate("newTabForDifferentUrlsName"))
+            .setDesc(t_translate("newTabForDifferentUrlsDesc"))
+            .addToggle(n => {
+                n.setValue(!!this.plugin.settings.openNewTabForDifferentUrls).onChange(async i => {
+                    this.plugin.settings.openNewTabForDifferentUrls = i;
+                    await this.plugin.saveSettings();
+                });
             });
 
         let t = n => {
@@ -546,11 +567,25 @@ var w = class {
             return;
         }
         try {
-            let i = this.acquireWebViewerLeaf(n);
-            if (!i) throw new Error("Could not acquire a web viewer leaf");
-            await i.setViewState({ type: m, active: this.plugin.settings.focusPane, state: { url: e, navigate: !0 } });
-            n === "reuse" ? this.plugin.lastWebViewerLeaf = i : this.pickReusableLeaf([this.plugin.lastWebViewerLeaf]) || (this.plugin.lastWebViewerLeaf = i);
-            this.plugin.settings.focusPane && typeof this.plugin.app.workspace.revealLeaf == "function" && this.plugin.app.workspace.revealLeaf(i);
+            // First, find if there is an open tab displaying this exact URL
+            let existing = this.getExistingWebViewerLeaves().find(leaf => {
+                var _a, _b;
+                return ((_b = (_a = leaf.getViewState()) == null ? void 0 : _a.state) == null ? void 0 : _b.url) === e;
+            });
+
+            let leaf;
+            if (existing) {
+                this.plugin.debug("reuse (exact URL): focusing existing tab instead of opening new one", e);
+                leaf = existing;
+            } else {
+                leaf = this.acquireWebViewerLeaf(n, e);
+            }
+
+            await leaf.setViewState({ type: m, active: this.plugin.settings.focusPane, state: { url: e, navigate: !0 } });
+            
+            n === "reuse" ? this.plugin.lastWebViewerLeaf = leaf : this.pickReusableLeaf([this.plugin.lastWebViewerLeaf]) || (this.plugin.lastWebViewerLeaf = leaf);
+            
+            this.plugin.settings.focusPane && typeof this.plugin.app.workspace.revealLeaf == "function" && this.plugin.app.workspace.revealLeaf(leaf);
         } catch (i) {
             if (console.error("[split-web-viewer-modifier] Failed to open in Web Viewer", i), this.plugin.settings.fallbackToBrowserWhenWebViewerUnavailable) {
                 new u.Notice(this.t_translate("noticeFailWebViewer"));
@@ -560,9 +595,21 @@ var w = class {
             new u.Notice(this.t_translate("noticeFailWebViewerConsole"));
         }
     }
-    acquireWebViewerLeaf(e = "reuse") {
+    acquireWebViewerLeaf(e = "reuse", targetUrl) {
         let t = this.plugin.app.workspace;
         if (e === "reuse") {
+            // If openNewTabForDifferentUrls is enabled:
+            // since we didn't find an existing tab for this exact URL (otherwise we would have focused it),
+            // we should treat this as a request for a new tab next to the last active one!
+            if (this.plugin.settings.openNewTabForDifferentUrls) {
+                let anchor = this.pickAnchorLeaf();
+                if (anchor) {
+                    let i = this.createSiblingTabLeaf(anchor);
+                    if (i) return this.plugin.debug("reuse (different URL): opened next to anchor leaf"), i;
+                }
+                return this.plugin.debug("reuse (different URL): no anchor, split created"), t.getLeaf("split", this.plugin.settings.splitDirection);
+            }
+
             let n = this.pickReusableLeaf([this.plugin.lastWebViewerLeaf]);
             if (n) return this.plugin.debug("reuse: reusing last web viewer leaf"), n;
             let i = this.getExistingWebViewerLeaves();
