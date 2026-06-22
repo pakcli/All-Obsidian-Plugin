@@ -2119,52 +2119,50 @@ Make sure you do not output any markdown block formatting (like \`\`\`json), jus
                 <span>Grandtotal ({totals.totalItems} items):</span>
                 <span>= {formatNumber(totals.totalPrice)}</span>
               </div>
+
+              {/* Save Dir & Footer Actions */}
+              <div className="receipt-scanner-column-footer">
+                <div className="save-dir-field">
+                  <label>
+                    Save Directory
+                    {savePathError && (
+                      <span style={{ color: "var(--text-error)", marginLeft: "8px", fontSize: "0.85em" }}>
+                        ({savePathError})
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    list="save-paths-list"
+                    className={savePathError ? "is-invalid" : ""}
+                    value={savePath}
+                    onChange={(e) => setSavePath((e.target as HTMLInputElement).value)}
+                    placeholder="e.g. Finance/transactions_YYYY.csv"
+                  />
+                  <datalist id="save-paths-list">
+                    {allCsvFiles.map(path => (
+                      <option key={path} value={path} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="footer-actions">
+                  <button className="btn-delete" onClick={deleteActiveDraft}>
+                    🗑️ Delete
+                  </button>
+                  <button
+                    className="btn-save"
+                    onClick={handleSaveTransaction}
+                    disabled={!!savePathError || !activeDraft.merchant || !activeDraft.category || totals.itemsList.length === 0}
+                  >
+                    Save ✓
+                  </button>
+                </div>
+              </div>
             </div>
           </>
         )}
       </div>
-
-      {/* 4️⃣ Save Dir Footer */}
-      {activeDraft && (
-        <div className="receipt-scanner-footer">
-          <div className="save-dir-field">
-            <label>
-              Save Directory
-              {savePathError && (
-                <span style={{ color: "var(--text-error)", marginLeft: "8px", fontSize: "0.85em" }}>
-                  ({savePathError})
-                </span>
-              )}
-            </label>
-            <input
-              type="text"
-              list="save-paths-list"
-              className={savePathError ? "is-invalid" : ""}
-              value={savePath}
-              onChange={(e) => setSavePath((e.target as HTMLInputElement).value)}
-              placeholder="e.g. Finance/transactions_YYYY.csv"
-            />
-            <datalist id="save-paths-list">
-              {allCsvFiles.map(path => (
-                <option key={path} value={path} />
-              ))}
-            </datalist>
-          </div>
-
-          <div className="footer-actions">
-            <button className="btn-delete" onClick={deleteActiveDraft}>
-              🗑️ Delete
-            </button>
-            <button
-              className="btn-save"
-              onClick={handleSaveTransaction}
-              disabled={!!savePathError || !activeDraft.merchant || !activeDraft.category || totals.itemsList.length === 0}
-            >
-              Save ✓
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* API Configuration Settings Modal Overlay */}
       {showSettingsModal && (

@@ -371,31 +371,31 @@
     justify-content: space-between;
 }
 
-/* 4️⃣ Save Dir Footer */
-.receipt-scanner-footer {
+/* 4️⃣ Save Dir & Actions in Items Column */
+.receipt-scanner-column-footer {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--size-4-2) var(--size-4-3);
-    background-color: var(--background-secondary);
-    border-top: 1px solid var(--background-modifier-border);
-    gap: var(--size-4-4);
+    flex-direction: column;
+    gap: var(--size-4-2);
+    border-top: 1px dashed var(--background-modifier-border);
+    padding-top: var(--size-4-3);
+    margin-top: 4px;
 
     .save-dir-field {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        flex: 1;
+        flex-direction: column;
+        gap: var(--size-2-2);
 
         label {
-            font-size: 0.85em;
+            font-size: 0.8em;
             font-weight: 600;
             color: var(--text-muted);
-            white-space: nowrap;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         input {
-            flex: 1;
+            width: 100%;
             padding: var(--size-4-1) var(--size-4-2);
             border-radius: var(--radius-s);
             border: 1px solid var(--background-modifier-border);
@@ -420,18 +420,25 @@
     .footer-actions {
         display: flex;
         gap: var(--size-4-2);
+        width: 100%;
 
         button {
+            flex: 1;
             padding: var(--size-4-2) var(--size-4-3);
             border-radius: var(--radius-s);
             cursor: pointer;
             font-weight: 500;
             border: 1px solid var(--background-modifier-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
 
             &.btn-delete {
                 background-color: transparent;
                 color: var(--text-error);
                 border-color: var(--text-error);
+                transition: background-color 0.15s ease;
 
                 &:hover {
                     background-color: rgba(var(--text-error-rgb), 0.1);
@@ -442,6 +449,7 @@
                 background-color: var(--interactive-accent);
                 color: var(--text-on-accent);
                 border: none;
+                transition: background-color 0.15s ease;
 
                 &:hover {
                     background-color: var(--interactive-accent-hover);
@@ -612,35 +620,6 @@
     /* Hide desktop dividers on mobile */
     .receipt-scanner-resizer {
         display: none !important;
-    }
-
-    /* Wrap save footer on mobile */
-    .receipt-scanner-footer {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--size-4-2);
-        padding: var(--size-4-2) var(--size-4-3) !important;
-        
-        .save-dir-field {
-            width: 100%;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: var(--size-2-2);
-            
-            input {
-                width: 100%;
-            }
-        }
-        
-        .footer-actions {
-            display: flex;
-            justify-content: flex-end;
-            width: 100%;
-            
-            button {
-                flex: 1;
-            }
-        }
     }
 }
 
