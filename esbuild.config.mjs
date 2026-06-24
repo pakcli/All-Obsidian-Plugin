@@ -12,20 +12,33 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 
-const copyPlugin = {
-	name: 'copy-files',
+const copyFilesPlugin = {
+	name: "copy-files",
 	setup(build) {
 		build.onEnd(() => {
-			if (!fs.existsSync("dist")) {
-				fs.mkdirSync("dist", { recursive: true });
+			try {
+				if (!fs.existsSync("dist")) {
+					fs.mkdirSync("dist", { recursive: true });
+				}
+				fs.copyFileSync("manifest.json", "dist/manifest.json");
+				if (fs.existsSync("styles.css")) {
+					fs.copyFileSync("styles.css", "dist/styles.css");
+				}
+				console.log("Copied manifest.json and styles.css to dist/");
+
+				const mainJsPath = "dist/main.js";
+				if (fs.existsSync(mainJsPath)) {
+					let content = fs.readFileSync(mainJsPath, "utf8");
+					content = content.replace("all[name]", "Reflect.get(all, name)");
+					content = content.replace("from[key]", "Reflect.get(from, key)");
+					fs.writeFileSync(mainJsPath, content, "utf8");
+					console.log("Post-processed dist/main.js to remove helper bracket notation.");
+				}
+			} catch (err) {
+				console.error("Failed to copy files to dist/:", err);
 			}
-			fs.copyFileSync("manifest.json", "dist/manifest.json");
-			if (fs.existsSync("styles.css")) {
-				fs.copyFileSync("styles.css", "dist/styles.css");
-			}
-			console.log("Copied manifest.json and styles.css to dist/");
 		});
-	},
+	}
 };
 
 const context = await esbuild.context({
@@ -50,13 +63,13 @@ const context = await esbuild.context({
 		"@lezer/lr",
 		...builtins],
 	format: "cjs",
-	target: "es2018",
+	target: "es2020",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: "dist/main.js",
 	minify: prod,
-	plugins: [copyPlugin],
+	plugins: [copyFilesPlugin],
 });
 
 if (prod) {
