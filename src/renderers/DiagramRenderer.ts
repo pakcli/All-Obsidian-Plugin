@@ -8,6 +8,7 @@ import { TableFullRenderer } from './TableFullRenderer';
 import { TableFolderRenderer } from './TableFolderRenderer';
 import { ControlBar } from '../ui/ControlBar';
 import { SettingsPanel } from '../ui/SettingsPanel';
+import { CreateStructureModal } from "../ui/CreateStructureModal";
 
 export type ViewMode = 'tree' | 'table-a' | 'table-b';
 
@@ -545,10 +546,22 @@ export class DiagramRenderer extends MarkdownRenderChild {
 			() => {
 				this.settingsPanelOpen = !this.settingsPanelOpen;
 				this.render();
+			},
+			() => {
+				this.handleCreateStructure();
 			}
 		);
 		
 		controlBar.render(contentArea);
+	}
+
+	handleCreateStructure() {
+		// Get default path: parent folder of active note
+		const activeFile = this.plugin.app.workspace.getActiveFile();
+		const defaultPath = activeFile && activeFile.parent ? activeFile.parent.path : "";
+		
+		// Open the modal
+		new CreateStructureModal(this.plugin.app, this.trees, defaultPath).open();
 	}
 
 	renderSettingsPanel(mainLayout: HTMLElement) {

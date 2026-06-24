@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import fs from "fs";
 
 const banner =
 `/*
@@ -10,6 +11,22 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+
+const copyPlugin = {
+	name: 'copy-files',
+	setup(build) {
+		build.onEnd(() => {
+			if (!fs.existsSync("dist")) {
+				fs.mkdirSync("dist", { recursive: true });
+			}
+			fs.copyFileSync("manifest.json", "dist/manifest.json");
+			if (fs.existsSync("styles.css")) {
+				fs.copyFileSync("styles.css", "dist/styles.css");
+			}
+			console.log("Copied manifest.json and styles.css to dist/");
+		});
+	},
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -37,8 +54,9 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outfile: "dist/main.js",
 	minify: prod,
+	plugins: [copyPlugin],
 });
 
 if (prod) {

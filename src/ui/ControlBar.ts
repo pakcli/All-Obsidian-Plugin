@@ -6,17 +6,20 @@ export class ControlBar {
 	private onInteractiveToggle: () => void;
 	private onCopy: () => Promise<string>;
 	private onSettingsToggle: () => void;
+	private onCreateStructure?: () => void;
 
 	constructor(
 		interactive: boolean,
 		onInteractiveToggle: () => void,
 		onCopy: () => Promise<string>,
-		onSettingsToggle: () => void
+		onSettingsToggle: () => void,
+		onCreateStructure?: () => void
 	) {
 		this.interactive = interactive;
 		this.onInteractiveToggle = onInteractiveToggle;
 		this.onCopy = onCopy;
 		this.onSettingsToggle = onSettingsToggle;
+		this.onCreateStructure = onCreateStructure;
 	}
 
 	/**
@@ -47,6 +50,19 @@ export class ControlBar {
 			copyBtn.textContent = ok ? "Copied!" : "Fail";
 			setTimeout(() => (copyBtn.textContent = "copy"), 1200);
 		};
+
+		// Create structure button
+		if (this.onCreateStructure) {
+			const createBtn = topBar.createEl("button", {
+				text: "create folders",
+				cls: 'tree-control-button tree-create-btn'
+			});
+			createBtn.onclick = () => {
+				if (this.onCreateStructure) {
+					this.onCreateStructure();
+				}
+			};
+		}
 		
 		// Settings toggle button (three dots)
 		const settingsBtn = topBar.createEl("button", {

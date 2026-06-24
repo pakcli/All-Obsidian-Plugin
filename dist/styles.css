@@ -1,0 +1,848 @@
+/* Tree Diagram Plugin Styles */
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Mobile First Approach */
+/* Base styles apply to mobile (< 768px) */
+
+/* ============================================
+   CONTAINER & LAYOUT
+   ============================================ */
+table{
+	margin-left: 0px !important;
+}
+
+.tree-table
+.tree-table-mode-a{
+	margin-left: 0px !important;
+}
+
+.tree-diagram-container {
+	position: relative;
+	padding: 0;
+	font-size: 16px; /* Larger for mobile readability */
+	line-height: 1.8;
+}
+
+/* Main layout with content and settings panel */
+.tree-main-layout {
+	display: flex;
+	gap: 0;
+	position: relative;
+}
+
+/* Content area (left side) */
+.tree-content-area {
+	flex: 1;
+	min-width: 0; /* Allow flex shrinking */
+	width: 100%;
+	padding: 0;
+	margin: 0;
+}
+
+/* Settings panel (right side) */
+.tree-settings-panel {
+	width: 0;
+	overflow: hidden;
+	transition: width 0.3s ease;
+	border-left: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.tree-settings-panel.open {
+	width: 250px;
+	padding: 12px;
+}
+
+/* Tablet & Desktop (768px+) */
+@media (min-width: 768px) {
+	.tree-diagram-container {
+		padding: 0;
+		font-size: 14px;
+		line-height: 1.6;
+	}
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+	.tree-diagram-container {
+		padding: 0;
+	}
+}
+
+/* ============================================
+   TOP CONTROL BAR
+   ============================================ */
+
+.tree-top-control-bar {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 8px 12px;
+	margin-bottom: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tree-settings-toggle {
+	font-size: 18px;
+	font-weight: bold;
+}
+
+/* ============================================
+   SETTINGS PANEL
+   ============================================ */
+
+.settings-header {
+	margin-bottom: 16px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.settings-header h3 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: lowercase;
+}
+
+.settings-group {
+	margin-bottom: 16px;
+}
+
+.settings-label {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 12px;
+	font-weight: 500;
+	text-transform: lowercase;
+	color: var(--text-muted);
+}
+
+.settings-select {
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--text-normal);
+}
+
+.settings-select:hover {
+	background: var(--background-modifier-hover);
+}
+
+.settings-select:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.settings-toggle {
+	display: flex;
+	gap: 4px;
+}
+
+.toggle-btn {
+	flex: 1;
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 11px;
+	color: var(--text-muted);
+	transition: all 0.2s ease;
+}
+
+.toggle-btn.active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.toggle-btn:hover:not(.active) {
+	background: var(--background-modifier-hover);
+}
+
+/* ============================================
+   CONTROL PANEL (OLD - DEPRECATED)
+   ============================================ */
+
+/* Control panel wrapper */
+.tree-controls-wrapper {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	display: flex;
+	gap: 4px;
+	align-items: center;
+	z-index: 10;
+}
+
+/* Desktop: Inline controls */
+.tree-controls-inline {
+	display: none; /* Hidden on mobile */
+	gap: 4px;
+	align-items: center;
+}
+
+@media (min-width: 768px) {
+	.tree-controls-inline {
+		display: flex;
+	}
+	
+	.tree-menu-button {
+		display: none; /* Hide hamburger on desktop */
+	}
+}
+
+/* Mobile: Hamburger menu button */
+.tree-menu-button {
+	min-width: 44px;
+	min-height: 44px;
+	font-size: 20px;
+	border: none;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tree-menu-button:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tree-menu-button:active {
+	transform: scale(0.95);
+}
+
+/* ============================================
+   INTERACTIVE TOGGLE INDICATORS
+   ============================================ */
+.tree-toggle {
+	cursor: pointer;
+	font-weight: normal;
+	user-select: text;
+	-webkit-user-select: text;
+	-moz-user-select: text;
+	-ms-user-select: text;
+}
+
+/* Light theme - black text */
+.theme-light .tree-toggle {
+	color: #141414;
+}
+
+/* Dark theme - near white text */
+.theme-dark .tree-toggle {
+	color: #e0e0e0;
+}
+
+/* Hover effect for better UX */
+.tree-toggle:hover {
+	opacity: 0.7;
+}
+
+/* Section toggle indicators (presentation mode) */
+.section-toggle {
+	cursor: pointer;
+	font-weight: normal;
+	user-select: none;
+}
+
+/* Light theme - black text */
+.theme-light .section-toggle {
+	color: #000000;
+}
+
+/* Dark theme - near white text */
+.theme-dark .section-toggle {
+	color: #e0e0e0;
+}
+
+/* Hover effect for section toggles */
+.section-toggle:hover {
+	opacity: 0.7;
+}
+
+/* Section spacing */
+.tree-section {
+	margin-bottom: 1em;
+}
+
+.tree-section:last-child {
+	margin-bottom: 0;
+}
+
+/* Separator toggle (clickable separators) */
+.separator-toggle {
+	cursor: pointer;
+	user-select: none;
+	display: inline-block;
+	font-weight: normal;
+}
+
+/* Light theme */
+.theme-light .separator-toggle {
+	color: #000000;
+}
+
+/* Dark theme */
+.theme-dark .separator-toggle {
+	color: #e0e0e0;
+}
+
+/* Hover effect for separator toggles */
+.separator-toggle:hover {
+	opacity: 0.7;
+	background-color: rgba(128, 128, 128, 0.1);
+}
+
+/* Title toggle (more/less) */
+.title-toggle {
+	cursor: pointer;
+	font-weight: normal;
+	user-select: text;
+	-webkit-user-select: text;
+	-moz-user-select: text;
+	-ms-user-select: text;
+}
+
+/* Light theme - gray text */
+.theme-light .title-toggle {
+	color: #666666;
+}
+
+/* Dark theme - gray text */
+.theme-dark .title-toggle {
+	color: #999999;
+}
+
+/* Hover effect for title toggle */
+.title-toggle:hover {
+	opacity: 0.7;
+	text-decoration: underline;
+}
+
+/* ============================================
+   MOBILE ENHANCEMENTS
+   ============================================ */
+
+/* Touch-friendly toggle indicators on mobile */
+@media (max-width: 767px) {
+	.tree-toggle {
+		min-width: 44px;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 18px;
+	}
+	
+	.tree-toggle:active {
+		transform: scale(0.95);
+		transition: transform 0.1s ease;
+	}
+}
+
+/* ============================================
+   CONTROL BUTTONS
+   ============================================ */
+
+.tree-control-button {
+	min-width: 44px;
+	min-height: 44px;
+	padding: 8px;
+	border: none;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 11px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+}
+
+@media (min-width: 768px) {
+	.tree-control-button {
+		min-width: auto;
+		min-height: auto;
+		padding: 4px 8px;
+		font-size: 11px;
+	}
+}
+
+.tree-control-button:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tree-control-button:active {
+	transform: scale(0.95);
+	transition: transform 0.1s ease;
+}
+
+/* ============================================
+   SPINNER CONTROLS
+   ============================================ */
+
+.tree-spinner {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	justify-content: center;
+}
+
+.spinner-button {
+	min-width: 32px;
+	min-height: 32px;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: bold;
+}
+
+.spinner-button:hover {
+	background: var(--background-modifier-hover);
+}
+
+.spinner-button:active {
+	transform: scale(0.95);
+}
+
+.spinner-value {
+	min-width: 32px;
+	text-align: center;
+	font-weight: 600;
+	font-size: 13px;
+}
+
+/* ============================================
+   DROPDOWN MENU (MOBILE)
+   ============================================ */
+
+.tree-controls-menu {
+	position: absolute;
+	top: 48px;
+	right: 4px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	padding: 12px;
+	min-width: 250px;
+	z-index: 100;
+	display: none;
+}
+
+.tree-controls-menu.open {
+	display: block;
+}
+
+.tree-controls-menu-item {
+	padding: 12px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tree-controls-menu-item:last-child {
+	margin-bottom: 0;
+	border-bottom: none;
+}
+
+.tree-controls-menu-label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 500;
+	font-size: 14px;
+}
+
+/* ============================================
+   BOTTOM SHEET (MOBILE)
+   ============================================ */
+
+/* Overlay */
+.bottom-sheet-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0);
+	transition: background-color 0.3s ease;
+	z-index: 1000;
+	pointer-events: none;
+}
+
+.bottom-sheet-overlay.visible {
+	background-color: rgba(0, 0, 0, 0.5);
+	pointer-events: auto;
+}
+
+/* Bottom Sheet */
+.bottom-sheet {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background-color: var(--background-primary);
+	border-top-left-radius: 16px;
+	border-top-right-radius: 16px;
+	box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+	transform: translateY(100%);
+	transition: transform 0.3s ease;
+	z-index: 1001;
+	max-height: 80vh;
+	overflow-y: auto;
+}
+
+.bottom-sheet.visible {
+	transform: translateY(0);
+}
+
+/* Bottom Sheet Header */
+.bottom-sheet-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.bottom-sheet-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin: 0;
+}
+
+.bottom-sheet-close {
+	font-size: 28px;
+	min-width: 44px;
+	min-height: 44px;
+	border: none;
+	background: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+}
+
+.bottom-sheet-close:hover {
+	color: var(--text-normal);
+}
+
+.bottom-sheet-close:active {
+	transform: scale(0.95);
+}
+
+/* Bottom Sheet Content */
+.bottom-sheet-content {
+	padding: 16px;
+}
+
+.bottom-sheet-control {
+	margin-bottom: 20px;
+}
+
+.bottom-sheet-control:last-child {
+	margin-bottom: 0;
+}
+
+.bottom-sheet-control-label {
+	display: block;
+	margin-bottom: 12px;
+	font-weight: 500;
+	font-size: 16px;
+}
+
+/* ============================================
+   TOUCH FEEDBACK
+   ============================================ */
+
+/* Remove default touch highlights */
+* {
+	-webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection during touch on controls */
+.tree-control-button,
+.spinner-button,
+.tree-menu-button,
+.bottom-sheet-close {
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+/* ============================================
+   RESPONSIVE TREE LAYOUT
+   ============================================ */
+
+/* Prevent horizontal scrolling */
+.tree-diagram-container pre {
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: visible;
+}
+
+/* Compact indentation on mobile */
+@media (max-width: 767px) {
+	.tree-diagram-container pre {
+		tab-size: 3; /* 3 spaces per tab on mobile */
+	}
+}
+
+@media (min-width: 768px) {
+	.tree-diagram-container pre {
+		tab-size: 4; /* 4 spaces per tab on desktop */
+	}
+}
+
+
+/* ============================================
+   TABLE VIEW STYLES
+   ============================================ */
+
+/* Table container */
+.tree-table-container {
+	width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	margin: 0;
+	padding: 0 12px 12px 12px;
+}
+
+/* Base table styles */
+.tree-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+	line-height: 1.5;
+	table-layout: fixed;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+	.tree-table {
+		font-size: 14px;
+		line-height: 1.6;
+	}
+}
+
+/* Table headers */
+.tree-table th {
+	background: var(--background-secondary) !important;
+	border: 1px solid var(--background-modifier-border);
+	padding: 8px 12px;
+	text-align: left;
+	font-weight: normal;
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	white-space: nowrap;
+}
+
+/* Table cells */
+.tree-table td {
+	border: 1px solid var(--background-modifier-border);
+	padding: 8px 12px;
+	vertical-align: top;
+	text-align: left;
+	font-weight: normal;
+	white-space: normal;
+	background: var(--background-primary) !important;
+}
+
+/* Remove zebra striping */
+.tree-table tbody tr:nth-child(odd) td {
+	background: var(--background-primary) !important;
+}
+
+.tree-table tbody tr:nth-child(even) td {
+	background: var(--background-primary) !important;
+}
+
+/* Wikilinks in table */
+.tree-table a.internal-link {
+	color: var(--link-color);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.tree-table a.internal-link:hover {
+	color: var(--link-color-hover);
+	text-decoration: underline;
+}
+
+/* Empty cells */
+.tree-table .empty-cell {
+	color: var(--text-muted);
+	text-align: center;
+}
+
+/* Clickable cells (Mode B drill-down) */
+.tree-table .clickable-cell {
+	cursor: pointer;
+	color: var(--link-color);
+}
+
+.tree-table .clickable-cell:hover {
+	background: var(--background-modifier-hover);
+	text-decoration: underline;
+}
+
+/* Badge column styling */
+.tree-table .badge-column {
+	font-family: inherit;
+	font-weight: normal;
+	text-align: left;
+}
+
+.tree-table td.badge-column {
+	background: transparent;
+	border-radius: 0;
+	padding: 8px 12px;
+	font-size: inherit;
+	font-weight: normal;
+}
+
+/* Text column styling */
+.tree-table .text-column {
+	font-weight: normal;
+	text-align: left;
+}
+
+/* Sticky first column on mobile */
+@media (max-width: 767px) {
+	.tree-table th:first-child,
+	.tree-table td:first-child {
+		position: sticky;
+		left: 0;
+		z-index: 1;
+		background: var(--background-primary);
+		box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+	}
+	
+	.tree-table th:first-child {
+		z-index: 3;
+	}
+}
+
+
+/* Breadcrumb navigation */
+.table-breadcrumb {
+	padding: 8px 12px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	margin-bottom: 8px;
+	font-size: 13px;
+}
+
+/* Inline breadcrumb in top bar */
+.table-breadcrumb-inline {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	margin-right: auto;
+	padding: 4px 8px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+}
+
+.breadcrumb-separator {
+	color: var(--text-muted);
+	margin: 0 4px;
+}
+
+.breadcrumb-link {
+	color: var(--link-color);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.breadcrumb-link:hover {
+	text-decoration: underline;
+}
+
+/* Touch targets for mobile */
+@media (max-width: 767px) {
+	.tree-table .clickable-cell {
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+	}
+	
+	.breadcrumb-link {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		padding: 4px 8px;
+	}
+}
+
+/* Rowspan visual enhancement */
+.tree-table td[rowspan] {
+	background: var(--background-primary) !important;
+	font-weight: normal;
+}
+
+/* Hover effect for rows - subtle and consistent */
+.tree-table tbody tr:hover td {
+	background: var(--background-modifier-hover) !important;
+}
+
+
+/* ============================================
+   VIEW MODE SELECT DROPDOWN
+   ============================================ */
+
+.tree-control-select {
+	min-height: auto;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 11px;
+	color: var(--text-normal);
+}
+
+.tree-control-select:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tree-control-select:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+/* Mobile select */
+.tree-control-select-mobile {
+	width: 100%;
+	min-height: 44px;
+	padding: 8px 12px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+.tree-control-select-mobile:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}

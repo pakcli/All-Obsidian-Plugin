@@ -2,7 +2,7 @@
 	"name": "obsidian-tree-diagram",
 	"version": "1.0.0",
 	"description": "An Obsidian plugin that converts indented text to a file tree diagram.",
-	"main": "main.js",
+	"main": "dist/main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
