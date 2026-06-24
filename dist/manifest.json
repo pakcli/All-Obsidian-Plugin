@@ -1,10 +1,10 @@
 {
-	"id": "tree-diagram",
-	"name": "Tree Diagram",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Convert indented text to a file tree diagram.",
-	"author": "limpido",
-	"authorUrl": "https://github.com/limpido",
-	"isDesktopOnly": false
+  "id": "tree-diagram",
+  "name": "Tree Diagram and Asset Router",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Convert indented text to a file tree diagram, and automatically organize/rename asset files.",
+  "author": "limpido & Antigravity",
+  "authorUrl": "https://github.com/limpido",
+  "isDesktopOnly": false
 }
