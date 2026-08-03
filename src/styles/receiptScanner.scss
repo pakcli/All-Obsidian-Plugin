@@ -1,0 +1,896 @@
+.receipt-scanner-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    font-family: var(--font-interface);
+    box-sizing: border-box;
+    overflow: hidden;
+
+    * {
+        box-sizing: border-box;
+    }
+}
+
+.receipt-scanner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--size-4-2) var(--size-4-3);
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+
+    h2 {
+        margin: 0;
+        font-size: 1.4em;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+.receipt-scanner-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* 1️⃣ Draft Explorer Column */
+.receipt-scanner-sidebar {
+    background-color: var(--background-secondary-alt);
+    border-right: 1px solid var(--background-modifier-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: var(--size-4-2);
+
+    .btn-new-draft {
+        width: 100%;
+        margin-bottom: var(--size-4-3);
+        background-color: var(--interactive-accent);
+        color: var(--text-on-accent);
+        border: none;
+        padding: var(--size-4-2) var(--size-4-3);
+        border-radius: var(--radius-s);
+        cursor: pointer;
+        font-weight: 500;
+        text-align: center;
+        transition: background-color 0.15s ease;
+
+        &:hover {
+            background-color: var(--interactive-accent-hover);
+        }
+    }
+}
+
+.receipt-scanner-time-section {
+    margin-bottom: var(--size-4-4);
+}
+
+.receipt-scanner-section-title {
+    font-size: 0.75em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin: var(--size-4-2) 0;
+    padding-left: var(--size-2-2);
+}
+
+.receipt-scanner-draft-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-m);
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.15s ease;
+    margin-bottom: 4px;
+
+    &:hover {
+        background-color: var(--background-modifier-hover);
+    }
+
+    &.is-active {
+        background-color: var(--background-modifier-active-hover);
+        border-left: 3px solid var(--interactive-accent);
+        padding-left: calc(var(--size-4-3) - 3px);
+    }
+
+    .draft-title {
+        font-weight: 500;
+        font-size: 0.9em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--text-normal);
+    }
+
+    .draft-subtitle {
+        font-size: 0.75em;
+        color: var(--text-muted);
+    }
+}
+
+/* 2️⃣ Media & Metadata Column */
+.receipt-scanner-media-metadata {
+    background-color: var(--background-primary);
+    border-right: 1px solid var(--background-modifier-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: var(--size-4-3);
+    gap: var(--size-4-4);
+}
+
+.receipt-scanner-media-box {
+    border: 2px dashed var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-4);
+    text-align: center;
+    background-color: var(--background-secondary);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 180px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+        border-color: var(--interactive-accent);
+    }
+
+    .media-icon {
+        font-size: 2em;
+        margin-bottom: 8px;
+        color: var(--text-muted);
+    }
+
+    .media-text {
+        font-size: 0.85em;
+        color: var(--text-muted);
+    }
+
+    input[type="file"] {
+        display: none;
+    }
+}
+
+.receipt-scanner-camera-view {
+    position: relative;
+    width: 100%;
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 4/3;
+
+    video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .camera-actions {
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        z-index: 10;
+    }
+}
+
+.receipt-scanner-images-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+
+    .preview-thumbnail {
+        position: relative;
+        width: calc(33.33% - 6px);
+        aspect-ratio: 1;
+        border-radius: var(--radius-s);
+        overflow: hidden;
+        border: 1px solid var(--background-modifier-border);
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .btn-delete-img {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+
+            &:hover {
+                background: #f26464;
+            }
+        }
+    }
+}
+
+.receipt-scanner-meta-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.receipt-scanner-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2-2);
+
+    label {
+        font-size: 0.8em;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .input-row {
+        display: flex;
+        gap: 6px;
+
+        input, select {
+            flex: 1;
+            padding: var(--size-4-1) var(--size-4-2);
+            border-radius: var(--radius-s);
+            border: 1px solid var(--background-modifier-border);
+            background: var(--background-primary);
+            color: var(--text-normal);
+
+            &:focus {
+                outline: 2px solid var(--interactive-accent);
+                outline-offset: -1px;
+            }
+        }
+
+        button {
+            padding: 0 var(--size-4-2);
+            border-radius: var(--radius-s);
+            border: 1px solid var(--background-modifier-border);
+            background: var(--background-secondary);
+            cursor: pointer;
+            color: var(--text-muted);
+
+            &:hover {
+                color: var(--text-normal);
+                background: var(--background-modifier-hover);
+            }
+        }
+    }
+}
+
+/* 3️⃣ Items Parser Column */
+.receipt-scanner-items-parser {
+    flex: 1.8;
+    background-color: var(--background-primary);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: var(--size-4-3);
+    gap: var(--size-4-3);
+}
+
+.items-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 {
+        margin: 0;
+        font-size: 1.1em;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+}
+
+.receipt-scanner-split-text {
+    flex: 1;
+    display: flex;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    background-color: var(--background-primary);
+    font-family: var(--font-monospace);
+    font-size: var(--font-size-normal);
+    line-height: 22px;
+
+    .split-editor {
+        flex: 1;
+        height: 100%;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--text-normal);
+        padding: 12px;
+        resize: none;
+        outline: none;
+        white-space: pre;
+        overflow: auto;
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
+
+        &:focus {
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+        }
+    }
+
+    .split-subtotals {
+        flex: 0 0 120px;
+        width: 120px;
+        height: 100%;
+        background: transparent;
+        color: var(--text-muted);
+        padding: 12px;
+        overflow: auto;
+        white-space: pre;
+        pointer-events: none;
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
+        text-align: right;
+    }
+}
+
+.receipt-scanner-grandtotal-banner {
+    padding: var(--size-4-2) 12px;
+    border-top: 1px dashed var(--background-modifier-border);
+    font-family: var(--font-monospace);
+    font-size: 1.05em;
+    font-weight: 600;
+    color: var(--text-normal);
+    text-align: right;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* 4️⃣ Save Dir & Actions in Items Column */
+.receipt-scanner-column-footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    border-top: 1px dashed var(--background-modifier-border);
+    padding-top: var(--size-4-3);
+    margin-top: 4px;
+
+    .save-dir-field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--size-2-2);
+
+        label {
+            font-size: 0.8em;
+            font-weight: 600;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input {
+            width: 100%;
+            padding: var(--size-4-1) var(--size-4-2);
+            border-radius: var(--radius-s);
+            border: 1px solid var(--background-modifier-border);
+            background: var(--background-primary);
+            color: var(--text-normal);
+            font-family: var(--font-monospace);
+            font-size: 0.9em;
+
+            &:focus {
+                outline: 2px solid var(--interactive-accent);
+                outline-offset: -1px;
+            }
+
+            &.is-invalid {
+                border-color: var(--text-error) !important;
+                outline: 2px solid var(--text-error) !important;
+                outline-offset: -1px;
+            }
+        }
+    }
+
+    .footer-actions {
+        display: flex;
+        gap: var(--size-4-2);
+        width: 100%;
+
+        button {
+            flex: 1;
+            padding: var(--size-4-2) var(--size-4-3);
+            border-radius: var(--radius-s);
+            cursor: pointer;
+            font-weight: 500;
+            border: 1px solid var(--background-modifier-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+
+            &.btn-delete {
+                background-color: transparent;
+                color: var(--text-error);
+                border-color: var(--text-error);
+                transition: background-color 0.15s ease;
+
+                &:hover {
+                    background-color: rgba(var(--text-error-rgb), 0.1);
+                }
+            }
+
+            &.btn-save {
+                background-color: var(--interactive-accent);
+                color: var(--text-on-accent);
+                border: none;
+                transition: background-color 0.15s ease;
+
+                &:hover {
+                    background-color: var(--interactive-accent-hover);
+                }
+
+                &:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+            }
+        }
+    }
+}
+
+/* Fullscreen Mode Class */
+.receipt-scanner-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: var(--layer-modal) !important;
+    background-color: var(--background-primary);
+}
+
+/* Autocomplete suggestions popup overlay */
+.receipt-scanner-autocomplete-popup {
+    position: absolute;
+    left: 12px;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-l);
+    padding: 6px var(--size-4-2);
+    z-index: 100;
+    max-width: 250px;
+    font-family: var(--font-interface);
+    font-size: 0.85em;
+
+    .popup-header {
+        font-weight: 700;
+        font-size: 0.8em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .popup-item {
+        padding: 4px 6px;
+        border-radius: var(--radius-s);
+        cursor: pointer;
+        color: var(--text-normal);
+        transition: background-color 0.15s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        &:hover {
+            background-color: var(--background-modifier-hover);
+            color: var(--interactive-accent);
+        }
+    }
+}
+
+/* Draggable divider / splitter */
+.receipt-scanner-resizer {
+    width: 6px;
+    cursor: col-resize;
+    background-color: transparent;
+    transition: background-color 0.2s ease;
+    z-index: 10;
+    position: relative;
+    flex-shrink: 0;
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: var(--background-modifier-border);
+        transition: background-color 0.2s ease;
+    }
+
+    &:hover, &:active {
+        background-color: var(--interactive-accent-hover);
+        &::after {
+            background-color: var(--interactive-accent);
+        }
+    }
+}
+
+/* Mobile tab navigation styling */
+.receipt-scanner-mobile-tabs {
+    display: none; /* Hidden by default on desktop */
+}
+
+/* Mobile responsiveness & sliding tab animation */
+@media (max-width: 768px) {
+    .receipt-scanner-mobile-tabs {
+        display: flex;
+        width: 100%;
+        background-color: var(--background-secondary-alt);
+        border-bottom: 1px solid var(--background-modifier-border);
+        
+        .mobile-tab-btn {
+            flex: 1;
+            padding: var(--size-4-2) var(--size-4-1);
+            text-align: center;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s ease;
+            border-radius: 0;
+
+            &:hover {
+                background-color: var(--background-modifier-hover);
+                color: var(--text-normal);
+            }
+
+            &.is-active {
+                color: var(--interactive-accent);
+                border-bottom-color: var(--interactive-accent);
+                font-weight: 600;
+                background-color: var(--background-primary);
+            }
+        }
+    }
+
+    .receipt-scanner-body {
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+        
+        &.has-active-draft {
+            width: 300%;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            &.active-tab-drafts {
+                transform: translateX(0%);
+            }
+            &.active-tab-scanner {
+                transform: translateX(-33.3333%);
+            }
+            &.active-tab-items {
+                transform: translateX(-66.6666%);
+            }
+
+            .receipt-scanner-sidebar,
+            .receipt-scanner-media-metadata,
+            .receipt-scanner-items-parser {
+                width: 33.3333% !important;
+                min-width: 33.3333% !important;
+                max-width: 33.3333% !important;
+                flex: none !important;
+                height: 100% !important;
+                border-right: none !important;
+            }
+        }
+    }
+
+    /* Hide desktop dividers on mobile */
+    .receipt-scanner-resizer {
+        display: none !important;
+    }
+}
+
+/* Wiki Note links highlight overlay inside items plain text editor */
+.split-editor-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: calc(100% - 120px);
+    height: 100%;
+    padding: 12px;
+    font-family: var(--font-monospace);
+    font-size: var(--font-size-normal);
+    line-height: 22px;
+    white-space: pre;
+    overflow: hidden;
+    pointer-events: none; /* Let normal scroll & drag pass through to textarea */
+    background-color: transparent;
+    box-sizing: border-box;
+
+    .wiki-link-overlay-name {
+        color: var(--link-color);
+        cursor: pointer;
+        pointer-events: auto; /* Block only the product name bounds to allow clicks */
+        text-decoration: none;
+        transition: text-decoration 0.1s ease;
+        font-weight: 500;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+/* ==========================================
+   Privacy Redaction Paint Editor & Warnings
+   ========================================== */
+
+.receipt-scanner-images-list-container {
+    border-top: 1px dashed var(--background-modifier-border);
+    padding-top: var(--size-4-3);
+}
+
+.image-row-item {
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    transition: border-color 0.2s ease;
+
+    &.is-expanded {
+        border-color: var(--interactive-accent);
+    }
+}
+
+.image-row-header {
+    background-color: var(--background-secondary) !important;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background-color: var(--background-modifier-hover) !important;
+    }
+}
+
+.image-filename {
+    color: var(--text-normal);
+}
+
+.redaction-status-badge {
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.redaction-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    padding: 4px;
+}
+
+.redaction-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 4px;
+
+    .tool-group, .toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .toggle-label {
+        font-size: 0.8em;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    button {
+        padding: 4px 10px;
+        font-size: 0.85em;
+        border-radius: var(--radius-s);
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-secondary);
+        color: var(--text-muted);
+        cursor: pointer;
+
+        &.mod-active {
+            background-color: var(--interactive-accent);
+            color: var(--text-on-accent);
+            border-color: transparent;
+        }
+
+        &:hover:not(.mod-active) {
+            color: var(--text-normal);
+            background-color: var(--background-modifier-hover);
+        }
+    }
+
+    .danger-btn {
+        color: var(--text-error);
+        border-color: var(--text-error);
+        background: transparent;
+
+        &:hover {
+            background-color: rgba(var(--text-error-rgb), 0.1) !important;
+            color: var(--text-error) !important;
+        }
+    }
+}
+
+.redaction-canvas-container {
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    background-size: 16px 16px;
+    background-position: center;
+}
+
+.privacy-warning-banner {
+    animation: pulse-border 2s infinite alternate;
+    transition: background-color 0.3s ease;
+}
+
+@keyframes pulse-border {
+    0% {
+        box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* ==========================================
+   API Settings Modal Styling
+   ========================================== */
+
+.receipt-scanner-settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; // Above general views
+    animation: fadeIn 0.2s ease-out;
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+}
+
+.receipt-scanner-settings-modal {
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-l);
+    width: 420px;
+    max-width: 90%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--size-4-3) var(--size-4-4);
+        background-color: var(--background-secondary);
+        border-bottom: 1px solid var(--background-modifier-border);
+
+        h3 {
+            margin: 0;
+            font-size: 1.15em;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-s);
+            transition: all 0.15s ease;
+
+            &:hover {
+                color: var(--text-normal);
+                background-color: var(--background-modifier-hover);
+            }
+        }
+    }
+
+    .modal-body {
+        padding: var(--size-4-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--size-4-3);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--size-4-2);
+        padding: var(--size-4-3) var(--size-4-4);
+        background-color: var(--background-secondary);
+        border-top: 1px solid var(--background-modifier-border);
+
+        button {
+            padding: var(--size-4-2) var(--size-4-4);
+            border-radius: var(--radius-s);
+            cursor: pointer;
+            font-weight: 500;
+            border: 1px solid var(--background-modifier-border);
+            font-size: 0.9em;
+
+            &.mod-cta {
+                background-color: var(--interactive-accent);
+                color: var(--text-on-accent);
+                border: none;
+
+                &:hover {
+                    background-color: var(--interactive-accent-hover);
+                }
+            }
+
+            &:not(.mod-cta) {
+                background: transparent;
+                color: var(--text-muted);
+
+                &:hover {
+                    background-color: var(--background-modifier-hover);
+                    color: var(--text-normal);
+                }
+            }
+        }
+    }
+}

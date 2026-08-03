@@ -1,9 +1,9 @@
 {
-	"id": "symlink-manager",
-	"name": "Symlink Manager",
+	"id": "pakcli-editors-choice",
+	"name": "PakCLI Editor's Choice",
 	"version": "1.0.0",
 	"minAppVersion": "1.4.0",
-	"description": "Right-click any folder to create, edit, or disconnect junctions and symbolic links. Single adaptive panel, no terminal.",
-	"author": "Symlink Manager",
+	"description": "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, SQLSeal & Tablite CSV Editor, and Leaflet bases.",
+	"author": "PakCLI Team",
 	"isDesktopOnly": true
 }

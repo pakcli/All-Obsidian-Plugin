@@ -1,29 +1,171 @@
-import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFolder } from 'obsidian';
-import { BadgeRenderer } from './badges';
-import { SymlinkModal } from './modal';
-import { DEFAULT_SETTINGS, SymlinkManagerSettings, SymlinkManagerSettingTab } from './settings';
+import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFolder, Editor, MarkdownView } from 'obsidian';
+import { BadgeRenderer } from './features/symlink/badges';
+import { SymlinkModal } from './features/symlink/modal';
+import { DatePickerModal } from './features/symlink/datePickerModal';
+import { DEFAULT_SETTINGS, PakCLIPluginSettings, PakCLISettingTab } from './settings';
+import { SymlinkManagerSettingTab } from './features/symlink/settings';
 
-export default class SymlinkManagerPlugin extends Plugin {
-	settings!: SymlinkManagerSettings;
+// SQLSeal Imports
+import { mainModule } from './features/sqlseal/modules/main/module';
+import { SQLSealSettingsTab } from './features/sqlseal/modules/settings/SQLSealSettingsTab';
+
+// Leaflet Imports
+import { BasesLeafletViewPlugin } from './features/leaflet/plugin';
+import { BasesLeafletViewSettingsTab } from './features/leaflet/settings/basesLeafletViewSettingsTab';
+
+// Tree Diagram / Asset Router Imports
+import { AssetRouter } from './features/tree/router';
+import { DiagramRenderer } from './features/tree/renderers/DiagramRenderer';
+import { registerCommands as registerTreeCommands } from './features/tree/commands/index';
+
+export default class PakCLIPlugin extends Plugin {
+	settings!: PakCLIPluginSettings;
+    
+	// Symlink Manager properties
 	private badges: BadgeRenderer | null = null;
 	private vaultRoot = '';
+
+	// Leaflet properties
+	leafletPlugin!: BasesLeafletViewPlugin;
+
+	// Tree Diagram / Asset Router properties
+	settingsPanelStates: Map<string, boolean> = new Map();
+	router!: AssetRouter;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
 
 		const adapter = this.app.vault.adapter;
 		if (!(adapter instanceof FileSystemAdapter)) {
-			new Notice('Symlink Manager: this plugin only runs on Obsidian desktop.');
+			new Notice('PakCLI: this plugin only runs on Obsidian desktop.');
 			return;
 		}
 		this.vaultRoot = adapter.getBasePath();
 
+		// =========================================================================
+		// 1. Initialize SQLSeal
+		// =========================================================================
+		let sqlsealTabInstance: SQLSealSettingsTab | null = null;
+		try {
+			const container = mainModule.build({
+				'obsidian.app': this.app,
+				'obsidian.plugin': this,
+				'obsidian.vault': this.app.vault
+			});
+
+			const init = await container.get('init');
+			init();
+
+			sqlsealTabInstance = await container.get('settings.settingsTab');
+		} catch (err) {
+			console.error('[PakCLI] Failed to initialize SQLSeal:', err);
+		}
+
+		// =========================================================================
+		// 2. Initialize Leaflet Maps
+		// =========================================================================
+		this.leafletPlugin = new BasesLeafletViewPlugin(this.app, this.manifest);
+		await this.leafletPlugin.onload();
+		const leafletTabInstance = new BasesLeafletViewSettingsTab(this.leafletPlugin, this.leafletPlugin.settingsManager);
+
+		// =========================================================================
+		// 3. Initialize Symlink Manager & Date Picker
+		// =========================================================================
 		this.badges = new BadgeRenderer(this.app, this.vaultRoot);
 
 		this.addCommand({
 			id: 'manage-active-folder',
 			name: 'Manage symlink for active folder',
 			callback: () => this.openModalForVaultPath(''),
+		});
+
+		this.addCommand({
+			id: 'insert-date-picker',
+			name: 'Insert date from picker',
+			callback: () => {
+				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const today = new Date();
+				const yyyy = String(today.getFullYear());
+				const mm = String(today.getMonth() + 1).padStart(2, '0');
+				const dd = String(today.getDate()).padStart(2, '0');
+				const defaultDateStr = `${yyyy}-${mm}-${dd}`;
+
+				const activeEl = document.activeElement as HTMLElement | null;
+
+				// 1. If we are in the file explorer rename input, insert today's date immediately.
+				// This is because opening a modal triggers a blur event on the rename input, 
+				// which tells Obsidian to immediately destroy/commit the rename element before we can choose a date.
+				const isRenameInput = activeEl && (
+					activeEl.classList.contains('nav-file-input') || 
+					activeEl.classList.contains('nav-folder-input') ||
+					activeEl.closest('.nav-file') !== null ||
+					activeEl.closest('.nav-folder') !== null
+				) && (activeEl instanceof HTMLInputElement);
+
+				if (isRenameInput) {
+					const formatted = this.formatDate(today, this.settings.dateFormat);
+					document.execCommand('insertText', false, formatted);
+					return;
+				}
+
+				// 2. Capture selection and show date picker modal for non-destructive elements (editor, title, etc)
+				let selectionRange: Range | null = null;
+				let inputSelection: { start: number; end: number } | null = null;
+
+				if (activeEl) {
+					if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) {
+						inputSelection = {
+							start: activeEl.selectionStart ?? 0,
+							end: activeEl.selectionEnd ?? 0
+						};
+					} else if (activeEl.isContentEditable) {
+						const selection = window.getSelection();
+						if (selection && selection.rangeCount > 0) {
+							selectionRange = selection.getRangeAt(0).cloneRange();
+						}
+					}
+				}
+
+				new DatePickerModal(this.app, defaultDateStr, (selectedDateStr: string) => {
+					const parts = selectedDateStr.split('-');
+					const year = parseInt(parts[0] ?? '', 10);
+					const month = parseInt(parts[1] ?? '', 10) - 1;
+					const day = parseInt(parts[2] ?? '', 10);
+					const date = new Date(year, month, day);
+					const formatted = this.formatDate(date, this.settings.dateFormat);
+
+					if (activeEl) {
+						activeEl.focus(); // Restore focus first
+
+						if (inputSelection && (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
+							activeEl.setSelectionRange(inputSelection.start, inputSelection.end);
+							document.execCommand('insertText', false, formatted);
+						} else if (selectionRange && activeEl.isContentEditable) {
+							const selection = window.getSelection();
+							if (selection) {
+								selection.removeAllRanges();
+								selection.addRange(selectionRange);
+							}
+							document.execCommand('insertText', false, formatted);
+						} else if (activeView && activeView.editor) {
+							const editor = activeView.editor;
+							editor.replaceRange(formatted, editor.getCursor());
+						}
+					} else if (activeView && activeView.editor) {
+						const editor = activeView.editor;
+						editor.replaceRange(formatted, editor.getCursor());
+					} else {
+						new Notice("No input field was focused to insert date.");
+					}
+				}).open();
+			},
+			/* eslint-disable-next-line obsidianmd/commands/no-default-hotkeys */
+			hotkeys: [
+				{
+					modifiers: ['Mod', 'Shift'],
+					key: 'd',
+				},
+			],
 		});
 
 		this.registerEvent(
@@ -40,19 +182,56 @@ export default class SymlinkManagerPlugin extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => this.applyBadgeSetting());
 
-		// Folder rename/create/delete can change link state visible in the tree.
 		this.registerEvent(this.app.vault.on('create', (f) => this.badges?.notify(f)));
 		this.registerEvent(this.app.vault.on('delete', (f) => this.badges?.notify(f)));
 		this.registerEvent(this.app.vault.on('rename', (f) => this.badges?.notify(f)));
 
-		this.addSettingTab(new SymlinkManagerSettingTab(this.app, this));
+		const symlinkTabInstance = new SymlinkManagerSettingTab(
+			this.app,
+			this,
+			this.settings,
+			() => this.saveSettings(),
+			() => this.applyBadgeSetting()
+		);
+
+		// =========================================================================
+		// 4. Initialize Tree Diagram & Asset Router
+		// =========================================================================
+		this.router = new AssetRouter(this.app, () => this.settings);
+		this.router.registerEvents(this);
+
+		this.registerMarkdownCodeBlockProcessor("tree", async (source, el, ctx) => {
+			ctx.addChild(new DiagramRenderer(this, source, el, ctx));
+		});
+
+		registerTreeCommands(this);
+
+		// =========================================================================
+		// 5. Register Settings Tab
+		// =========================================================================
+		this.addSettingTab(new PakCLISettingTab(
+			this.app, 
+			this, 
+			symlinkTabInstance, 
+			sqlsealTabInstance, 
+			leafletTabInstance
+		));
+
+		new Notice('PakCLI Editor\'s Choice Loaded');
 	}
 
 	onunload(): void {
 		this.badges?.clearAll();
 		this.badges = null;
+
+		if (this.leafletPlugin) {
+			this.leafletPlugin.onunload();
+		}
 	}
 
+	// =========================================================================
+	// Symlink Manager Methods
+	// =========================================================================
 	openModalForVaultPath(initialVaultPath: string): void {
 		if (!this.vaultRoot) {
 			new Notice('Symlink Manager: vault root unavailable.');
@@ -72,12 +251,61 @@ export default class SymlinkManagerPlugin extends Plugin {
 		else this.badges.clearAll();
 	}
 
+	// =========================================================================
+	// SQLSeal Config Methods
+	// =========================================================================
+	getFileColumnConfig(filePath: string, columnCount: number): any {
+		const files = this.settings.files || {};
+		const config = files[filePath];
+		if (config) return config;
+		const defaultOrder = Array.from({ length: columnCount }, (_, i) => i);
+		return {
+			order: defaultOrder,
+			hidden: [],
+			sizing: {},
+			frozenCount: 0,
+		};
+	}
+
+	async setFileColumnConfig(filePath: string, columnCount: number, config: any): Promise<void> {
+		if (!this.settings.files) {
+			this.settings.files = {};
+		}
+		this.settings.files[filePath] = config;
+		await this.saveSettings();
+	}
+
+	// =========================================================================
+	// Shared Settings Management
+	// =========================================================================
 	async loadSettings(): Promise<void> {
-		const data = (await this.loadData()) as Partial<SymlinkManagerSettings> | null;
+		const data = (await this.loadData()) as Partial<PakCLIPluginSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
 	}
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
+	}
+
+	async saveData(data: any): Promise<void> {
+		this.settings = Object.assign(this.settings || {}, data || {});
+		await super.saveData(this.settings);
+	}
+
+	formatDate(date: Date, format: string): string {
+		const yyyy = String(date.getFullYear());
+		const yy = yyyy.slice(-2);
+		const mm = String(date.getMonth() + 1).padStart(2, '0');
+		const m = String(date.getMonth() + 1);
+		const dd = String(date.getDate()).padStart(2, '0');
+		const d = String(date.getDate());
+
+		return format
+			.replace(/{yyyy}/g, yyyy)
+			.replace(/{yy}/g, yy)
+			.replace(/{mm}/g, mm)
+			.replace(/{m}/g, m)
+			.replace(/{dd}/g, dd)
+			.replace(/{d}/g, d);
 	}
 }

@@ -1,0 +1,149 @@
+@use 'core';
+@use 'csvEditor';
+@use 'inlineQueries';
+@use 'listView';
+@use 'syntaxHighlight';
+@use 'obsidianMinimal';
+@use 'agGrid';
+@use 'settings';
+@use 'canvas';
+@use 'autocomplete';
+@use 'global-tables';
+@use 'jsonViewer';
+@use 'receiptScanner';
+
+
+@use '../features/sqlseal/modules/explorer/explorer/style.scss';
+
+@import "tree.css";
+@import "leaflet.css";
+
+.sqlseal-edit-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3) var(--size-4-4);
+    margin-top: 10px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-s);
+    animation: sqlsealSlideIn 0.2s ease-out;
+
+    span {
+        font-weight: 500;
+        color: var(--text-muted);
+        font-size: var(--font-size-small);
+    }
+
+    .sqlseal-edit-banner-actions {
+        display: flex;
+        gap: var(--size-4-2);
+
+        button {
+            padding: var(--size-4-1) var(--size-4-3);
+            font-size: var(--font-size-small);
+            border-radius: var(--radius-s);
+            cursor: pointer;
+            transition: all 0.15s ease;
+
+            &.sqlseal-edit-btn-save {
+                background-color: var(--interactive-accent);
+                color: var(--text-on-accent);
+                border: none;
+
+                &:hover {
+                    background-color: var(--interactive-accent-hover);
+                }
+            }
+
+            &.sqlseal-edit-btn-discard {
+                background-color: transparent;
+                border: 1px solid var(--border-color);
+                color: var(--text-normal);
+
+                &:hover {
+                    background-color: var(--background-modifier-hover);
+                }
+            }
+        }
+    }
+}
+
+@keyframes sqlsealSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pakcli-settings-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.pakcli-settings-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    border-right: 1px solid var(--background-modifier-border);
+    padding-right: 15px;
+
+    h2 {
+        margin: 0;
+        padding: 4px 12px;
+        font-size: 1.15em;
+        font-weight: 600;
+        color: var(--text-normal);
+        border-bottom: 1px solid var(--background-modifier-border);
+        padding-bottom: 10px;
+        margin-bottom: 5px;
+    }
+}
+
+.pakcli-tabs-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 0;
+
+    button {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        cursor: pointer;
+        padding: 8px 12px !important;
+        font-size: 14px !important;
+        font-weight: 500;
+        border-radius: 4px;
+        color: var(--text-muted);
+        text-align: left;
+        width: 100%;
+        transition: all 0.2s ease;
+
+        &:hover {
+            background-color: var(--background-modifier-hover) !important;
+            color: var(--text-normal) !important;
+        }
+
+        &.active-tab {
+            background-color: var(--background-modifier-active-hover) !important;
+            color: var(--interactive-accent) !important;
+            font-weight: 600;
+        }
+    }
+}
+
+.pakcli-tab-content {
+    flex-grow: 1;
+    min-width: 0;
+}

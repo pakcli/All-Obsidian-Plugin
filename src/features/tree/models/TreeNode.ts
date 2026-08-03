@@ -1,0 +1,43 @@
+export interface WikiLink {
+	target: string;
+	alias: string;
+}
+
+export default class TreeNode {
+	name: string;
+	depth: number;
+	parent: TreeNode | null;
+	children: TreeNode[];
+	isLast: boolean;
+	link: WikiLink | null;
+
+	constructor(name: string, depth: number, parent: TreeNode | null = null, isLast = false, link: WikiLink | null = null) {
+		this.name = name;
+		this.depth = depth;
+		this.parent = parent;
+		this.children = [];
+		this.isLast = isLast;
+		this.link = link;
+	}
+
+	addChild(child: TreeNode) {
+		if (this.children.length > 0)
+			this.children[this.children.length - 1].isLast = false;
+		this.children.push(child);
+		child.setIsLast(true);
+		child.setParent(this);
+		child.setDepth(this.depth + 1);
+	}
+
+	setParent(p: TreeNode) {
+		this.parent = p;
+	}
+
+	setIsLast(v: boolean) {
+		this.isLast = v;
+	}
+
+	setDepth(d: number) {
+		this.depth = d;
+	}
+}
