@@ -43,15 +43,15 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# Verify GitHub CLI login status
-try {
-    $GhStatus = gh auth status 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Err "GitHub CLI is not logged in. Please run 'gh auth login' first."
-        exit 1
-    }
-} catch {
-    Write-Err "Failed to check GitHub CLI auth status."
+# Verify GitHub CLI login status safely
+$OldErrorPref = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+gh auth status 2>$null
+$AuthCheckCode = $LASTEXITCODE
+$ErrorActionPreference = $OldErrorPref
+
+if ($AuthCheckCode -ne 0) {
+    Write-Err "GitHub CLI is not logged in. Please run 'gh auth login' first."
     exit 1
 }
 
@@ -61,7 +61,7 @@ if (-not (Test-Path "manifest.json")) {
 }
 
 # Get current repo nameWithOwner (e.g. pakcli/All-Obsidian-Plugin)
-$RepoPath = (gh repo view --json nameWithOwner -q .nameWithOwner).Trim()
+$RepoPath = (gh repo view --json nameWithOwner -q .nameWithOwner 2>$null).Trim()
 if ([string]::IsNullOrWhiteSpace($RepoPath)) {
     Write-Err "Could not determine GitHub repository path using gh repo view."
     exit 1
@@ -75,10 +75,10 @@ $PluginName = $ManifestContent.name
 $PluginAuthor = $ManifestContent.author
 $PluginDescription = $ManifestContent.description
 
-Write-Host "Plugin Name:    $PluginName" -ForegroundColor White
-Write-Host "Plugin ID:      $PluginId" -ForegroundColor White
+Write-Host "Plugin Name:     $PluginName" -ForegroundColor White
+Write-Host "Plugin ID:       $PluginId" -ForegroundColor White
 Write-Host "Current Version: $CurrentVersion" -ForegroundColor Yellow
-Write-Host "GitHub Repo:    $RepoPath" -ForegroundColor White
+Write-Host "GitHub Repo:     $RepoPath" -ForegroundColor White
 
 # -------------------------------------------------------------------------
 # Step 2: Version Bumping
@@ -181,24 +181,34 @@ if (-not $ExistingTag) {
     Write-Host "Git tag '$TargetVersion' already exists." -ForegroundColor Yellow
 }
 
-Write-Step "Pushing commits and tags to GitHub..."
-git push origin --all --force
-git push origin --tags --force
-Write-Success "Pushed code and tag '$TargetVersion' to GitHub!"
+Write-Step "Pushing commits and tag '$TargetVersion' to GitHub..."
+$ErrorActionPreference = 'Continue'
+git push origin HEAD
+git push origin $TargetVersion
+$ErrorActionPreference = 'Stop'
+
+Write-Success "Pushed current branch and tag '$TargetVersion' to GitHub!"
 
 # -------------------------------------------------------------------------
-# Step 5: Create/Update GitHub Release
+# Step 5: Create/Update GitHub Release safely
 # -------------------------------------------------------------------------
-Write-Step "Creating GitHub Release '$TargetVersion' with attached assets..."
+Write-Step "Creating/updating GitHub Release '$TargetVersion' with attached assets..."
 
-$ReleaseCheck = gh release view $TargetVersion --repo $RepoPath 2>&1
-if ($LASTEXITCODE -ne 0) {
-    gh release create $TargetVersion main.js manifest.json styles.css --repo $RepoPath --title "$TargetVersion" --notes "Release $TargetVersion"
-    Write-Success "GitHub Release '$TargetVersion' created successfully with main.js, manifest.json, styles.css!"
-} else {
+$ErrorActionPreference = 'Continue'
+$ReleaseExists = $false
+gh release view $TargetVersion --repo $RepoPath 2>$null
+if ($LASTEXITCODE -eq 0) {
+    $ReleaseExists = $true
+}
+
+if ($ReleaseExists) {
     gh release upload $TargetVersion main.js manifest.json styles.css --repo $RepoPath --clobber
     Write-Success "GitHub Release '$TargetVersion' updated with fresh build assets!"
+} else {
+    gh release create $TargetVersion main.js manifest.json styles.css --repo $RepoPath --title "$TargetVersion" --notes "Release $TargetVersion"
+    Write-Success "GitHub Release '$TargetVersion' created successfully with main.js, manifest.json, styles.css!"
 }
+$ErrorActionPreference = 'Stop'
 
 # -------------------------------------------------------------------------
 # Step 6: Automated Submission to obsidianmd/obsidian-releases
@@ -226,9 +236,11 @@ if ($IsRegistered) {
         Remove-Item -Path $ForkDir -Recurse -Force
     }
 
-    # Fork & clone obsidianmd/obsidian-releases
+    # Fork & clone obsidianmd/obsidian-releases safely
     Write-Host "Forking/cloning obsidianmd/obsidian-releases repository..." -ForegroundColor Yellow
+    $ErrorActionPreference = 'Continue'
     gh repo fork obsidianmd/obsidian-releases --clone=true "$ForkDir"
+    $ErrorActionPreference = 'Stop'
 
     Set-Location $ForkDir
 
@@ -265,6 +277,8 @@ if (!plugins.some(p => p.id === newEntry.id)) {
 
     git add community-plugins.json
     git commit -m "Add $PluginName plugin ($PluginId)"
+    
+    $ErrorActionPreference = 'Continue'
     git push origin $BranchName --force
 
     # Create Pull Request
@@ -283,6 +297,7 @@ if (!plugins.some(p => p.id === newEntry.id)) {
 "@
 
     $PrOutput = gh pr create --repo obsidianmd/obsidian-releases --title "Add $PluginName" --body "$PrBody" --head $BranchName
+    $ErrorActionPreference = 'Stop'
     
     Set-Location $PSScriptRoot
     Remove-Item -Path $ForkDir -Recurse -Force
