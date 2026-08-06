@@ -237,31 +237,34 @@ if ($IsRegistered) {
     Write-Warn "Plugin '$PluginId' is NOT YET listed in the official Obsidian Community Plugins directory."
     Write-Step "Submitting Pull Request to obsidianmd/obsidian-releases..."
 
+    # Ensure user has a fork on GitHub first
+    $ErrorActionPreference = 'Continue'
+    gh repo fork obsidianmd/obsidian-releases --clone=false 2>$null
+    $ErrorActionPreference = 'Stop'
+
     $ForkDir = Join-Path $PSScriptRoot ".obsidian-releases-fork"
     if (Test-Path $ForkDir) {
         Remove-Item -Path $ForkDir -Recurse -Force
     }
 
-    # Fork & clone obsidianmd/obsidian-releases safely
-    Write-Host "Forking/cloning obsidianmd/obsidian-releases repository..." -ForegroundColor Yellow
-    $ErrorActionPreference = 'Continue'
-    gh repo fork obsidianmd/obsidian-releases --clone=true "$ForkDir"
-    $ErrorActionPreference = 'Stop'
+    # Clone directly from fresh UPSTREAM master to prevent 64,000 lines diff issue
+    Write-Host "Cloning fresh obsidianmd/obsidian-releases repository..." -ForegroundColor Yellow
+    git clone --depth 1 https://github.com/obsidianmd/obsidian-releases.git "$ForkDir"
 
     Set-Location $ForkDir
 
-    # Configure branch
+    # Create new clean branch off latest upstream master
     $BranchName = "add-$PluginId"
-    git checkout -B $BranchName
+    git checkout -b $BranchName
 
-    # Pass plugin fields safely through environment variables to avoid syntax errors with single quotes
+    # Pass plugin fields safely through environment variables
     $env:PLUGIN_ID = $PluginId
     $env:PLUGIN_NAME = $PluginName
     $env:PLUGIN_AUTHOR = $PluginAuthor
     $env:PLUGIN_DESCRIPTION = $PluginDescription
     $env:REPO_PATH = $RepoPath
 
-    # Update community-plugins.json using Node.js script
+    # Update community-plugins.json cleanly
     $AddScript = @"
 const fs = require('fs');
 const filePath = 'community-plugins.json';
@@ -297,10 +300,14 @@ if (!plugins.some(p => p.id === newEntry.id)) {
     git add community-plugins.json
     git commit -m "Add $PluginName plugin ($PluginId)"
     
+    # Point origin remote to user's fork and push
+    $UserForkUrl = "https://github.com/$GhUser/obsidian-releases.git"
+    git remote set-url origin $UserForkUrl
+
     $ErrorActionPreference = 'Continue'
     git push origin $BranchName --force
 
-    # Create Pull Request with proper fork head format ($GhUser:$BranchName)
+    # Create Pull Request
     $HeadSpec = "$GhUser`:$BranchName"
     $PrBody = @"
 ## Plugin Submission: $PluginName
@@ -316,14 +323,23 @@ if (!plugins.some(p => p.id === newEntry.id)) {
 - [x] Code is original / open source
 "@
 
-    $PrOutput = gh pr create --repo obsidianmd/obsidian-releases --head $HeadSpec --base master --title "Add $PluginName" --body "$PrBody"
+    $PrOutput = gh pr create --repo obsidianmd/obsidian-releases --head $HeadSpec --base master --title "Add $PluginName" --body "$PrBody" 2>&1
     $ErrorActionPreference = 'Stop'
     
     Set-Location $PSScriptRoot
     Remove-Item -Path $ForkDir -Recurse -Force
 
-    Write-Success "PULL REQUEST SUBMITTED SUCCESSFULLY TO OBSIDIAN COMMUNITY PLUGINS!"
-    Write-Host "PR Link: $PrOutput" -ForegroundColor Green
+    $CompareUrl = "https://github.com/obsidianmd/obsidian-releases/compare/master...$GhUser`:$BranchName`?expand=1"
+
+    if ($LASTEXITCODE -eq 0 -and $PrOutput -match "https://github.com") {
+        Write-Success "PULL REQUEST SUBMITTED SUCCESSFULLY TO OBSIDIAN COMMUNITY PLUGINS!"
+        Write-Host "PR Link: $PrOutput" -ForegroundColor Green
+    } else {
+        Write-Warn "GitHub API requires confirmation to open PR across repository forks."
+        Write-Host "`nOpening clean PR submission page in your browser..." -ForegroundColor Yellow
+        Start-Process $CompareUrl
+        Write-Host "Direct PR URL: $CompareUrl" -ForegroundColor Cyan
+    }
 }
 
 Write-Host "`n======================================================" -ForegroundColor Cyan
