@@ -1,4 +1,4 @@
-import mermaid from 'mermaid'
+// Remove static top-level mermaid import
 import { WaSqliteMemoryDatabase } from '../database/waSqliteMemoryDatabase'
 
 export interface DetailedColumnInfo {
@@ -33,32 +33,44 @@ export class SchemaVisualiser {
         this.initializeMermaid()
     }
 
+    private getMermaid(): any {
+        if (typeof (window as any).mermaid !== 'undefined') {
+            return (window as any).mermaid
+        }
+        try {
+            return require('mermaid')
+        } catch {
+            return null
+        }
+    }
+
     private initializeMermaid() {
         if (this.initialized) return
         
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: 'default',
-            securityLevel: 'loose',
-            er: {
-                diagramPadding: 20,
-                layoutDirection: 'TB',
-                minEntityWidth: 120,
-                minEntityHeight: 80,
-                entityPadding: 15,
-                stroke: '#666',
-                fill: '#f9f9f9',
-                fontSize: 12,
-                // Force full width usage
-                useMaxWidth: true
-            },
-            flowchart: {
-                useMaxWidth: true,
-                htmlLabels: true
-            }
-        })
-        
-        this.initialized = true
+        const m = this.getMermaid()
+        if (m && typeof m.initialize === 'function') {
+            m.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'loose',
+                er: {
+                    diagramPadding: 20,
+                    layoutDirection: 'TB',
+                    minEntityWidth: 120,
+                    minEntityHeight: 80,
+                    entityPadding: 15,
+                    stroke: '#666',
+                    fill: '#f9f9f9',
+                    fontSize: 12,
+                    useMaxWidth: true
+                },
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true
+                }
+            })
+            this.initialized = true
+        }
     }
 
     async show(container: HTMLElement) {
@@ -75,7 +87,12 @@ export class SchemaVisualiser {
                 }
             })
             
-            const { svg } = await mermaid.render(`diagram-${Date.now()}`, mermaidCode)
+            const m = this.getMermaid()
+            if (!m) {
+                this.showFallbackSchema(container, schema)
+                return
+            }
+            const { svg } = await m.render(`diagram-${Date.now()}`, mermaidCode)
             diagramContainer.innerHTML = svg
             
             // Ensure SVG takes full width

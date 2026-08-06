@@ -222,6 +222,7 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
+		"mermaid",
 		...builtins
 	],
 	format: "cjs",
@@ -229,6 +230,8 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
+	minify: prod,
+	metafile: true,
 	outfile: "dist/main.js",
 	loader: {
 		'.svg': 'text'
@@ -263,7 +266,15 @@ const stylesContext = await esbuild.context({
 });
 
 if (prod) {
-	await context.rebuild();
+	const res = await context.rebuild();
+	const inputs = res.metafile.outputs['dist/main.js'].inputs;
+	const sorted = Object.entries(inputs)
+		.sort((a,b) => (b[1].bytesInOutput||0) - (a[1].bytesInOutput||0))
+		.slice(0, 15);
+	console.log("=== TOP 15 BUNDLE INPUTS ===");
+	for (const [k, v] of sorted) {
+		console.log(`${(v.bytesInOutput/1024/1024).toFixed(2)} MB -> ${k}`);
+	}
 	await stylesContext.rebuild();
 	await postBuild();
 	process.exit(0);
