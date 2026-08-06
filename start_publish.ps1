@@ -1,5 +1,5 @@
 # start_publish.ps1
-# Complete 1-click build, release, tag, and automated Obsidian Community Plugin PR submission script.
+# Official automated release build script for PakCLI Editor's Choice Obsidian plugin.
 
 $ErrorActionPreference = 'Stop'
 
@@ -20,13 +20,13 @@ function Write-Err ([string]$message) {
 }
 
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "   PakCLI Obsidian Plugin - Automated Publisher      " -ForegroundColor Cyan
+Write-Host "   PakCLI Obsidian Plugin - Release & Publish Tool   " -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 
 # -------------------------------------------------------------------------
-# Step 1: Pre-flight & GitHub CLI Checks
+# Step 1: Pre-flight checks
 # -------------------------------------------------------------------------
-Write-Step "Checking environment and tools..."
+Write-Step "Performing pre-flight environment checks..."
 
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     Write-Err "npm is not installed or not in PATH."
@@ -39,19 +39,7 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Write-Err "GitHub CLI (gh) is not installed. Please install 'gh' to automate pull requests."
-    exit 1
-}
-
-# Verify GitHub CLI login status safely
-$OldErrorPref = $ErrorActionPreference
-$ErrorActionPreference = 'Continue'
-gh auth status 2>$null
-$AuthCheckCode = $LASTEXITCODE
-$ErrorActionPreference = $OldErrorPref
-
-if ($AuthCheckCode -ne 0) {
-    Write-Err "GitHub CLI is not logged in. Please run 'gh auth login' first."
+    Write-Err "GitHub CLI (gh) is not installed. Please install 'gh'."
     exit 1
 }
 
@@ -67,27 +55,19 @@ if ([string]::IsNullOrWhiteSpace($RepoPath)) {
     exit 1
 }
 
-$GhUser = (gh api user -q .login 2>$null).Trim()
-if ([string]::IsNullOrWhiteSpace($GhUser)) {
-    $GhUser = $RepoPath.Split('/')[0]
-}
-
 # Parse manifest.json
 $ManifestContent = Get-Content "manifest.json" -Raw | ConvertFrom-Json
 $CurrentVersion = $ManifestContent.version
 $PluginId = $ManifestContent.id
 $PluginName = $ManifestContent.name
-$PluginAuthor = $ManifestContent.author
-$PluginDescription = $ManifestContent.description
 
 Write-Host "Plugin Name:     $PluginName" -ForegroundColor White
 Write-Host "Plugin ID:       $PluginId" -ForegroundColor White
 Write-Host "Current Version: $CurrentVersion" -ForegroundColor Yellow
 Write-Host "GitHub Repo:     $RepoPath" -ForegroundColor White
-Write-Host "GitHub User:     $GhUser" -ForegroundColor White
 
 # -------------------------------------------------------------------------
-# Step 2: Version Bumping
+# Step 2: Version Bumping Option
 # -------------------------------------------------------------------------
 Write-Step "Select release version mode:"
 Write-Host "  [1] Keep current version ($CurrentVersion)" -ForegroundColor White
@@ -111,7 +91,7 @@ if ($Choice -eq "2") {
     $v = [version]$CurrentVersion
     $TargetVersion = "$($v.Major + 1).0.0"
 } elseif ($Choice -eq "5") {
-    $TargetVersion = Read-Host "Enter custom version (e.g. 1.0.1)"
+    $TargetVersion = Read-Host "Enter custom version (Semantic Versioning e.g. 1.0.1)"
     if ([string]::IsNullOrWhiteSpace($TargetVersion)) {
         Write-Err "Invalid version entered."
         exit 1
@@ -121,12 +101,12 @@ if ($Choice -eq "2") {
 if ($TargetVersion -ne $CurrentVersion) {
     Write-Step "Bumping version from $CurrentVersion to $TargetVersion..."
     
-    # Update package.json
+    # 1. Update package.json
     $Pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
     $Pkg.version = $TargetVersion
     $Pkg | ConvertTo-Json -Depth 10 | Set-Content "package.json"
 
-    # Sync manifest.json & versions.json
+    # 2. Update manifest.json & versions.json via version-bump.mjs
     $env:npm_package_version = $TargetVersion
     node version-bump.mjs
     Remove-Item Env:\npm_package_version -ErrorAction SilentlyContinue
@@ -139,14 +119,15 @@ if ($TargetVersion -ne $CurrentVersion) {
 # -------------------------------------------------------------------------
 # Step 3: Production Build & Asset Packaging
 # -------------------------------------------------------------------------
-Write-Step "Building production bundle (npm run build)..."
+Write-Step "Running production build (npm run build)..."
 
 npm run build
 if ($LASTEXITCODE -ne 0) {
-    Write-Err "Build failed! Please fix build errors before publishing."
+    Write-Err "Build failed! Please fix TypeScript / esbuild compilation errors before publishing."
     exit $LASTEXITCODE
 }
 
+# Verify required files
 $RequiredFiles = @("main.js", "manifest.json", "styles.css")
 foreach ($f in $RequiredFiles) {
     if (-not (Test-Path $f)) {
@@ -163,7 +144,7 @@ Copy-Item "main.js" -Destination $DistReleaseDir -Force
 Copy-Item "manifest.json" -Destination $DistReleaseDir -Force
 Copy-Item "styles.css" -Destination $DistReleaseDir -Force
 
-Write-Success "Build verified! Compiled artifacts saved in $DistReleaseDir"
+Write-Success "Build completed successfully! All release artifacts present (main.js, manifest.json, styles.css)."
 
 # -------------------------------------------------------------------------
 # Step 4: Git Commit & Tagging
@@ -180,9 +161,9 @@ if ($GitStatus) {
 
 $ExistingTag = git tag -l $TargetVersion
 if (-not $ExistingTag) {
-    # Obsidian plugin tags MUST NOT start with 'v'
+    # Note: Obsidian community plugins require EXACT tag match (NO leading 'v')
     git tag $TargetVersion
-    Write-Success "Created git tag '$TargetVersion'"
+    Write-Success "Created git tag: $TargetVersion"
 } else {
     Write-Host "Git tag '$TargetVersion' already exists." -ForegroundColor Yellow
 }
@@ -193,10 +174,10 @@ git push origin HEAD
 git push origin $TargetVersion
 $ErrorActionPreference = 'Stop'
 
-Write-Success "Pushed current branch and tag '$TargetVersion' to GitHub!"
+Write-Success "Pushed code and tag '$TargetVersion' to GitHub!"
 
 # -------------------------------------------------------------------------
-# Step 5: Create/Update GitHub Release safely
+# Step 5: Create/Update GitHub Release
 # -------------------------------------------------------------------------
 Write-Step "Creating/updating GitHub Release '$TargetVersion' with attached assets..."
 
@@ -211,152 +192,26 @@ if ($ReleaseExists) {
     gh release upload $TargetVersion main.js manifest.json styles.css --repo $RepoPath --clobber
     Write-Success "GitHub Release '$TargetVersion' updated with fresh build assets!"
 } else {
-    gh release create $TargetVersion main.js manifest.json styles.css --repo $RepoPath --title "$TargetVersion" --notes "Release $TargetVersion"
+    gh release create $TargetVersion main.js manifest.json styles.css --repo $RepoPath --title "$TargetVersion" --notes "Release $TargetVersion of $PluginName"
     Write-Success "GitHub Release '$TargetVersion' created successfully with main.js, manifest.json, styles.css!"
 }
 $ErrorActionPreference = 'Stop'
 
 # -------------------------------------------------------------------------
-# Step 6: Automated Submission to obsidianmd/obsidian-releases
+# Step 6: Obsidian Community Directory Submission Instructions
 # -------------------------------------------------------------------------
-Write-Step "Checking official Obsidian Community Plugins directory..."
-
-$CatalogRaw = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json"
-$IsRegistered = $false
-foreach ($item in $CatalogRaw) {
-    if ($item.id -eq $PluginId) {
-        $IsRegistered = $true
-        break
-    }
-}
-
-if ($IsRegistered) {
-    Write-Success "Plugin '$PluginId' is ALREADY registered in the official Obsidian Community Plugins directory!"
-    Write-Host "Obsidian automatically detects release '$TargetVersion' from your GitHub release tags within 1-2 hours." -ForegroundColor Green
-} else {
-    Write-Warn "Plugin '$PluginId' is NOT YET listed in the official Obsidian Community Plugins directory."
-    Write-Step "Submitting Pull Request to obsidianmd/obsidian-releases..."
-
-    # Ensure user has a fork on GitHub first
-    $ErrorActionPreference = 'Continue'
-    gh repo fork obsidianmd/obsidian-releases --clone=false 2>$null
-    $ErrorActionPreference = 'Stop'
-
-    $ForkDir = Join-Path $PSScriptRoot ".obsidian-releases-fork"
-    if (Test-Path $ForkDir) {
-        Remove-Item -Path $ForkDir -Recurse -Force
-    }
-
-    # Clone directly from fresh UPSTREAM master with autocrlf=false to prevent line ending diff issues
-    Write-Host "Cloning fresh obsidianmd/obsidian-releases repository..." -ForegroundColor Yellow
-    git clone -c core.autocrlf=false --depth 1 https://github.com/obsidianmd/obsidian-releases.git "$ForkDir"
-
-    Set-Location $ForkDir
-    git config core.autocrlf false
-    git config core.eol lf
-
-    # Create new clean branch off latest upstream master
-    $BranchName = "add-$PluginId"
-    git checkout -b $BranchName
-
-    # Pass plugin fields safely through environment variables
-    $env:PLUGIN_ID = $PluginId
-    $env:PLUGIN_NAME = $PluginName
-    $env:PLUGIN_AUTHOR = $PluginAuthor
-    $env:PLUGIN_DESCRIPTION = $PluginDescription
-    $env:REPO_PATH = $RepoPath
-
-    # Update community-plugins.json using textual insertion (exact +7 lines diff!)
-    $AddScript = @"
-const fs = require('fs');
-const filePath = 'community-plugins.json';
-let raw = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
-
-const newEntryObj = {
-  id: process.env.PLUGIN_ID,
-  name: process.env.PLUGIN_NAME,
-  author: process.env.PLUGIN_AUTHOR,
-  description: process.env.PLUGIN_DESCRIPTION,
-  repo: process.env.REPO_PATH
-};
-
-const formattedEntry = '  ' + JSON.stringify(newEntryObj, null, 4).replace(/\n/g, '\n  ');
-
-const regex = /^\s*\{\s*\n\s*"id":\s*"([^"]+)"/gm;
-let match;
-let insertPos = -1;
-
-while ((match = regex.exec(raw)) !== null) {
-  const currentId = match[1];
-  if (currentId.localeCompare(newEntryObj.id) > 0) {
-    insertPos = match.index;
-    break;
-  }
-}
-
-if (insertPos !== -1) {
-  const updated = raw.slice(0, insertPos) + formattedEntry + ',\n' + raw.slice(insertPos);
-  fs.writeFileSync(filePath, updated, { encoding: 'utf8', flag: 'w' });
-  console.log('Successfully inserted ' + newEntryObj.id + ' (+7 lines diff)!');
-} else {
-  console.log('Could not determine insertion position.');
-}
-"@
-    Set-Content -Path "add_entry.cjs" -Value $AddScript
-    node add_entry.cjs
-    Remove-Item "add_entry.cjs" -Force
-
-    Remove-Item Env:\PLUGIN_ID -ErrorAction SilentlyContinue
-    Remove-Item Env:\PLUGIN_NAME -ErrorAction SilentlyContinue
-    Remove-Item Env:\PLUGIN_AUTHOR -ErrorAction SilentlyContinue
-    Remove-Item Env:\PLUGIN_DESCRIPTION -ErrorAction SilentlyContinue
-    Remove-Item Env:\REPO_PATH -ErrorAction SilentlyContinue
-
-    git add community-plugins.json
-    git commit -m "Add $PluginName plugin ($PluginId)"
-    
-    # Point origin remote to user's fork and push
-    $UserForkUrl = "https://github.com/$GhUser/obsidian-releases.git"
-    git remote set-url origin $UserForkUrl
-
-    $ErrorActionPreference = 'Continue'
-    git push origin $BranchName --force
-
-    # Create Pull Request
-    $HeadSpec = "$GhUser`:$BranchName"
-    $PrBody = @"
-## Plugin Submission: $PluginName
-
-- **Plugin ID**: `$PluginId`
-- **Repository**: `https://github.com/$RepoPath`
-- **Release Version**: `$TargetVersion`
-
-### Checklist
-- [x] Tested plugin on desktop
-- [x] `manifest.json`, `main.js`, and `styles.css` are attached to GitHub Release `$TargetVersion`
-- [x] License included
-- [x] Code is original / open source
-"@
-
-    $PrOutput = gh pr create --repo obsidianmd/obsidian-releases --head $HeadSpec --base master --title "Add $PluginName" --body "$PrBody" 2>&1
-    $ErrorActionPreference = 'Stop'
-    
-    Set-Location $PSScriptRoot
-    Remove-Item -Path $ForkDir -Recurse -Force
-
-    $CompareUrl = "https://github.com/obsidianmd/obsidian-releases/compare/master...$GhUser`:obsidian-releases:$BranchName`?expand=1"
-
-    if ($LASTEXITCODE -eq 0 -and $PrOutput -match "https://github.com") {
-        Write-Success "PULL REQUEST SUBMITTED SUCCESSFULLY TO OBSIDIAN COMMUNITY PLUGINS!"
-        Write-Host "PR Link: $PrOutput" -ForegroundColor Green
-    } else {
-        Write-Warn "GitHub API requires confirmation to open PR across repository forks."
-        Write-Host "`nOpening clean PR submission page in your browser..." -ForegroundColor Yellow
-        Start-Process $CompareUrl
-        Write-Host "Direct PR URL: $CompareUrl" -ForegroundColor Cyan
-    }
-}
-
 Write-Host "`n======================================================" -ForegroundColor Cyan
-Write-Host "          ALL PUBLISH STEPS COMPLETED!               " -ForegroundColor Green
+Write-Host "        GITHUB RELEASE $TargetVersion IS LIVE!           " -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Cyan
+Write-Host "Release URL: https://github.com/$RepoPath/releases/tag/$TargetVersion" -ForegroundColor Yellow
+Write-Host "Assets:      main.js, manifest.json, styles.css" -ForegroundColor White
+Write-Host ""
+Write-Host "FINAL STEP: Submit to Obsidian Community Directory" -ForegroundColor Cyan
+Write-Host "1. Opening https://community.obsidian.md in your browser..." -ForegroundColor White
+Write-Host "2. Sign in with your Obsidian account & link your GitHub account ($RepoPath)" -ForegroundColor White
+Write-Host "3. Click 'Plugins' -> 'New plugin'" -ForegroundColor White
+Write-Host "4. Paste your repo URL: https://github.com/$RepoPath" -ForegroundColor Green
+Write-Host "5. Click 'Submit'!" -ForegroundColor White
+Write-Host "======================================================`n" -ForegroundColor Cyan
+
+Start-Process "https://community.obsidian.md"

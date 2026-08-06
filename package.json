@@ -1,5 +1,5 @@
 {
-    "name":  "pakcli-editors-choice",
+    "name":  "pakcli-power-suite",
     "version":  "1.0.2",
     "description":  "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, Tablite CSV Editor \u0026 SQLSeal, and Leaflet bases.",
     "main":  "dist/main.js",
