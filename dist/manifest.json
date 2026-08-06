@@ -1,6 +1,6 @@
 {
-	"id": "pakcli-power-suite",
-	"name": "PakCLI Power Suite",
+	"id": "pakcli-plugin",
+	"name": "PakCLI Plugin",
 	"version": "1.0.2",
 	"minAppVersion": "1.4.0",
 	"description": "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, SQLSeal & Tablite CSV Editor, and Leaflet bases.",
