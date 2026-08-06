@@ -32,8 +32,8 @@ Write-Host ""
 Write-Host "Select deployment destination:" -ForegroundColor Yellow
 
 if ($History.Count -gt 0) {
-    Write-Host "  [ 0] Use latest path: $($History[0])" -ForegroundColor Green
     Write-Host "  [-1] Build only (do not copy)" -ForegroundColor Gray
+    Write-Host "  [ 0] Use latest path: $($History[0])" -ForegroundColor Green
     for ($i = 0; $i -lt $History.Count; $i++) {
         $num = $i + 1
         Write-Host "  [$num] $($History[$i])" -ForegroundColor White

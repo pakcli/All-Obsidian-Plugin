@@ -7,11 +7,14 @@ import { BasesLeafletViewSettings } from './features/leaflet/types';
 import { ConfirmModal, ConflictModal } from './features/tree/ui/modals';
 import { FolderSuggest } from './features/tree/ui/folder-suggest';
 
+import { DocmostSettings, DEFAULT_DOCMOST_SETTINGS, DocmostSettingsTab } from './features/docmost/settings';
+
 export interface PakCLIPluginSettings extends 
     SymlinkManagerSettings, 
     AssetRouterSettings, 
     SQLSealSettings, 
-    BasesLeafletViewSettings 
+    BasesLeafletViewSettings,
+    DocmostSettings 
 {
     dateFormat: string;
 }
@@ -40,6 +43,7 @@ export const DEFAULT_SETTINGS: PakCLIPluginSettings = {
     ...DEFAULT_ASSET_ROUTER_SETTINGS,
     ...DEFAULT_SQLSEAL_SETTINGS,
     ...DEFAULT_LEAFLET_SETTINGS,
+    ...DEFAULT_DOCMOST_SETTINGS,
     dateFormat: '_{yyyy}{mm}{dd}'
 };
 
@@ -89,6 +93,7 @@ export class PakCLISettingTab extends PluginSettingTab {
         if (this.sqlsealTab) {
             createTabBtn('sqlseal', 'SQLSeal & Data');
         }
+        createTabBtn('docmost', 'Docmost Sync');
         createTabBtn('leaflet', 'Leaflet Maps');
         createTabBtn('symlink', 'Symlinks');
         createTabBtn('router', 'Asset Router');
@@ -96,7 +101,11 @@ export class PakCLISettingTab extends PluginSettingTab {
 
         const contentContainer = layoutContainer.createDiv({ cls: 'pakcli-tab-content' });
 
-        if (this.activeTab === 'symlink') {
+        if (this.activeTab === 'docmost') {
+            const docmostTab = new DocmostSettingsTab(this.app, this.plugin);
+            docmostTab.containerEl = contentContainer;
+            docmostTab.display();
+        } else if (this.activeTab === 'symlink') {
             (this.symlinkTab as any).display(contentContainer);
         } else if (this.activeTab === 'sqlseal' && this.sqlsealTab) {
             (this.sqlsealTab as any).display(contentContainer);
@@ -272,11 +281,12 @@ export class PakCLISettingTab extends PluginSettingTab {
 
             let newPath = '';
             let newScope = 'children'; // 'folder' | 'children'
+            let newSubCaptain = false;
             let newTitleOverride: TitleOverrideOption = 'inherit';
 
             new Setting(addRuleDiv)
                 .setName('Folder Path')
-                .setDesc('Relative path from vault root (e.g. folderb)')
+                .setDesc('Relative path from vault root (e.g. folderb or folderb/*)')
                 .addText(text => {
                     text.setPlaceholder('e.g. folderb/projects')
                         .onChange(value => newPath = value.trim());
@@ -291,6 +301,13 @@ export class PakCLISettingTab extends PluginSettingTab {
                     .addOption('children', 'Include Children')
                     .setValue(newScope)
                     .onChange(value => newScope = value));
+
+            new Setting(addRuleDiv)
+                .setName('Auto Sub-Captain Mode')
+                .setDesc('Treat each subfolder under this Captain Folder as an independent Sub-Captain with its own assets/ directory.')
+                .addToggle(toggle => toggle
+                    .setValue(newSubCaptain)
+                    .onChange(value => newSubCaptain = value));
 
             new Setting(addRuleDiv)
                 .setName('Note Title Override')
@@ -325,6 +342,7 @@ export class PakCLISettingTab extends PluginSettingTab {
                         path: normalizedPath,
                         isNested: true,
                         includeChildren: isNestedScope,
+                        subCaptainMode: newSubCaptain,
                         useNoteTitle: newTitleOverride,
                         enabled: true
                     };
@@ -386,7 +404,8 @@ export class PakCLISettingTab extends PluginSettingTab {
                 const pathEl = details.createEl('strong', { text: rule.path === "" ? "/" : rule.path });
                 pathEl.style.fontSize = '1.1em';
                 
-                const metaText = `Scope: ${rule.includeChildren ? 'Include Children' : 'Folder Only'} | Title: ${rule.useNoteTitle}`;
+                const subCaptainBadge = rule.subCaptainMode ? ' | Sub-Captain: Enabled' : '';
+                const metaText = `Scope: ${rule.includeChildren ? 'Include Children' : 'Folder Only'}${subCaptainBadge} | Title: ${rule.useNoteTitle}`;
                 details.createEl('div', { text: metaText, cls: 'setting-item-description' });
 
                 // Controls

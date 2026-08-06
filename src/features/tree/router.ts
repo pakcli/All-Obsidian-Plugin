@@ -85,7 +85,16 @@ export class AssetRouter {
 		if (rule) {
 			// NESTED MODE (Captain Folder)
 			const captainPath = normalizePath(rule.path);
-			targetFolderPath = normalizePath(captainPath === "" || captainPath === "." ? "assets" : `${captainPath}/assets`);
+			
+			// Compute effective captain folder path (supporting Sub-Captain Mode)
+			let effectiveCaptainPath = captainPath;
+			if (rule.subCaptainMode && noteParentPath !== captainPath && noteParentPath.startsWith(captainPath + '/')) {
+				const relativeSubPath = noteParentPath.substring(captainPath.length + 1);
+				const firstSubFolder = relativeSubPath.split('/')[0];
+				effectiveCaptainPath = captainPath === "" ? firstSubFolder : `${captainPath}/${firstSubFolder}`;
+			}
+
+			targetFolderPath = normalizePath(effectiveCaptainPath === "" || effectiveCaptainPath === "." ? "assets" : `${effectiveCaptainPath}/assets`);
 
 			// Resolve if we should use the note title property
 			if (rule.useNoteTitle === 'always') {
@@ -99,14 +108,14 @@ export class AssetRouter {
 			// Resolve Note Identifier
 			const noteIdentifier = this.resolveNoteIdentifier(activeFile, useTitle);
 
-			// Compute relative subfolder path from Captain Folder to note
+			// Compute relative subfolder path from effective Captain Folder to note
 			let relativePrefix = '';
-			if (captainPath === "") {
+			if (effectiveCaptainPath === "") {
 				if (noteParentPath !== "") {
 					relativePrefix = noteParentPath.split('/').join(settings.delimiter);
 				}
-			} else if (noteParentPath !== captainPath && noteParentPath.startsWith(captainPath + '/')) {
-				const relativeSubPath = noteParentPath.substring(captainPath.length + 1);
+			} else if (noteParentPath !== effectiveCaptainPath && noteParentPath.startsWith(effectiveCaptainPath + '/')) {
+				const relativeSubPath = noteParentPath.substring(effectiveCaptainPath.length + 1);
 				relativePrefix = relativeSubPath.split('/').join(settings.delimiter);
 			}
 
@@ -188,7 +197,11 @@ export class AssetRouter {
 		for (const rule of activeRules) {
 			const normalizedRulePath = normalizePath(rule.path);
 
-			if (rule.includeChildren) {
+			if (normalizedRulePath.includes('*')) {
+				if (this.matchWildcardPath(normalizedRulePath, normalizedNotePath, rule.includeChildren)) {
+					matches.push(rule);
+				}
+			} else if (rule.includeChildren) {
 				if (normalizedRulePath === "") {
 					// Root rule with includeChildren always matches
 					matches.push(rule);
@@ -207,6 +220,21 @@ export class AssetRouter {
 		// Sort by path length descending (most specific first)
 		matches.sort((a, b) => b.path.length - a.path.length);
 		return matches[0];
+	}
+
+	private matchWildcardPath(pattern: string, notePath: string, includeChildren: boolean): boolean {
+		const normPattern = normalizePath(pattern);
+		const normPath = normalizePath(notePath);
+
+		const regexParts = normPattern.split('/').map(part => {
+			if (part === '*') return '[^/]+';
+			if (part === '**') return '.*';
+			return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '[^/]+');
+		});
+
+		const regexString = regexParts.join('/');
+		const fullRegex = includeChildren ? new RegExp(`^${regexString}(?:/.*)?$`) : new RegExp(`^${regexString}$`);
+		return fullRegex.test(normPath);
 	}
 
 	async scanAndRouteAssetsForNote(noteFile: TFile) {

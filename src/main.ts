@@ -18,6 +18,9 @@ import { AssetRouter } from './features/tree/router';
 import { DiagramRenderer } from './features/tree/renderers/DiagramRenderer';
 import { registerCommands as registerTreeCommands } from './features/tree/commands/index';
 
+// Docmost Sync Imports
+import { DocmostSyncManager } from './features/docmost/docmost-sync';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
     
@@ -207,7 +210,44 @@ export default class PakCLIPlugin extends Plugin {
 		registerTreeCommands(this);
 
 		// =========================================================================
-		// 5. Register Settings Tab
+		// 5. Initialize Docmost Sync Engine
+		// =========================================================================
+		const docmostSync = new DocmostSyncManager(this.app, this);
+		if (this.settings.docmostServerUrl && this.settings.docmostToken) {
+			docmostSync.setServer(this.settings.docmostServerUrl, this.settings.docmostToken);
+		}
+
+		this.addCommand({
+			id: 'docmost-sync-active-note',
+			name: 'Docmost: Sync active note to Docmost',
+			callback: async () => {
+				if (!this.settings.docmostSpaceId) {
+					new Notice('Docmost: Please set Space ID in plugin settings first.');
+					return;
+				}
+				docmostSync.setServer(this.settings.docmostServerUrl, this.settings.docmostToken);
+				await docmostSync.syncCurrentNote(this.settings.docmostSpaceId);
+			},
+		});
+
+		this.addCommand({
+			id: 'docmost-pull-space-notes',
+			name: 'Docmost: Pull space notes from Docmost into Vault',
+			callback: async () => {
+				if (!this.settings.docmostSpaceId) {
+					new Notice('Docmost: Please set Space ID in plugin settings first.');
+					return;
+				}
+				docmostSync.setServer(this.settings.docmostServerUrl, this.settings.docmostToken);
+				await docmostSync.pullSpaceNotes(
+					this.settings.docmostSpaceId,
+					this.settings.docmostVaultSyncDir || ''
+				);
+			},
+		});
+
+		// =========================================================================
+		// 6. Register Settings Tab
 		// =========================================================================
 		this.addSettingTab(new PakCLISettingTab(
 			this.app, 
