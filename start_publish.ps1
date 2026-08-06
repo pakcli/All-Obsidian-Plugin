@@ -67,6 +67,11 @@ if ([string]::IsNullOrWhiteSpace($RepoPath)) {
     exit 1
 }
 
+$GhUser = (gh api user -q .login 2>$null).Trim()
+if ([string]::IsNullOrWhiteSpace($GhUser)) {
+    $GhUser = $RepoPath.Split('/')[0]
+}
+
 # Parse manifest.json
 $ManifestContent = Get-Content "manifest.json" -Raw | ConvertFrom-Json
 $CurrentVersion = $ManifestContent.version
@@ -79,6 +84,7 @@ Write-Host "Plugin Name:     $PluginName" -ForegroundColor White
 Write-Host "Plugin ID:       $PluginId" -ForegroundColor White
 Write-Host "Current Version: $CurrentVersion" -ForegroundColor Yellow
 Write-Host "GitHub Repo:     $RepoPath" -ForegroundColor White
+Write-Host "GitHub User:     $GhUser" -ForegroundColor White
 
 # -------------------------------------------------------------------------
 # Step 2: Version Bumping
@@ -248,6 +254,13 @@ if ($IsRegistered) {
     $BranchName = "add-$PluginId"
     git checkout -B $BranchName
 
+    # Pass plugin fields safely through environment variables to avoid syntax errors with single quotes
+    $env:PLUGIN_ID = $PluginId
+    $env:PLUGIN_NAME = $PluginName
+    $env:PLUGIN_AUTHOR = $PluginAuthor
+    $env:PLUGIN_DESCRIPTION = $PluginDescription
+    $env:REPO_PATH = $RepoPath
+
     # Update community-plugins.json using Node.js script
     $AddScript = @"
 const fs = require('fs');
@@ -255,25 +268,31 @@ const filePath = 'community-plugins.json';
 const plugins = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 const newEntry = {
-  id: '$PluginId',
-  name: '$PluginName',
-  author: '$PluginAuthor',
-  description: '$PluginDescription',
-  repo: '$RepoPath'
+  id: process.env.PLUGIN_ID,
+  name: process.env.PLUGIN_NAME,
+  author: process.env.PLUGIN_AUTHOR,
+  description: process.env.PLUGIN_DESCRIPTION,
+  repo: process.env.REPO_PATH
 };
 
 if (!plugins.some(p => p.id === newEntry.id)) {
   plugins.push(newEntry);
   plugins.sort((a, b) => a.id.localeCompare(b.id));
   fs.writeFileSync(filePath, JSON.stringify(plugins, null, 2) + '\n', 'utf8');
-  console.log('Successfully added $PluginId to community-plugins.json');
+  console.log('Successfully added ' + newEntry.id + ' to community-plugins.json');
 } else {
-  console.log('$PluginId already present');
+  console.log(newEntry.id + ' already present');
 }
 "@
     Set-Content -Path "add_entry.cjs" -Value $AddScript
     node add_entry.cjs
     Remove-Item "add_entry.cjs" -Force
+
+    Remove-Item Env:\PLUGIN_ID -ErrorAction SilentlyContinue
+    Remove-Item Env:\PLUGIN_NAME -ErrorAction SilentlyContinue
+    Remove-Item Env:\PLUGIN_AUTHOR -ErrorAction SilentlyContinue
+    Remove-Item Env:\PLUGIN_DESCRIPTION -ErrorAction SilentlyContinue
+    Remove-Item Env:\REPO_PATH -ErrorAction SilentlyContinue
 
     git add community-plugins.json
     git commit -m "Add $PluginName plugin ($PluginId)"
@@ -281,7 +300,8 @@ if (!plugins.some(p => p.id === newEntry.id)) {
     $ErrorActionPreference = 'Continue'
     git push origin $BranchName --force
 
-    # Create Pull Request
+    # Create Pull Request with proper fork head format ($GhUser:$BranchName)
+    $HeadSpec = "$GhUser`:$BranchName"
     $PrBody = @"
 ## Plugin Submission: $PluginName
 
@@ -296,7 +316,7 @@ if (!plugins.some(p => p.id === newEntry.id)) {
 - [x] Code is original / open source
 "@
 
-    $PrOutput = gh pr create --repo obsidianmd/obsidian-releases --title "Add $PluginName" --body "$PrBody" --head $BranchName
+    $PrOutput = gh pr create --repo obsidianmd/obsidian-releases --head $HeadSpec --base master --title "Add $PluginName" --body "$PrBody"
     $ErrorActionPreference = 'Stop'
     
     Set-Location $PSScriptRoot
