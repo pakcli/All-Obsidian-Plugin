@@ -1,6 +1,6 @@
 {
-	"id": "pakcli-editors-choice",
-	"name": "PakCLI Editor's Choice",
+	"id": "pakcli-plugin",
+	"name": "PakCLI Plugin",
 	"version": "1.0.2",
 	"minAppVersion": "1.4.0",
 	"description": "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, SQLSeal & Tablite CSV Editor, and Leaflet bases.",
