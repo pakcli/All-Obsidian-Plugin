@@ -247,11 +247,13 @@ if ($IsRegistered) {
         Remove-Item -Path $ForkDir -Recurse -Force
     }
 
-    # Clone directly from fresh UPSTREAM master to prevent 64,000 lines diff issue
+    # Clone directly from fresh UPSTREAM master with autocrlf=false to prevent line ending diff issues
     Write-Host "Cloning fresh obsidianmd/obsidian-releases repository..." -ForegroundColor Yellow
-    git clone --depth 1 https://github.com/obsidianmd/obsidian-releases.git "$ForkDir"
+    git clone -c core.autocrlf=false --depth 1 https://github.com/obsidianmd/obsidian-releases.git "$ForkDir"
 
     Set-Location $ForkDir
+    git config core.autocrlf false
+    git config core.eol lf
 
     # Create new clean branch off latest upstream master
     $BranchName = "add-$PluginId"
@@ -264,13 +266,13 @@ if ($IsRegistered) {
     $env:PLUGIN_DESCRIPTION = $PluginDescription
     $env:REPO_PATH = $RepoPath
 
-    # Update community-plugins.json cleanly
+    # Update community-plugins.json using textual insertion (exact +7 lines diff!)
     $AddScript = @"
 const fs = require('fs');
 const filePath = 'community-plugins.json';
-const plugins = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+let raw = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
 
-const newEntry = {
+const newEntryObj = {
   id: process.env.PLUGIN_ID,
   name: process.env.PLUGIN_NAME,
   author: process.env.PLUGIN_AUTHOR,
@@ -278,13 +280,26 @@ const newEntry = {
   repo: process.env.REPO_PATH
 };
 
-if (!plugins.some(p => p.id === newEntry.id)) {
-  plugins.push(newEntry);
-  plugins.sort((a, b) => a.id.localeCompare(b.id));
-  fs.writeFileSync(filePath, JSON.stringify(plugins, null, 2) + '\n', 'utf8');
-  console.log('Successfully added ' + newEntry.id + ' to community-plugins.json');
+const formattedEntry = '  ' + JSON.stringify(newEntryObj, null, 4).replace(/\n/g, '\n  ');
+
+const regex = /^\s*\{\s*\n\s*"id":\s*"([^"]+)"/gm;
+let match;
+let insertPos = -1;
+
+while ((match = regex.exec(raw)) !== null) {
+  const currentId = match[1];
+  if (currentId.localeCompare(newEntryObj.id) > 0) {
+    insertPos = match.index;
+    break;
+  }
+}
+
+if (insertPos !== -1) {
+  const updated = raw.slice(0, insertPos) + formattedEntry + ',\n' + raw.slice(insertPos);
+  fs.writeFileSync(filePath, updated, { encoding: 'utf8', flag: 'w' });
+  console.log('Successfully inserted ' + newEntryObj.id + ' (+7 lines diff)!');
 } else {
-  console.log(newEntry.id + ' already present');
+  console.log('Could not determine insertion position.');
 }
 "@
     Set-Content -Path "add_entry.cjs" -Value $AddScript
@@ -329,7 +344,7 @@ if (!plugins.some(p => p.id === newEntry.id)) {
     Set-Location $PSScriptRoot
     Remove-Item -Path $ForkDir -Recurse -Force
 
-    $CompareUrl = "https://github.com/obsidianmd/obsidian-releases/compare/master...$GhUser`:$BranchName`?expand=1"
+    $CompareUrl = "https://github.com/obsidianmd/obsidian-releases/compare/master...$GhUser`:obsidian-releases:$BranchName`?expand=1"
 
     if ($LASTEXITCODE -eq 0 -and $PrOutput -match "https://github.com") {
         Write-Success "PULL REQUEST SUBMITTED SUCCESSFULLY TO OBSIDIAN COMMUNITY PLUGINS!"
