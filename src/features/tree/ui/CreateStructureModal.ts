@@ -72,8 +72,8 @@ export class CreateStructureModal extends Modal {
 					console.error("Structure creation errors:", result.errors);
 				}
 				this.close();
-			} catch (err: any) {
-				new Notice(`Failed to create structure: ${err.message}`);
+			} catch (err: unknown) {
+				new Notice(`Failed to create structure: ${err instanceof Error ? err.message : String(err)}`);
 				createBtn.disabled = false;
 				createBtn.textContent = "Create";
 			}
@@ -109,8 +109,8 @@ export class CreateStructureModal extends Modal {
 					try {
 						await vault.createFolder(currentPath);
 						totalFoldersCreated++;
-					} catch (e: any) {
-						allErrors.push(`Failed to create base folder "${currentPath}": ${e.message}`);
+					} catch (e: unknown) {
+						allErrors.push(`Failed to create base folder "${currentPath}": ${e instanceof Error ? e.message : String(e)}`);
 						return { filesCreated: 0, foldersCreated: totalFoldersCreated, errors: allErrors };
 					}
 				}
@@ -137,8 +137,8 @@ export class CreateStructureModal extends Modal {
 						try {
 							await vault.create(filePath, "");
 							totalFilesCreated++;
-						} catch (e: any) {
-							allErrors.push(`Failed to create file "${filePath}": ${e.message}`);
+						} catch (e: unknown) {
+							allErrors.push(`Failed to create file "${filePath}": ${e instanceof Error ? e.message : String(e)}`);
 						}
 					}
 				} else {
@@ -147,8 +147,8 @@ export class CreateStructureModal extends Modal {
 						try {
 							await vault.createFolder(currentPath);
 							totalFoldersCreated++;
-						} catch (e: any) {
-							allErrors.push(`Failed to create folder "${currentPath}": ${e.message}`);
+						} catch (e: unknown) {
+							allErrors.push(`Failed to create folder "${currentPath}": ${e instanceof Error ? e.message : String(e)}`);
 						}
 					}
 				}
@@ -159,9 +159,8 @@ export class CreateStructureModal extends Modal {
 					try {
 						await vault.createFolder(currentPath);
 						totalFoldersCreated++;
-					} catch (e: any) {
-						allErrors.push(`Failed to create folder "${currentPath}": ${e.message}`);
-					}
+					} catch (e: unknown) {
+						allErrors.push(`Failed to create folder "${currentPath}": ${e instanceof Error ? e.message : String(e)}`);					}
 				}
 
 				for (const child of node.children) {

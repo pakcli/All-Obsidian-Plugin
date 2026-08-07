@@ -9,6 +9,8 @@ import { FolderSuggest } from './features/tree/ui/folder-suggest';
 
 import { DocmostSettings, DEFAULT_DOCMOST_SETTINGS, DocmostSettingsTab } from './features/docmost/settings';
 
+import type PakCLIPlugin from './main';
+
 export interface PakCLIPluginSettings extends 
     SymlinkManagerSettings, 
     AssetRouterSettings, 
@@ -55,7 +57,7 @@ export class PakCLISettingTab extends PluginSettingTab {
 
     constructor(
         app: App, 
-        plugin: Plugin, 
+        public override plugin: PakCLIPlugin, 
         symlinkTab: SymlinkManagerSettingTab,
         sqlsealTab: SQLSealSettingsTab | null,
         leafletTab: PluginSettingTab
@@ -70,32 +72,27 @@ export class PakCLISettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        
+
+        containerEl.createEl('h2', { text: 'PakCLI Suite Settings' });
+
         const layoutContainer = containerEl.createDiv({ cls: 'pakcli-settings-layout' });
-
-        const sidebarContainer = layoutContainer.createDiv({ cls: 'pakcli-settings-sidebar' });
-        new Setting(sidebarContainer).setName("PakCLI Editor's Choice").setHeading();
-
-        const tabsContainer = sidebarContainer.createDiv({ cls: 'pakcli-tabs-header' });
+        const sidebar = layoutContainer.createDiv({ cls: 'pakcli-settings-sidebar' });
 
         const createTabBtn = (id: string, label: string) => {
-            const btn = tabsContainer.createEl('button', { text: label });
-            if (this.activeTab === id) {
-                btn.className = 'active-tab';
-            }
-            
-            btn.onclick = () => {
+            const btn = sidebar.createEl('button', {
+                cls: `pakcli-tab-btn ${this.activeTab === id ? 'active' : ''}`,
+                text: label,
+            });
+            btn.addEventListener('click', () => {
                 this.activeTab = id;
                 this.display();
-            };
+            });
         };
 
-        if (this.sqlsealTab) {
-            createTabBtn('sqlseal', 'SQLSeal & Data');
-        }
+        if (this.sqlsealTab) createTabBtn('sqlseal', 'SQLSeal & Tablite');
+        createTabBtn('leaflet', 'Leaflet Map');
         createTabBtn('docmost', 'Docmost Sync');
-        createTabBtn('leaflet', 'Leaflet Maps');
-        createTabBtn('symlink', 'Symlinks');
+        createTabBtn('symlink', 'Symlink Manager');
         createTabBtn('router', 'Asset Router');
         createTabBtn('datepicker', 'Date Picker');
 
@@ -106,13 +103,13 @@ export class PakCLISettingTab extends PluginSettingTab {
             docmostTab.containerEl = contentContainer;
             docmostTab.display();
         } else if (this.activeTab === 'symlink') {
-            (this.symlinkTab as any).display(contentContainer);
+            this.symlinkTab.display(contentContainer);
         } else if (this.activeTab === 'sqlseal' && this.sqlsealTab) {
-            (this.sqlsealTab as any).display(contentContainer);
+            (this.sqlsealTab as unknown as { display(el?: HTMLElement): void }).display(contentContainer);
         } else if (this.activeTab === 'leaflet') {
-            (this.leafletTab as any).display(contentContainer);
+            (this.leafletTab as unknown as { display(el?: HTMLElement): void }).display(contentContainer);
         } else if (this.activeTab === 'datepicker') {
-            const pluginSettings = (this.plugin as any).settings as PakCLIPluginSettings;
+            const pluginSettings = this.plugin.settings;
             const saveSettings = async () => await this.plugin.saveData(pluginSettings);
 
             new Setting(contentContainer)
@@ -128,8 +125,8 @@ export class PakCLISettingTab extends PluginSettingTab {
                         })
                 );
         } else if (this.activeTab === 'router') {
-            const pluginSettings = (this.plugin as any).settings as PakCLIPluginSettings;
-            const saveSettings = async () => await (this.plugin as any).saveSettings();
+            const pluginSettings = this.plugin.settings;
+            const saveSettings = async () => await this.plugin.saveSettings();
 
             new Setting(contentContainer).setName('Centralized Mode (Default)').setHeading();
 
@@ -175,7 +172,7 @@ export class PakCLISettingTab extends PluginSettingTab {
                         .setButtonText('Rescan Centralized')
                         .onClick(async () => {
                             button.setDisabled(true);
-                            await (this.plugin as any).router.rescanCentralizedAssets();
+                            await this.plugin.router.rescanCentralizedAssets();
                             button.setDisabled(false);
                         }));
             }
@@ -266,7 +263,7 @@ export class PakCLISettingTab extends PluginSettingTab {
                 .setButtonText('Rescan All Nested')
                 .onClick(async () => {
                     rescanAllBtn.setDisabled(true);
-                    await (this.plugin as any).router.rescanAllNestedAssets();
+                    await this.plugin.router.rescanAllNestedAssets();
                     rescanAllBtn.setDisabled(false);
                 });
             rescanAllBtn.buttonEl.setCssStyles({ marginLeft: '10px' });
@@ -436,7 +433,7 @@ export class PakCLISettingTab extends PluginSettingTab {
                     .setButtonText('Rescan')
                     .onClick(async () => {
                         rescanBtn.setDisabled(true);
-                        await (this.plugin as any).router.rescanFolderRuleAssets(rule);
+                        await this.plugin.router.rescanFolderRuleAssets(rule);
                         rescanBtn.setDisabled(false);
                     });
                 rescanBtn.buttonEl.setCssStyles({ marginRight: '10px' });
@@ -456,7 +453,7 @@ export class PakCLISettingTab extends PluginSettingTab {
     }
 
     private async addOrUpdateRule(rule: FolderRule, existingIndex: number) {
-        const pluginSettings = (this.plugin as any).settings as PakCLIPluginSettings;
+        const pluginSettings = this.plugin.settings;
         if (existingIndex !== -1) {
             pluginSettings.rules.splice(existingIndex, 1, rule);
             new Notice('Updated rule for ' + rule.path);
@@ -464,7 +461,7 @@ export class PakCLISettingTab extends PluginSettingTab {
             pluginSettings.rules.push(rule);
             new Notice('Added rule for ' + rule.path);
         }
-        await (this.plugin as any).saveSettings();
+        await this.plugin.saveSettings();
         this.display();
     }
 }

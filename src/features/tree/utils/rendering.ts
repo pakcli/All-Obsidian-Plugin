@@ -1,3 +1,5 @@
+import { App } from 'obsidian';
+
 /**
  * Parse wikilinks in text and create HTML with proper link elements
  */
@@ -50,7 +52,7 @@ export function parseWikilinks(text: string): DocumentFragment {
  */
 export function enableWikiLinks(
 	container: HTMLElement,
-	app: any,
+	app: App,
 	sourcePath: string
 ): void {
 	container.querySelectorAll("a.internal-link").forEach((link) => {

@@ -8,6 +8,7 @@ import { SymlinkManagerSettingTab } from './features/symlink/settings';
 // SQLSeal Imports
 import { mainModule } from './features/sqlseal/modules/main/module';
 import { SQLSealSettingsTab } from './features/sqlseal/modules/settings/SQLSealSettingsTab';
+import { ColumnConfig } from './features/sqlseal/types';
 
 // Leaflet Imports
 import { BasesLeafletViewPlugin } from './features/leaflet/plugin';
@@ -287,8 +288,8 @@ export default class PakCLIPlugin extends Plugin {
 	// =========================================================================
 	// SQLSeal Config Methods
 	// =========================================================================
-	getFileColumnConfig(filePath: string, columnCount: number): any {
-		const files = this.settings.files || {};
+	getFileColumnConfig(filePath: string, columnCount: number): ColumnConfig {
+		const files = (this.settings.files || {}) as Record<string, ColumnConfig>;
 		const config = files[filePath];
 		if (config) return config;
 		const defaultOrder = Array.from({ length: columnCount }, (_, i) => i);
@@ -300,7 +301,7 @@ export default class PakCLIPlugin extends Plugin {
 		};
 	}
 
-	async setFileColumnConfig(filePath: string, columnCount: number, config: any): Promise<void> {
+	async setFileColumnConfig(filePath: string, columnCount: number, config: ColumnConfig): Promise<void> {
 		if (!this.settings.files) {
 			this.settings.files = {};
 		}
@@ -320,8 +321,8 @@ export default class PakCLIPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async saveData(data: any): Promise<void> {
-		this.settings = Object.assign(this.settings || {}, data || {});
+	async saveData(data: unknown): Promise<void> {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, this.settings || {}, (data as Partial<PakCLIPluginSettings>) || {});
 		await super.saveData(this.settings);
 	}
 

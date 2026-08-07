@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 export interface SymlinkManagerSettings {
 	/** Show 🟢🟠🔴 badges in the file explorer. */
@@ -15,7 +15,7 @@ export const DEFAULT_SYMLINK_SETTINGS: SymlinkManagerSettings = {
 export class SymlinkManagerSettingTab extends PluginSettingTab {
 	constructor(
         app: App,
-        plugin: any,
+        plugin: Plugin,
         private settings: SymlinkManagerSettings,
         private saveSettings: () => Promise<void>,
         private applyBadgeSetting: () => void

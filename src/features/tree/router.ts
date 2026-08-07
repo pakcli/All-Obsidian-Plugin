@@ -477,7 +477,7 @@ export class AssetRouter {
 		new Notice(`Nested rescan complete. Scanned ${scannedNotes} note(s). Routed ${totalRouted} asset(s).`);
 	}
 
-	async rescanFolderRuleAssets(targetRule: any) {
+	async rescanFolderRuleAssets(targetRule: FolderRule) {
 		const markdownFiles = this.app.vault.getMarkdownFiles();
 		let totalRouted = 0;
 		let scannedNotes = 0;
