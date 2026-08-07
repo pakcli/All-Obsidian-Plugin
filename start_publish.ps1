@@ -198,20 +198,18 @@ if ($ReleaseExists) {
 $ErrorActionPreference = 'Stop'
 
 # -------------------------------------------------------------------------
-# Step 6: Obsidian Community Directory Submission Instructions
+# Step 6: Open Obsidian Community Plugin Review Page
 # -------------------------------------------------------------------------
+$CheckReleaseUrl = "https://community.obsidian.md/account/plugins/$PluginId/check-release"
+
 Write-Host "`n======================================================" -ForegroundColor Cyan
 Write-Host "        GITHUB RELEASE $TargetVersion IS LIVE!           " -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "Release URL: https://github.com/$RepoPath/releases/tag/$TargetVersion" -ForegroundColor Yellow
 Write-Host "Assets:      main.js, manifest.json, styles.css" -ForegroundColor White
 Write-Host ""
-Write-Host "FINAL STEP: Submit to Obsidian Community Directory" -ForegroundColor Cyan
-Write-Host "1. Opening https://community.obsidian.md in your browser..." -ForegroundColor White
-Write-Host "2. Sign in with your Obsidian account & link your GitHub account ($RepoPath)" -ForegroundColor White
-Write-Host "3. Click 'Plugins' -> 'New plugin'" -ForegroundColor White
-Write-Host "4. Paste your repo URL: https://github.com/$RepoPath" -ForegroundColor Green
-Write-Host "5. Click 'Submit'!" -ForegroundColor White
+Write-Host "FINAL STEP: Trigger Obsidian Community Plugin Review" -ForegroundColor Cyan
+Write-Host "Opening review page: $CheckReleaseUrl" -ForegroundColor Green
 Write-Host "======================================================`n" -ForegroundColor Cyan
 
-Start-Process "https://community.obsidian.md"
+Start-Process $CheckReleaseUrl

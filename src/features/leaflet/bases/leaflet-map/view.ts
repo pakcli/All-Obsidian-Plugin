@@ -21,7 +21,6 @@ interface QueryController {
 abstract class BasesView {
 	protected config: BasesViewConfig;
 	protected data: { data: unknown[] };
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	constructor(controller: unknown) { void controller; this.config = {} as BasesViewConfig; this.data = { data: [] }; }
 	abstract type: string;
 	unload(): void {}

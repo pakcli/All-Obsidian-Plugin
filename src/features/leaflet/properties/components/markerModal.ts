@@ -62,11 +62,9 @@ export class MarkerModal extends Modal {
 
 					textField.inputEl.reportValidity();
 				});
-			})
-			.addComponent((errorEl) => {
-				coordinatesError = new MarkerModalErrorComponent(errorEl).setMessage("");
-				return coordinatesError;
 			});
+		const errorEl = coordSetting.settingEl.createDiv();
+		coordinatesError = new MarkerModalErrorComponent(errorEl).setMessage("");
 
 		new Setting(this.contentEl)
 			.setName(t("modal.icon.title"))
