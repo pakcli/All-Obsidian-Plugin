@@ -100,9 +100,13 @@ export class SchemaVisualiser {
             // Ensure SVG takes full width
             const svgElement = diagramContainer.querySelector('svg')
             if (svgElement) {
-                svgElement.setAttribute('width', '100%')
-                svgElement.setAttribute('height', '100%')
-                svgElement.setAttribute('style', 'width: 100%; height: 100%; max-width: none;')
+                svgElement.setAttribute('width', '100%');
+                svgElement.setAttribute('height', '100%');
+                (svgElement as unknown as HTMLElement).setCssStyles({
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: 'none'
+                })
                 // Set viewBox to preserve aspect ratio while filling container
                 const viewBox = svgElement.getAttribute('viewBox')
                 if (viewBox) {

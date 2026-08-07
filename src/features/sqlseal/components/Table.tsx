@@ -564,8 +564,7 @@ export function Table({
           menu.appendChild(div);
         }
       }
-      menu.style.setProperty("--tablite-menu-left", `${event.clientX}px`);
-      menu.style.setProperty("--tablite-menu-top", `${event.clientY}px`);
+      menu.setCssProps({ "--tablite-menu-left": `${event.clientX}px`, "--tablite-menu-top": `${event.clientY}px` });
 
       const handleClick = (ev: Event) => {
         const target = ev.target as HTMLElement;

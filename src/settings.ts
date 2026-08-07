@@ -322,8 +322,10 @@ export class PakCLISettingTab extends PluginSettingTab {
                     .onChange((value: string) => newTitleOverride = value as TitleOverrideOption));
 
             const addBtnContainer = addRuleDiv.createDiv();
-            addBtnContainer.style.textAlign = 'right';
-            addBtnContainer.style.marginTop = '10px';
+            addBtnContainer.setCssStyles({
+                textAlign: 'right',
+                marginTop: '10px'
+            });
 
             new ButtonComponent(addBtnContainer)
                 .setButtonText('Add Rule')
