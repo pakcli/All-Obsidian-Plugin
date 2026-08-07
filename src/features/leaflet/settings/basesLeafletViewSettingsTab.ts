@@ -1,3 +1,4 @@
+/* eslint-disable obsidianmd/no-unsupported-api */
 import { Notice, PluginSettingTab, SettingGroup } from "obsidian";
 import { Constants as C } from "@plugin/constants";
 import { t } from "@plugin/i18n/locale";

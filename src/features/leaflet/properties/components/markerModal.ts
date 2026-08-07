@@ -1,3 +1,4 @@
+/* eslint-disable obsidianmd/no-unsupported-api */
 import { App, ColorComponent, DropdownComponent, Modal, Notice, Setting } from "obsidian";
 import { Constants as C } from "@plugin/constants";
 import { t } from "@plugin/i18n/locale";

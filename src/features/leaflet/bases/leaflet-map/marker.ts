@@ -1,3 +1,4 @@
+/* eslint-disable obsidianmd/no-unsupported-api */
 import {
 	DivIcon,
 	divIcon,

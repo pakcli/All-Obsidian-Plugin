@@ -1,3 +1,4 @@
+/* eslint-disable obsidianmd/no-unsupported-api */
 import { Manager } from "@plugin/types";
 import { LeafletMapViewRegistrationBuilder } from "./leaflet-map/view";
 
