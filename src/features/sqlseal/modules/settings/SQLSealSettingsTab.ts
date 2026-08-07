@@ -67,7 +67,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         })
 
 
-        containerEl.createEl('h3', { text: 'Behavior' });
+        new Setting(containerEl).setName('Behavior').setHeading();
         new Setting(containerEl)
             .setName('Enable Dynamic Updates')
             .setDesc('SQLSeal will refresh your tables when underlying data changes.')
@@ -108,7 +108,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
                     this.settings.set('disableTagAutoDetection', !!value)
                     this.display();
                 }));
-		containerEl.createEl('h3', { text: 'Autocomplete & Wikilink Columns' });
+		new Setting(containerEl).setName('Autocomplete & Wikilink Columns').setHeading();
 		containerEl.createEl('p', { 
 			text: 'Configure columns that will have autocomplete suggestions (based on values in the column) and behave as Ctrl+Click wikilinks without requiring brackets [[ ]].',
 			cls: 'setting-item-description'
@@ -256,7 +256,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 		renderColumnList();
 
 
-        containerEl.createEl('h3', { text: 'Views' });
+        new Setting(containerEl).setName('Views').setHeading();
         new Setting(containerEl)
             .setName('Default View')
             .setDesc('This view will be used by default when you don\'t provide any view definition in your query')
@@ -271,7 +271,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
                     this.display();
                     // this.callChanges()
                 }));
-        containerEl.createEl('h4', { text: 'Grid View' });
+        new Setting(containerEl).setName('Grid View').setHeading();
         new Setting(containerEl)
             .setName('Items per page ')
             .setDesc('How many items should display for each page of the Grid view')
@@ -287,7 +287,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
                     // this.callChanges()
                 }));
 
-        containerEl.createEl('h3', { text: 'Receipt Scanner Autocomplete Suggestions' });
+        new Setting(containerEl).setName('Receipt Scanner Autocomplete Suggestions').setHeading();
         containerEl.createEl('p', {
             text: 'Configure the source CSV files and columns used to populate autocomplete suggestions for Merchant and Category fields in the Receipt Scanner.',
             cls: 'setting-item-description'
@@ -442,7 +442,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         }, 50);
 
         // Receipt Scanner Folder & Save Behavior Settings
-        containerEl.createEl('h3', { text: 'Receipt Scanner Folder & Save Behavior' });
+        new Setting(containerEl).setName('Receipt Scanner Folder & Save Behavior').setHeading();
 
         new Setting(containerEl)
             .setName('Finance Folder Path')

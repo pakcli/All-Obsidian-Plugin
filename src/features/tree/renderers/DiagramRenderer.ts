@@ -302,7 +302,7 @@ export class DiagramRenderer extends MarkdownRenderChild {
 		this.containerEl.empty();
 
 		const wrapper = this.containerEl.createDiv();
-		wrapper.style.position = "relative";
+		wrapper.setCssStyles({ position: 'relative' });
 		wrapper.addClass('tree-diagram-container');
 
 		// Create main layout with content and settings panel
@@ -406,7 +406,9 @@ export class DiagramRenderer extends MarkdownRenderChild {
 			return `<a class="internal-link" data-href="${target.trim()}">${display.trim()}</a>`;
 		});
 
-		pre.innerHTML = htmlContent;
+		const doc = new DOMParser().parseFromString(`<div>${htmlContent}</div>`, 'text/html');
+		pre.empty();
+		Array.from(doc.body.firstChild?.childNodes || []).forEach(child => pre.appendChild(child.cloneNode(true)));
 
 		enableWikiLinks(pre, this.plugin.app, this.ctx.sourcePath);
 

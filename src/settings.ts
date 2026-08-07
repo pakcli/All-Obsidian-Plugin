@@ -74,7 +74,7 @@ export class PakCLISettingTab extends PluginSettingTab {
         const layoutContainer = containerEl.createDiv({ cls: 'pakcli-settings-layout' });
 
         const sidebarContainer = layoutContainer.createDiv({ cls: 'pakcli-settings-sidebar' });
-        sidebarContainer.createEl('h2', { text: "PakCLI Editor's Choice" });
+        new Setting(sidebarContainer).setName("PakCLI Editor's Choice").setHeading();
 
         const tabsContainer = sidebarContainer.createDiv({ cls: 'pakcli-tabs-header' });
 
@@ -131,7 +131,7 @@ export class PakCLISettingTab extends PluginSettingTab {
             const pluginSettings = (this.plugin as any).settings as PakCLIPluginSettings;
             const saveSettings = async () => await (this.plugin as any).saveSettings();
 
-            contentContainer.createEl('h3', { text: 'Centralized Mode (Default)' });
+            new Setting(contentContainer).setName('Centralized Mode (Default)').setHeading();
 
             new Setting(contentContainer)
                 .setName('Enable Centralized Routing')
@@ -183,7 +183,7 @@ export class PakCLISettingTab extends PluginSettingTab {
             // ==========================================
             // 2. Global Nested Mode Settings
             // ==========================================
-            contentContainer.createEl('h3', { text: 'Nested Mode Globals' });
+            new Setting(contentContainer).setName('Nested Mode Globals').setHeading();
 
             new Setting(contentContainer)
                 .setName('Use Note Title in Nested Mode (Default)')
@@ -224,7 +224,7 @@ export class PakCLISettingTab extends PluginSettingTab {
             // ==========================================
             // 3. Captain Folders (Rules) Settings
             // ==========================================
-            contentContainer.createEl('h3', { text: 'Nested Mode Override Rules (Captain Folders)' });
+            new Setting(contentContainer).setName('Nested Mode Override Rules (Captain Folders)').setHeading();
 
             // Bulk operations
             const bulkContainer = contentContainer.createDiv({ cls: 'asset-router-bulk-container' });
@@ -272,7 +272,7 @@ export class PakCLISettingTab extends PluginSettingTab {
             rescanAllBtn.buttonEl.style.marginLeft = '10px';
 
             // Form to add a new rule
-            contentContainer.createEl('h4', { text: 'Add New Captain Folder Rule' });
+            new Setting(contentContainer).setName('Add New Captain Folder Rule').setHeading();
             const addRuleDiv = contentContainer.createDiv();
             addRuleDiv.style.border = '1px solid var(--background-modifier-border)';
             addRuleDiv.style.padding = '15px';
@@ -378,7 +378,7 @@ export class PakCLISettingTab extends PluginSettingTab {
                 });
 
             // Rules List / Table
-            contentContainer.createEl('h4', { text: 'Active Rules' });
+            new Setting(contentContainer).setName('Active Rules').setHeading();
             if (pluginSettings.rules.length === 0) {
                 contentContainer.createEl('p', { text: 'No active Captain Folder rules defined.', cls: 'empty-rules' });
                 return;

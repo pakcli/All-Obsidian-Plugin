@@ -162,13 +162,6 @@ export default class PakCLIPlugin extends Plugin {
 					}
 				}).open();
 			},
-			/* eslint-disable-next-line obsidianmd/commands/no-default-hotkeys */
-			hotkeys: [
-				{
-					modifiers: ['Mod', 'Shift'],
-					key: 'd',
-				},
-			],
 		});
 
 		this.registerEvent(

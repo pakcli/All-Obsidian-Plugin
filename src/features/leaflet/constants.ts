@@ -1,5 +1,3 @@
-/* eslint-disable no-useless-escape */
-
 export const Constants = {
 	map: {
 		default: {
@@ -41,11 +39,11 @@ export const Constants = {
 			"#f44546": "red",
 			"#7623a5": "purple",
 		},
-	},
+		},
 	regExp: {
-		hexColourValidation: /^#([0-9A-F]{3}){1,2}$$/i,
+		hexColourValidation: /^#([0-9A-F]{3}){1,2}$/i,
 		coordinatesValidation: /^\s*-?[0-9]+(\.[0-9]+)?\s*,\s*-?[0-9]+(\.[0-9]+)?\s*$/,
-		iconValidation: /^([a-z]+([\-][a-z]+)*:)?[a-z]+([\-][a-z]+)*$/,
+		iconValidation: /^([a-z]+(-[a-z]+)*:)?[a-z]+(-[a-z]+)*$/,
 		url: /https?:/,
 		arrayString: /^\[.*[\]]$/,
 	},

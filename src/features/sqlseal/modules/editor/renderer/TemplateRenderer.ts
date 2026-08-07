@@ -44,12 +44,14 @@ export class TemplateRenderer implements RendererConfig {
                 
                 const parser = new ParseResults(cellParser!, (el) => new Handlebars.SafeString(el.outerHTML))
 
-                // Seems to be the only way to render handlebars into DOM. Don't like it but what can we do.
-                el.innerHTML = config.template({
+                const htmlString = config.template({
                     data: parser.parse(data, columns),
                     columns,
                     properties: frontmatter
                 })
+                const doc = new DOMParser().parseFromString(htmlString, 'text/html')
+                el.empty()
+                Array.from(doc.body.childNodes).forEach(child => el.appendChild(child.cloneNode(true)))
                 parser.initialise(el)
             },
             error: (error: string) => {

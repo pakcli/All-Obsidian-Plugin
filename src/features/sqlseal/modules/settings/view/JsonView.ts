@@ -11,11 +11,14 @@ export const JSON_VIEW_EXTENSIONS = ['json', 'json5'];
 class JsonRenderer {
     applySyntaxHighlighting(codeElement: HTMLElement): void {
         const text = codeElement.textContent || '';
-        codeElement.innerHTML = text
+        const html = text
             .replace(/"([^"]+)":/g, '<span class="json-key">"$1":</span>')
             .replace(/: (true|false)/g, ': <span class="json-boolean">$1</span>')
             .replace(/: (null)/g, ': <span class="json-null">$1</span>')
             .replace(/: (-?\d+(?:\.\d+)?)/g, ': <span class="json-number">$1</span>');
+        const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+        codeElement.empty();
+        Array.from(doc.body.firstChild?.childNodes || []).forEach(child => codeElement.appendChild(child.cloneNode(true)));
     }
     
     renderFormattedJson(container: HTMLElement, parsedData: any): void {
@@ -24,9 +27,8 @@ class JsonRenderer {
         const code = pre.createEl('code', { cls: 'language-json' });
         
         // Enable text selection like a textarea
-        pre.style.userSelect = 'text';
-        pre.style.cursor = 'text';
-        code.style.userSelect = 'text';
+        pre.setCssStyles({ userSelect: 'text', cursor: 'text' });
+        code.setCssStyles({ userSelect: 'text' });
         
         const formatted = stringify(parsedData, null, 2);
         if (formatted.length > 50000) {

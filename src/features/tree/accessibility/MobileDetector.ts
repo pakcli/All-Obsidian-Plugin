@@ -1,3 +1,5 @@
+import { Platform } from 'obsidian';
+
 /**
  * Utility class for detecting mobile devices and screen sizes
  */
@@ -6,7 +8,7 @@ export class MobileDetector {
 	 * Check if current device is mobile (screen width < 768px)
 	 */
 	static isMobile(): boolean {
-		return window.innerWidth < 768;
+		return Platform.isMobile || window.innerWidth < 768;
 	}
 
 	/**
@@ -20,28 +22,28 @@ export class MobileDetector {
 	 * Check if current device is desktop (width >= 1024px)
 	 */
 	static isDesktop(): boolean {
-		return window.innerWidth >= 1024;
+		return Platform.isDesktop || window.innerWidth >= 1024;
 	}
 
 	/**
 	 * Check if device supports touch events
 	 */
 	static isTouchDevice(): boolean {
-		return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+		return Platform.isMobile || 'ontouchstart' in window;
 	}
 
 	/**
 	 * Check if device is iOS (iPhone, iPad, iPod)
 	 */
 	static isIOS(): boolean {
-		return /iPad|iPhone|iPod/.test(navigator.userAgent);
+		return Platform.isIosApp;
 	}
 
 	/**
 	 * Check if device is Android
 	 */
 	static isAndroid(): boolean {
-		return /Android/.test(navigator.userAgent);
+		return Platform.isAndroidApp;
 	}
 
 	/**

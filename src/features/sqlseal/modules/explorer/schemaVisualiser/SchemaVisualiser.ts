@@ -93,7 +93,9 @@ export class SchemaVisualiser {
                 return
             }
             const { svg } = await m.render(`diagram-${Date.now()}`, mermaidCode)
-            diagramContainer.innerHTML = svg
+            const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
+            diagramContainer.empty()
+            diagramContainer.appendChild(doc.documentElement)
             
             // Ensure SVG takes full width
             const svgElement = diagramContainer.querySelector('svg')
@@ -249,13 +251,16 @@ export class SchemaVisualiser {
         let lastMousePos = { x: 0, y: 0 }
 
         // Set up SVG for pan/zoom
-        svg.style.cursor = 'grab'
-        svg.style.overflow = 'hidden'
+        svg.setCssStyles({ cursor: 'grab', overflow: 'hidden' })
 
         // Create a group element to contain all SVG content for transformations
-        const existingContent = svg.innerHTML
-        svg.innerHTML = `<g class="pan-zoom-group">${existingContent}</g>`
-        const panZoomGroup = svg.querySelector('.pan-zoom-group') as SVGGElement
+        const gElement = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+        gElement.classList.add('pan-zoom-group')
+        while (svg.firstChild) {
+            gElement.appendChild(svg.firstChild)
+        }
+        svg.appendChild(gElement)
+        const panZoomGroup = gElement as unknown as SVGGElement
 
         const updateTransform = () => {
             if (panZoomGroup) {
