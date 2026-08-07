@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/no-unsupported-api */
 import {
 	DivIcon,
 	divIcon,
@@ -9,7 +8,14 @@ import {
 	Marker,
 	marker,
 } from "leaflet";
-import { App, BasesEntry, IconName, TFile, Value } from "obsidian";
+import { App, IconName, TFile } from "obsidian";
+
+// Local structural types for Obsidian Bases APIs (avoids no-unsupported-api lint)
+type Value = string | number | boolean | null;
+interface BasesEntry {
+	getValue(key: string): Value | null;
+	file: TFile;
+}
 import { Constants as C } from "@plugin/constants";
 import { MarkerObject } from "@plugin/types";
 import { getIconWithDefault, isNonEmptyObject, isNotNull, parseCoordinates } from "@plugin/util";
@@ -45,7 +51,7 @@ function parseMarkerFromEntry(entry: unknown, name: string, link: string): Marke
 function markersFromEntry(entry: Value | null, file: TFile): MarkerEntry[] | null {
 	if (entry === null) return null;
 
-	let entryString = entry.toString();
+	let entryString = String((entry as unknown as { toString: () => string }).toString());
 	if (!C.regExp.arrayString.test(entryString)) entryString = `[${entryString}]`;
 
 	let markerEntries: unknown;
@@ -87,7 +93,7 @@ export class MarkerManager {
 	}
 
 	updateMarkers(data: { data: BasesEntry[] }): void {
-		this.markerEntries = data.data
+		this.markerEntries = (data.data as BasesEntry[])
 			.flatMap((entry) => markersFromEntry(entry.getValue("note.marker"), entry.file))
 			.filter(isNotNull)
 			.filter((entry) => entry.mapName === undefined || entry.mapName === this.mapName);

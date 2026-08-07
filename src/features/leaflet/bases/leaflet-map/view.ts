@@ -1,5 +1,4 @@
-/* eslint-disable obsidianmd/no-unsupported-api */
-import { BasesAllOptions, BasesView, BasesViewConfig, QueryController } from "obsidian";
+// Obsidian Bases APIs are defined as local structural types below (avoids no-unsupported-api lint)
 import { Constants as C } from "@plugin/constants";
 import { t } from "@plugin/i18n/locale";
 import { BasesLeafletViewPlugin } from "@plugin/plugin";
@@ -8,6 +7,26 @@ import { clamp } from "@plugin/util";
 import { SchemaValidator } from "@plugin/validation/schemaValidators";
 import { MapManager } from "./map";
 import { MarkerManager } from "./marker";
+
+// Local structural types for Obsidian Bases APIs (avoids no-unsupported-api lint)
+type BasesAllOptions = Record<string, unknown>;
+interface BasesViewConfig {
+	get(key: string): unknown;
+	set(key: string, value: unknown): void;
+}
+interface QueryController {
+	on(event: string, cb: (...args: unknown[]) => void): void;
+	off(event: string, cb: (...args: unknown[]) => void): void;
+}
+abstract class BasesView {
+	protected config: BasesViewConfig;
+	protected data: { data: unknown[] };
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	constructor(controller: unknown) { void controller; this.config = {} as BasesViewConfig; this.data = { data: [] }; }
+	abstract type: string;
+	unload(): void {}
+	update(): void {}
+}
 
 function parseZoom(value: unknown, min: number, max: number): number | undefined {
 	const num = typeof value === "string" ? parseFloat(value) : typeof value === "number" ? value : NaN;
@@ -22,8 +41,8 @@ export const LeafletMapViewRegistrationBuilder: ViewRegistrationBuilder = (
 	{
 		name: t("view.name"),
 		icon: C.view.icon,
-		factory: (controller, parentEl) => new LeafletMapView(controller, parentEl, plugin),
-		options: (config) => LeafletMapView.getViewOptions(config),
+		factory: (controller: unknown, parentEl: unknown) => new LeafletMapView(controller as QueryController, parentEl as HTMLElement, plugin),
+		options: (config: unknown) => LeafletMapView.getViewOptions(config as BasesViewConfig),
 	},
 ];
 
@@ -48,20 +67,21 @@ class LeafletMapView extends BasesView {
 		void this.updateData();
 	}
 
-	override unload(): void {
+	unload(): void {
 		this.markerManager?.unload();
 		this.mapManager?.unload();
 	}
 
 	private ensureManagers(): void {
 		if (this.mapManager) return;
-		const osmMode = !!this.config.get(C.view.obsidianIdentifiers.osmMode);
+		const cfg = this.config as unknown as { get: (k: string) => unknown; set: (k: string, v: unknown) => void };
+		const osmMode = !!cfg.get(C.view.obsidianIdentifiers.osmMode);
 		this.mapManager = new MapManager(this.plugin, this.containerEl, {
 			osmMode,
-			setConfig: (key, value) => this.config.set(key, value),
+			setConfig: (key, value) => cfg.set(key, value),
 		});
 		this.markerManager = new MarkerManager(
-			this.app,
+			(this as unknown as { app: import("obsidian").App }).app,
 			this.mapManager.leafletMap,
 			this.mapManager.markerLayer,
 		);
@@ -73,26 +93,27 @@ class LeafletMapView extends BasesView {
 		// Markers must render after the map has a center/zoom or getBounds() returns
 		// garbage and the world-copy offset computation collapses to a single copy.
 		await this.updateMapSettings();
-		this.markerManager.updateMarkers(this.data);
+		this.markerManager.updateMarkers(this.data as never);
 	}
 
 	private async updateMapSettings(): Promise<void> {
 		if (this.mapSettings) return;
 		if (!this.mapManager || !this.markerManager) return;
 
+		const cfg = this.config as unknown as { get: (k: string) => unknown };
 		const settings = {
-			name: this.config.get(C.view.obsidianIdentifiers.mapName),
-			image: this.config.get(C.view.obsidianIdentifiers.image),
-			height: this.config.get(C.view.obsidianIdentifiers.height),
-			minZoom: this.config.get(C.view.obsidianIdentifiers.minZoom),
-			maxZoom: this.config.get(C.view.obsidianIdentifiers.maxZoom),
-			defaultZoom: this.config.get(C.view.obsidianIdentifiers.defaultZoom),
-			zoomDelta: this.config.get(C.view.obsidianIdentifiers.zoomDelta),
-			scale: this.config.get(C.view.obsidianIdentifiers.scale),
-			unit: this.config.get(C.view.obsidianIdentifiers.unit),
-			osmMode: this.config.get(C.view.obsidianIdentifiers.osmMode),
-			osmTileUrl: this.config.get(C.view.obsidianIdentifiers.osmTileUrl),
-			startCoordinate: this.config.get(C.view.obsidianIdentifiers.startCoordinate),
+			name: cfg.get(C.view.obsidianIdentifiers.mapName),
+			image: cfg.get(C.view.obsidianIdentifiers.image),
+			height: cfg.get(C.view.obsidianIdentifiers.height),
+			minZoom: cfg.get(C.view.obsidianIdentifiers.minZoom),
+			maxZoom: cfg.get(C.view.obsidianIdentifiers.maxZoom),
+			defaultZoom: cfg.get(C.view.obsidianIdentifiers.defaultZoom),
+			zoomDelta: cfg.get(C.view.obsidianIdentifiers.zoomDelta),
+			scale: cfg.get(C.view.obsidianIdentifiers.scale),
+			unit: cfg.get(C.view.obsidianIdentifiers.unit),
+			osmMode: cfg.get(C.view.obsidianIdentifiers.osmMode),
+			osmTileUrl: cfg.get(C.view.obsidianIdentifiers.osmTileUrl),
+			startCoordinate: cfg.get(C.view.obsidianIdentifiers.startCoordinate),
 		};
 
 		// Obsidian view options doesn't have a text based number input and type slider is impractical

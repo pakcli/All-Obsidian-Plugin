@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/no-unsupported-api */
 import { App, ColorComponent, DropdownComponent, Modal, Notice, Setting } from "obsidian";
 import { Constants as C } from "@plugin/constants";
 import { t } from "@plugin/i18n/locale";
@@ -43,11 +42,11 @@ export class MarkerModal extends Modal {
 			});
 
 		let coordinatesError: MarkerModalErrorComponent;
-		new Setting(this.contentEl)
+		const coordSetting = new Setting(this.contentEl)
 			.setName(t("modal.coordinates.title"))
-			.setDesc(t("modal.coordinates.description"))
-			.setClass("bases-leaflet-view-setting-vertical")
-			.addText((textField) => {
+			.setDesc(t("modal.coordinates.description"));
+		coordSetting.settingEl.addClass("bases-leaflet-view-setting-vertical");
+		coordSetting.addText((textField) => {
 				textField.setValue(this.value.coordinates ?? "").onChange((value) => {
 					if (value === "") {
 						coordinatesError.setMessage(t("modal.coordinates.error.required"));

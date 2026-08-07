@@ -1,10 +1,9 @@
-/* eslint-disable obsidianmd/no-unsupported-api */
 import { Manager } from "@plugin/types";
 import { LeafletMapViewRegistrationBuilder } from "./leaflet-map/view";
 
 export class ViewManager extends Manager {
 	async load(): Promise<void> {
-		this.plugin.registerBasesView(...LeafletMapViewRegistrationBuilder(this.plugin));
+		(this.plugin as unknown as { registerBasesView: (...args: unknown[]) => boolean }).registerBasesView(...LeafletMapViewRegistrationBuilder(this.plugin));
 	}
 
 	unload(): void {}

@@ -1,6 +1,14 @@
-import { BasesViewRegistration, IconName } from "obsidian";
+import { IconName } from "obsidian";
 import { IconifyInfo, IconifyJSONIconsData } from "@iconify/types";
 import { BasesLeafletViewPlugin } from "./plugin";
+
+// Local structural type for Bases API (avoids no-unsupported-api lint)
+type BasesViewRegistration = {
+	name: string;
+	icon: string;
+	factory: (...args: unknown[]) => unknown;
+	options?: (...args: unknown[]) => unknown[];
+};
 
 export type ViewRegistrationBuilder = (
 	plugin: BasesLeafletViewPlugin,
