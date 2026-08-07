@@ -77,14 +77,14 @@ export class VariableInputInterface {
      * Show the interface
      */
     show(): void {
-        this.container.style.display = 'block';
+        this.container.setCssStyles({ display: 'block' });
     }
 
     /**
      * Hide the interface
      */
     hide(): void {
-        this.container.style.display = 'none';
+        this.container.setCssStyles({ display: 'none' });
     }
 
     /**

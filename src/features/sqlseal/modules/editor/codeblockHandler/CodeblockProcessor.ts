@@ -312,12 +312,14 @@ export class CodeblockProcessor extends MarkdownRenderChild {
 			if (this.settings.get("debug" as any)) {
 				const debugEl = this.el.createDiv({ cls: "sqlseal-debug-info" });
 				debugEl.setText(`[SQLSeal Debug] isEditable: ${this.isEditable} | tables: ${JSON.stringify(this.tables)} | mappedTables: ${JSON.stringify(res.mappedTables)} | enableEditing: ${this.settings.get("enableEditing")}`);
-				debugEl.style.fontSize = "11px";
-				debugEl.style.color = "var(--text-accent)";
-				debugEl.style.padding = "5px 10px";
-				debugEl.style.backgroundColor = "var(--background-secondary)";
-				debugEl.style.borderRadius = "4px";
-				debugEl.style.marginTop = "10px";
+				debugEl.setCssStyles({
+					fontSize: "11px",
+					color: "var(--text-accent)",
+					padding: "5px 10px",
+					backgroundColor: "var(--background-secondary)",
+					borderRadius: "4px",
+					marginTop: "10px"
+				});
 			}
 		} catch (e) {
 			this.renderer.error(e.toString());

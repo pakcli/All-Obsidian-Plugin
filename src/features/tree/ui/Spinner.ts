@@ -33,8 +33,7 @@ export class Spinner {
 		if (this.label) {
 			const labelEl = document.createElement('span');
 			labelEl.textContent = this.label + ":";
-			labelEl.style.marginRight = "4px";
-			labelEl.style.fontSize = "11px";
+			(labelEl as HTMLElement).setCssStyles({ marginRight: "4px", fontSize: "11px" });
 			spinner.appendChild(labelEl);
 		}
 		

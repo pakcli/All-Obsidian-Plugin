@@ -192,9 +192,8 @@ export class MapManager {
 	}
 
 	private updateCss(settings: RequiredMapObject): void {
-    this.mapEl.style.height = `${settings.height.toFixed(0)}px`;
-    this.mapEl.style.width = "100%";
-}
+		this.mapEl.setCssStyles({ height: `${settings.height.toFixed(0)}px`, width: "100%" });
+	}
 
 	private parseStartCoordinate(coord: string | undefined): [number, number] {
     if (!coord) return [0, 0];

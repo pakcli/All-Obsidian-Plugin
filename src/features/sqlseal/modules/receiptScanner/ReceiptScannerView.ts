@@ -28,8 +28,7 @@ export class ReceiptScannerView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.rootEl = this.contentEl.createDiv({ cls: "receipt-scanner-root" });
-    this.rootEl.style.height = "100%";
-    this.rootEl.style.width = "100%";
+    this.rootEl.setCssStyles({ height: "100%", width: "100%" });
     
     render(
       h(ReceiptScanner, {

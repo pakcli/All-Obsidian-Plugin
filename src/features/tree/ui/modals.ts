@@ -22,9 +22,11 @@ export class ConfirmModal extends Modal {
 		contentEl.createEl('p', { text: this.message });
 
 		const btnContainer = contentEl.createDiv();
-		btnContainer.style.display = 'flex';
-		btnContainer.style.justifyContent = 'flex-end';
-		btnContainer.style.marginTop = '20px';
+		btnContainer.setCssStyles({
+			display: 'flex',
+			justifyContent: 'flex-end',
+			marginTop: '20px'
+		});
 
 		new ButtonComponent(btnContainer)
 			.setButtonText('Confirm')
@@ -40,7 +42,7 @@ export class ConfirmModal extends Modal {
 				if (this.onCancel) this.onCancel();
 				this.close();
 			});
-		cancelBtn.buttonEl.style.marginLeft = '10px';
+		cancelBtn.buttonEl.setCssStyles({ marginLeft: '10px' });
 	}
 
 	onClose() {
@@ -74,9 +76,11 @@ export class ConflictModal extends Modal {
 		contentEl.createEl('p', { text: 'Do you want to overwrite these rules so they inherit the parent folder\'s behavior, or keep them separate?' });
 
 		const btnContainer = contentEl.createDiv();
-		btnContainer.style.display = 'flex';
-		btnContainer.style.justifyContent = 'flex-end';
-		btnContainer.style.marginTop = '20px';
+		btnContainer.setCssStyles({
+			display: 'flex',
+			justifyContent: 'flex-end',
+			marginTop: '20px'
+		});
 
 		new ButtonComponent(btnContainer)
 			.setButtonText('Overwrite Rules')
@@ -92,7 +96,7 @@ export class ConflictModal extends Modal {
 				this.onSubmit(false);
 				this.close();
 			});
-		cancelBtn.buttonEl.style.marginLeft = '10px';
+		cancelBtn.buttonEl.setCssStyles({ marginLeft: '10px' });
 	}
 
 	onClose() {

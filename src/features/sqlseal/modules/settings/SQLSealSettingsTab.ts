@@ -123,10 +123,12 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 
 			configs.forEach((cfg, index) => {
 				const row = listContainer.createDiv({ cls: 'sqlseal-settings-column-row' });
-				row.style.display = 'flex';
-				row.style.alignItems = 'center';
-				row.style.gap = '10px';
-				row.style.marginBottom = '8px';
+				row.setCssStyles({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '10px',
+					marginBottom: '8px'
+				});
 
 				// Column Name input
 				const colInput = row.createEl('input', { 
@@ -134,7 +136,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 					value: cfg.column, 
 					placeholder: 'Column name...' 
 				});
-				colInput.style.flex = '1';
+				colInput.setCssStyles({ flex: '1' });
 				colInput.addEventListener('change', () => {
 					cfg.column = colInput.value.trim();
 					if (cfg.replacementEnabled && !cfg.replacement.trim()) {
@@ -146,9 +148,11 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 
 				// Text Replacement Toggle
 				const repLabel = row.createEl('label');
-				repLabel.style.display = 'flex';
-				repLabel.style.alignItems = 'center';
-				repLabel.style.gap = '4px';
+				repLabel.setCssStyles({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '4px'
+				});
 				
 				const repCheckbox = repLabel.createEl('input', {
 					type: 'checkbox'
@@ -159,20 +163,16 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 				repCheckbox.addEventListener('change', () => {
 					cfg.replacementEnabled = repCheckbox.checked;
 					repInput.disabled = !cfg.replacementEnabled;
-					if (cfg.replacementEnabled && !cfg.replacement.trim()) {
-						repInput.value = formatHeaderName(cfg.column);
-						cfg.replacement = repInput.value;
-					}
 					this.settings.set('autocompleteColumns' as any, JSON.stringify(configs.filter(c => c.column.trim())));
 				});
 
-				// Replacement Text input
+				// Replacement Input
 				const repInput = row.createEl('input', { 
 					type: 'text', 
 					value: cfg.replacement || formatHeaderName(cfg.column), 
 					placeholder: 'Replacement text...' 
 				});
-				repInput.style.flex = '1';
+				repInput.setCssStyles({ flex: '1' });
 				repInput.disabled = !cfg.replacementEnabled;
 				repInput.addEventListener('change', () => {
 					cfg.replacement = repInput.value.trim();
@@ -181,9 +181,11 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 
 				// Wikilink-able Toggle
 				const wikiLabel = row.createEl('label');
-				wikiLabel.style.display = 'flex';
-				wikiLabel.style.alignItems = 'center';
-				wikiLabel.style.gap = '4px';
+				wikiLabel.setCssStyles({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '4px'
+				});
 				
 				const wikiCheckbox = wikiLabel.createEl('input', {
 					type: 'checkbox'
@@ -205,12 +207,14 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 			});
 
 			const addRow = listContainer.createDiv({ cls: 'sqlseal-settings-column-row-add' });
-			addRow.style.display = 'flex';
-			addRow.style.gap = '10px';
-			addRow.style.marginTop = '12px';
+			addRow.setCssStyles({
+				display: 'flex',
+				gap: '10px',
+				marginTop: '12px'
+			});
 
 			const addInput = addRow.createEl('input', { type: 'text', placeholder: 'New column name...' });
-			addInput.style.flex = '1';
+			addInput.setCssStyles({ flex: '1' });
 			const addInputSuggest = new GenericTextSuggest(this.app, addInput, []);
 
 			const addBtn = addRow.createEl('button', { text: 'Add Column', cls: 'mod-cta' });
@@ -294,37 +298,50 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         });
 
         const tableContainer = containerEl.createDiv();
-        tableContainer.style.margin = '12px 0';
-        tableContainer.style.overflowX = 'auto';
+        tableContainer.setCssStyles({
+            margin: '12px 0',
+            overflowX: 'auto'
+        });
 
         const table = tableContainer.createEl('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid var(--background-modifier-border)';
+        table.setCssStyles({
+            width: '100%',
+            borderCollapse: 'collapse',
+            border: '1px solid var(--background-modifier-border)'
+        });
 
         const thead = table.createEl('thead');
         const headerRow = thead.createEl('tr');
-        headerRow.style.backgroundColor = 'var(--background-secondary)';
-        headerRow.style.borderBottom = '2px solid var(--background-modifier-border)';
+        headerRow.setCssStyles({
+            backgroundColor: 'var(--background-secondary)',
+            borderBottom: '2px solid var(--background-modifier-border)'
+        });
 
-        const thStyle = 'padding: 8px 12px; font-weight: bold; text-align: left; border-right: 1px solid var(--background-modifier-border);';
+        const thStyles = {
+            padding: '8px 12px',
+            fontWeight: 'bold',
+            textAlign: 'left' as const,
+            borderRight: '1px solid var(--background-modifier-border)'
+        };
         
         const thSuggestion = headerRow.createEl('th');
-        thSuggestion.setAttribute('style', thStyle);
-        thSuggestion.style.width = '120px';
+        thSuggestion.setCssStyles({ ...thStyles, width: '120px' });
         thSuggestion.setText('Suggestion');
 
         const thPath = headerRow.createEl('th');
-        thPath.setAttribute('style', thStyle);
+        thPath.setCssStyles(thStyles);
         thPath.setText('CSV File Path');
 
         const thCol = headerRow.createEl('th');
-        thCol.setAttribute('style', thStyle);
-        thCol.style.width = '180px';
+        thCol.setCssStyles({ ...thStyles, width: '180px' });
         thCol.setText('Column Name');
 
         const tbody = table.createEl('tbody');
-        const tdStyle = 'padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border); border-right: 1px solid var(--background-modifier-border);';
+        const tdStyles = {
+            padding: '8px 12px',
+            borderBottom: '1px solid var(--background-modifier-border)',
+            borderRight: '1px solid var(--background-modifier-border)'
+        };
 
         const readCSVHeaders = async (filePath: string): Promise<string[]> => {
             if (!filePath) return [];
@@ -351,14 +368,13 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         const rowMerchant = tbody.createEl('tr');
         
         const tdMerchantLabel = rowMerchant.createEl('td');
-        tdMerchantLabel.setAttribute('style', tdStyle);
-        tdMerchantLabel.style.fontWeight = 'bold';
+        tdMerchantLabel.setCssStyles({ ...tdStyles, fontWeight: 'bold' });
         tdMerchantLabel.setText('Merchant');
 
         const tdMerchantPath = rowMerchant.createEl('td');
-        tdMerchantPath.setAttribute('style', tdStyle);
+        tdMerchantPath.setCssStyles(tdStyles);
         const inputMerchantPath = tdMerchantPath.createEl('input', { type: 'text' });
-        inputMerchantPath.style.width = '100%';
+        inputMerchantPath.setCssStyles({ width: '100%' });
         inputMerchantPath.value = this.settings.get('scannerMerchantPath') || '';
         inputMerchantPath.placeholder = 'e.g. Finance/merchants.csv';
         new CsvFileSuggest(this.app, inputMerchantPath);
@@ -371,9 +387,9 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         });
 
         const tdMerchantCol = rowMerchant.createEl('td');
-        tdMerchantCol.setAttribute('style', tdStyle);
+        tdMerchantCol.setCssStyles(tdStyles);
         const inputMerchantCol = tdMerchantCol.createEl('input', { type: 'text' });
-        inputMerchantCol.style.width = '100%';
+        inputMerchantCol.setCssStyles({ width: '100%' });
         inputMerchantCol.value = this.settings.get('scannerMerchantCol') || '';
         inputMerchantCol.placeholder = 'e.g. merchant';
         const merchantColSuggest = new GenericTextSuggest(this.app, inputMerchantCol, []);
@@ -395,14 +411,13 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         const rowCategory = tbody.createEl('tr');
 
         const tdCategoryLabel = rowCategory.createEl('td');
-        tdCategoryLabel.setAttribute('style', tdStyle);
-        tdCategoryLabel.style.fontWeight = 'bold';
+        tdCategoryLabel.setCssStyles({ ...tdStyles, fontWeight: 'bold' });
         tdCategoryLabel.setText('Category');
 
         const tdCategoryPath = rowCategory.createEl('td');
-        tdCategoryPath.setAttribute('style', tdStyle);
+        tdCategoryPath.setCssStyles(tdStyles);
         const inputCategoryPath = tdCategoryPath.createEl('input', { type: 'text' });
-        inputCategoryPath.style.width = '100%';
+        inputCategoryPath.setCssStyles({ width: '100%' });
         inputCategoryPath.value = this.settings.get('scannerCategoryPath') || '';
         inputCategoryPath.placeholder = 'e.g. Finance/budget.csv';
         new CsvFileSuggest(this.app, inputCategoryPath);
@@ -415,9 +430,9 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         });
 
         const tdCategoryCol = rowCategory.createEl('td');
-        tdCategoryCol.setAttribute('style', tdStyle);
+        tdCategoryCol.setCssStyles(tdStyles);
         const inputCategoryCol = tdCategoryCol.createEl('input', { type: 'text' });
-        inputCategoryCol.style.width = '100%';
+        inputCategoryCol.setCssStyles({ width: '100%' });
         inputCategoryCol.value = this.settings.get('scannerCategoryCol') || '';
         inputCategoryCol.placeholder = 'e.g. category';
         const categoryColSuggest = new GenericTextSuggest(this.app, inputCategoryCol, []);

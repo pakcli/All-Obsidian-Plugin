@@ -29,7 +29,7 @@ export class DocmostSettingsTab extends PluginSettingTab {
     containerEl.empty();
     const plugin = this.plugin as any;
 
-    new Setting(containerEl).setName('Docmost Sync Settings').setHeading();
+    new Setting(containerEl).setName('Docmost Sync').setHeading();
 
     new Setting(containerEl)
       .setName('Docmost Server URL')

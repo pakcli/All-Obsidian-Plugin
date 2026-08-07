@@ -16,23 +16,26 @@ class AutocompleteCellEditor implements ICellEditorComp {
     private suggester: GenericTextSuggest | null = null;
 
     init(params: ICellEditorParams & { values?: string[] }) {
-        this.container = document.createElement('div');
-        this.container.style.width = '100%';
-        this.container.style.height = '100%';
-        this.container.style.display = 'flex';
-        this.container.style.alignItems = 'center';
+        this.container.setCssStyles({
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center'
+        });
 
         this.eInput = document.createElement('input');
         this.eInput.value = params.value ?? '';
-        this.eInput.style.width = '100%';
-        this.eInput.style.height = '100%';
-        this.eInput.style.border = 'none';
-        this.eInput.style.outline = 'none';
-        this.eInput.style.background = 'transparent';
-        this.eInput.style.color = 'inherit';
-        this.eInput.style.fontSize = 'inherit';
-        this.eInput.style.fontFamily = 'inherit';
-        this.eInput.style.padding = '0 8px';
+        this.eInput.setCssStyles({
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            color: 'inherit',
+            fontSize: 'inherit',
+            fontFamily: 'inherit',
+            padding: '0 8px'
+        });
 
         this.container.appendChild(this.eInput);
 
@@ -381,7 +384,7 @@ export class GridRendererCommunicator {
         }, this.config)
 
         grid.setAttribute('tabindex', '-1');
-        grid.style.outline = 'none';
+        grid.setCssStyles({ outline: 'none' });
 
         this._gridApi = createGrid(
             grid,
@@ -714,10 +717,10 @@ export class GridRendererCommunicator {
         const currentBlockConfig = views[cacheKey] || {};
 
         if (showFooter) {
-            this.topBar.style.display = '';
+            this.topBar.setCssStyles({ display: '' });
             this.renderCalculationsMenu(columns, data, isEditable, queryText);
         } else {
-            this.topBar.style.display = 'none';
+            this.topBar.setCssStyles({ display: 'none' });
         }
 
         let activeCalcs: string[] = currentBlockConfig.activeCalcs;

@@ -102,9 +102,7 @@ export class SchemaVisualiser {
             if (svgElement) {
                 svgElement.setAttribute('width', '100%')
                 svgElement.setAttribute('height', '100%')
-                svgElement.style.width = '100%'
-                svgElement.style.height = '100%'
-                svgElement.style.maxWidth = 'none'
+                (svgElement as HTMLElement).setCssStyles({ width: '100%', height: '100%', maxWidth: 'none' })
                 // Set viewBox to preserve aspect ratio while filling container
                 const viewBox = svgElement.getAttribute('viewBox')
                 if (viewBox) {
@@ -307,7 +305,7 @@ export class SchemaVisualiser {
             if (e.button === 0) { // Left mouse button
                 isDragging = true
                 lastMousePos = { x: e.clientX, y: e.clientY }
-                svg.style.cursor = 'grabbing'
+                svg.setCssStyles({ cursor: 'grabbing' })
                 e.preventDefault()
             }
         })
@@ -329,7 +327,7 @@ export class SchemaVisualiser {
         const handleMouseUp = () => {
             if (isDragging) {
                 isDragging = false
-                svg.style.cursor = 'grab'
+                svg.setCssStyles({ cursor: 'grab' })
             }
         }
 

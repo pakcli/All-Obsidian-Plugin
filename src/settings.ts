@@ -228,7 +228,7 @@ export class PakCLISettingTab extends PluginSettingTab {
 
             // Bulk operations
             const bulkContainer = contentContainer.createDiv({ cls: 'asset-router-bulk-container' });
-            bulkContainer.style.marginBottom = '10px';
+            bulkContainer.setCssStyles({ marginBottom: '10px' });
 
             new ButtonComponent(bulkContainer)
                 .setButtonText('Turn On All Rules')
@@ -260,7 +260,7 @@ export class PakCLISettingTab extends PluginSettingTab {
                         }
                     ).open();
                 });
-            turnOffBtn.buttonEl.style.marginLeft = '10px';
+            turnOffBtn.buttonEl.setCssStyles({ marginLeft: '10px' });
 
             const rescanAllBtn = new ButtonComponent(bulkContainer)
                 .setButtonText('Rescan All Nested')
@@ -269,15 +269,17 @@ export class PakCLISettingTab extends PluginSettingTab {
                     await (this.plugin as any).router.rescanAllNestedAssets();
                     rescanAllBtn.setDisabled(false);
                 });
-            rescanAllBtn.buttonEl.style.marginLeft = '10px';
+            rescanAllBtn.buttonEl.setCssStyles({ marginLeft: '10px' });
 
             // Form to add a new rule
             new Setting(contentContainer).setName('Add New Captain Folder Rule').setHeading();
             const addRuleDiv = contentContainer.createDiv();
-            addRuleDiv.style.border = '1px solid var(--background-modifier-border)';
-            addRuleDiv.style.padding = '15px';
-            addRuleDiv.style.borderRadius = '8px';
-            addRuleDiv.style.marginBottom = '20px';
+            addRuleDiv.setCssStyles({
+                border: '1px solid var(--background-modifier-border)',
+                padding: '15px',
+                borderRadius: '8px',
+                marginBottom: '20px'
+            });
 
             let newPath = '';
             let newScope = 'children'; // 'folder' | 'children'
@@ -385,24 +387,24 @@ export class PakCLISettingTab extends PluginSettingTab {
             }
 
             const rulesTable = contentContainer.createDiv({ cls: 'asset-router-rules-table' });
-            rulesTable.style.width = '100%';
+            rulesTable.setCssStyles({ width: '100%' });
 
             pluginSettings.rules.forEach((rule, idx) => {
                 const row = rulesTable.createDiv();
-                row.style.display = 'flex';
-                row.style.justifyContent = 'space-between';
-                row.style.alignItems = 'center';
-                row.style.padding = '10px';
-                row.style.borderBottom = '1px solid var(--background-modifier-border)';
-                if (!rule.enabled) {
-                    row.style.opacity = '0.5';
-                }
+                row.setCssStyles({
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '10px',
+                    borderBottom: '1px solid var(--background-modifier-border)',
+                    ...(rule.enabled ? {} : { opacity: '0.5' })
+                });
 
                 // Details
                 const details = row.createDiv();
-                details.style.flex = '1';
+                details.setCssStyles({ flex: '1' });
                 const pathEl = details.createEl('strong', { text: rule.path === "" ? "/" : rule.path });
-                pathEl.style.fontSize = '1.1em';
+                pathEl.setCssStyles({ fontSize: '1.1em' });
                 
                 const subCaptainBadge = rule.subCaptainMode ? ' | Sub-Captain: Enabled' : '';
                 const metaText = `Scope: ${rule.includeChildren ? 'Include Children' : 'Folder Only'}${subCaptainBadge} | Title: ${rule.useNoteTitle}`;
@@ -410,12 +412,14 @@ export class PakCLISettingTab extends PluginSettingTab {
 
                 // Controls
                 const controls = row.createDiv();
-                controls.style.display = 'flex';
-                controls.style.alignItems = 'center';
+                controls.setCssStyles({
+                    display: 'flex',
+                    alignItems: 'center'
+                });
 
                 // Individual Rule Switch
                 const switchContainer = controls.createDiv();
-                switchContainer.style.marginRight = '15px';
+                switchContainer.setCssStyles({ marginRight: '15px' });
                 
                 const toggle = switchContainer.createEl('input', { type: 'checkbox' });
                 toggle.checked = rule.enabled;
@@ -433,7 +437,7 @@ export class PakCLISettingTab extends PluginSettingTab {
                         await (this.plugin as any).router.rescanFolderRuleAssets(rule);
                         rescanBtn.setDisabled(false);
                     });
-                rescanBtn.buttonEl.style.marginRight = '10px';
+                rescanBtn.buttonEl.setCssStyles({ marginRight: '10px' });
 
                 // Delete button
                 new ButtonComponent(controls)

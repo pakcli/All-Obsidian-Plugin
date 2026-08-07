@@ -346,7 +346,7 @@ export class JsonView extends TextFileView {
         
         this.generateCodeButton = this.uiBuilder.createGenerateCodeButton(mainContainer, () => this.generateSQLSealCode());
         if (this.isLargeFile && !this.isAnalyzed && this.generateCodeButton) {
-            this.generateCodeButton.style.display = 'none';
+            this.generateCodeButton.setCssStyles({ display: 'none' });
         }
         
         const { jsonContainer, tableContainer } = this.uiBuilder.createContentPanels(mainContainer);
@@ -391,7 +391,7 @@ export class JsonView extends TextFileView {
             
             // Show generate code button for large files
             if (this.generateCodeButton && this.isLargeFile) {
-                this.generateCodeButton.style.display = 'block';
+                this.generateCodeButton.setCssStyles({ display: 'block' });
             }
             
             // Hide warning section
