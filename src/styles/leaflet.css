@@ -6,7 +6,7 @@
 	background-color: rgba(80, 120, 180, 0.1);
 }
 .bases-leaflet-map .leaflet-image-layer {
-	margin: 0 !important;
+	margin: 0;
 }
 
 .bases-leaflet-view-search-icon-span {
@@ -76,13 +76,13 @@
 	color: #ebebec;
 }
 .leaflet-marker-icon svg path {
-	stroke: unset !important;
-	stroke-width: unset !important;
+	stroke: unset;
+	stroke-width: unset;
 }
 
 .leaflet-map-property-tag-list {
-	margin: 0 8px !important;
-	padding: 2px !important;
+	margin: 0 8px;
+	padding: 2px;
 	gap: 0.3rem;
 	display: flex;
 	color: #ebebec;
@@ -91,8 +91,8 @@
 .leaflet-map-property-tag-item {
 	display: flex;
 	cursor: pointer;
-	padding: 0 !important;
-	margin: 0 !important;
+	padding: 0;
+	margin: 0;
 	background: #353535;
 	border-radius: 8px;
 	align-items: center;
@@ -609,8 +609,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
 	text-decoration: underline;
 }
 .leaflet-attribution-flag {
-	display: inline !important;
-	vertical-align: baseline !important;
+	display: inline;
+	vertical-align: baseline;
 	width: 1em;
 	height: 0.6669em;
 }

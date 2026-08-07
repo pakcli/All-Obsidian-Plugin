@@ -1,4 +1,4 @@
-# PakCLI Editor's Choice
+# PakCLI Suite
 
 An all-in-one suite of powerful tools for Obsidian power users, integrating Leaflet Map Views, SQLSeal & Tablite CSV Editor, Symlink Manager, and Tree Diagram with Asset Router.
 

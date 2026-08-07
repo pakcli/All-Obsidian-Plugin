@@ -1,5 +1,5 @@
 # start_publish.ps1
-# Official automated release build script for PakCLI Editor's Choice Obsidian plugin.
+# Official automated release build script for PakCLI Suite Obsidian plugin.
 
 $ErrorActionPreference = 'Stop'
 

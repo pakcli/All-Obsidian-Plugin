@@ -322,9 +322,9 @@
     .split-editor {
         flex: 1;
         height: 100%;
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
+        border: none;
+        background: transparent;
+        box-shadow: none;
         color: var(--text-normal);
         padding: 12px;
         resize: none;
@@ -336,9 +336,9 @@
         line-height: inherit;
 
         &:focus {
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
+            box-shadow: none;
+            outline: none;
+            border: none;
         }
     }
 
@@ -410,8 +410,8 @@
             }
 
             &.is-invalid {
-                border-color: var(--text-error) !important;
-                outline: 2px solid var(--text-error) !important;
+                border-color: var(--text-error);
+                outline: 2px solid var(--text-error);
                 outline-offset: -1px;
             }
         }
@@ -466,12 +466,12 @@
 
 /* Fullscreen Mode Class */
 .receipt-scanner-fullscreen {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: var(--layer-modal) !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: var(--layer-modal);
     background-color: var(--background-primary);
 }
 
@@ -607,19 +607,19 @@
             .receipt-scanner-sidebar,
             .receipt-scanner-media-metadata,
             .receipt-scanner-items-parser {
-                width: 33.3333% !important;
-                min-width: 33.3333% !important;
-                max-width: 33.3333% !important;
-                flex: none !important;
-                height: 100% !important;
-                border-right: none !important;
+                width: 33.3333%;
+                min-width: 33.3333%;
+                max-width: 33.3333%;
+                flex: none;
+                height: 100%;
+                border-right: none;
             }
         }
     }
 
     /* Hide desktop dividers on mobile */
     .receipt-scanner-resizer {
-        display: none !important;
+        display: none;
     }
 }
 
@@ -676,11 +676,11 @@
 }
 
 .image-row-header {
-    background-color: var(--background-secondary) !important;
+    background-color: var(--background-secondary);
     transition: background-color 0.2s ease;
 
     &:hover {
-        background-color: var(--background-modifier-hover) !important;
+        background-color: var(--background-modifier-hover);
     }
 }
 
@@ -747,8 +747,8 @@
         background: transparent;
 
         &:hover {
-            background-color: rgba(var(--text-error-rgb), 0.1) !important;
-            color: var(--text-error) !important;
+            background-color: rgba(var(--text-error-rgb), 0.1);
+            color: var(--text-error);
         }
     }
 }

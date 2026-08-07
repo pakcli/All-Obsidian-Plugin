@@ -11,12 +11,12 @@
    CONTAINER & LAYOUT
    ============================================ */
 table{
-	margin-left: 0px !important;
+	margin-left: 0px;
 }
 
 .tree-table
 .tree-table-mode-a{
-	margin-left: 0px !important;
+	margin-left: 0px;
 }
 
 .tree-diagram-container {
@@ -643,7 +643,7 @@ table{
 
 /* Table headers */
 .tree-table th {
-	background: var(--background-secondary) !important;
+	background: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	padding: 8px 12px;
 	text-align: left;
@@ -662,16 +662,16 @@ table{
 	text-align: left;
 	font-weight: normal;
 	white-space: normal;
-	background: var(--background-primary) !important;
+	background: var(--background-primary);
 }
 
 /* Remove zebra striping */
 .tree-table tbody tr:nth-child(odd) td {
-	background: var(--background-primary) !important;
+	background: var(--background-primary);
 }
 
 .tree-table tbody tr:nth-child(even) td {
-	background: var(--background-primary) !important;
+	background: var(--background-primary);
 }
 
 /* Wikilinks in table */
@@ -795,13 +795,13 @@ table{
 
 /* Rowspan visual enhancement */
 .tree-table td[rowspan] {
-	background: var(--background-primary) !important;
+	background: var(--background-primary);
 	font-weight: normal;
 }
 
 /* Hover effect for rows - subtle and consistent */
 .tree-table tbody tr:hover td {
-	background: var(--background-modifier-hover) !important;
+	background: var(--background-modifier-hover);
 }
 
 

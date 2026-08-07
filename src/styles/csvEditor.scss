@@ -316,7 +316,7 @@
 
 /* Hidden columns styling */
 .sqlseal-hidden-column {
-    opacity: 0.5 !important;
+    opacity: 0.5;
     position: relative;
     
     &::after {

@@ -98,7 +98,7 @@
 
 .sqlseal-ctrl-pressed .sqlseal-wikilink-cell:hover,
 .sqlseal-ctrl-pressed .tablite-image-path-cell:hover {
-    cursor: pointer !important;
-    text-decoration: underline !important;
-    color: var(--text-accent) !important;
+    cursor: pointer;
+    text-decoration: underline;
+    color: var(--text-accent);
 }

@@ -5,7 +5,7 @@ $PSScriptRootPath = $PSScriptRoot
 $ConfigPath = Join-Path $PSScriptRootPath ".vaultpath"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " Building PakCLI Editor's Choice Plugin " -ForegroundColor Cyan
+Write-Host "        Building PakCLI Suite           " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 # 1. Run npm run build
