@@ -1,6 +1,6 @@
 {
     "name": "pakcli-suite",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "description":  "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, Tablite CSV Editor \u0026 SQLSeal, and Leaflet bases.",
     "main":  "dist/main.js",
     "type":  "module",

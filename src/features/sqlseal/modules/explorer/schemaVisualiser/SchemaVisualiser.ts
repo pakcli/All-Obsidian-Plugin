@@ -102,7 +102,7 @@ export class SchemaVisualiser {
             if (svgElement) {
                 svgElement.setAttribute('width', '100%')
                 svgElement.setAttribute('height', '100%')
-                (svgElement as unknown as HTMLElement).setCssStyles({ width: '100%', height: '100%', maxWidth: 'none' })
+                (svgElement as any).setCssStyles({ width: '100%', height: '100%', maxWidth: 'none' })
                 // Set viewBox to preserve aspect ratio while filling container
                 const viewBox = svgElement.getAttribute('viewBox')
                 if (viewBox) {
