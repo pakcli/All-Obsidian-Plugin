@@ -1,7 +1,8 @@
 /**
  * Cross-platform process runner with smart Windows WinGet binary resolution.
+ * Uses direct spawn (bypassing cmd.exe shell) to prevent & parameter escaping issues.
  */
-import { exec, spawn } from "child_process";
+import { spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -91,8 +92,28 @@ export function resolveBinary(cmd: string): string {
 }
 
 /**
+ * Filter out non-fatal warning lines (e.g. yt-dlp JS runtime deprecation warnings)
+ */
+export function filterWarningLines(text: string): string {
+  if (!text) return "";
+  return text
+    .split("\n")
+    .filter((line) => {
+      const l = line.trim();
+      if (l.startsWith("WARNING:")) return false;
+      if (l.includes("No supported JavaScript runtime could be found")) return false;
+      if (l.includes("YouTube extraction without a JS runtime has been deprecated")) return false;
+      if (l.includes("See https://github.com/yt-dlp/yt-dlp/wiki/EJS")) return false;
+      return true;
+    })
+    .join("\n")
+    .trim();
+}
+
+/**
  * Run a command and collect stdout.
  * Rejects if the process exits with a non-zero code.
+ * Uses direct spawn without shell to bypass cmd.exe parameter escaping issues.
  */
 export function runCommand(
   command: string,
@@ -103,59 +124,57 @@ export function runCommand(
   const resolvedCmd = resolveBinary(command);
 
   return new Promise((resolve, reject) => {
-    const maxBuffer = opts.maxBuffer ?? 100 * 1024 * 1024;
+    // Direct spawn on all platforms (shell: false)
+    let child = spawn(resolvedCmd, args, { cwd: opts.cwd, env: process.env });
+    let stdout = "";
+    let stderr = "";
 
-    if (process.platform === "win32") {
-      const quote = (s: string) =>
-        s.includes(" ") || s.includes('"')
-          ? `"${s.replace(/"/g, '\\"')}"`
-          : s;
-      const cmdStr = [quote(resolvedCmd), ...args.map(quote)].join(" ");
+    child.stdout?.on("data", (d: Buffer) => { stdout += d.toString(); });
+    child.stderr?.on("data", (d: Buffer) => {
+      const s = d.toString();
+      stderr += s;
+      opts.onStderr?.(s);
+    });
 
-      const proc = exec(cmdStr, { cwd: opts.cwd, maxBuffer, env: process.env });
-      let stdout = "";
-      let stderr = "";
+    child.on("error", (err: Error & { code?: string }) => {
+      // Fallback with shell if direct spawn fails (e.g. batch scripts)
+      if (err.code === "ENOENT" && process.platform === "win32") {
+        const shellChild = spawn(resolvedCmd, args, { cwd: opts.cwd, env: process.env, shell: true });
+        let sOut = "";
+        let sErr = "";
+        shellChild.stdout?.on("data", (d: Buffer) => { sOut += d.toString(); });
+        shellChild.stderr?.on("data", (d: Buffer) => {
+          const s = d.toString();
+          sErr += s;
+          opts.onStderr?.(s);
+        });
+        shellChild.on("error", (e: Error) => reject(new Error(`Could not start "${resolvedCmd}": ${e.message}`)));
+        shellChild.on("close", (code) => {
+          if (code === 0 || code === null) {
+            resolve(sOut);
+          } else {
+            const cleanErr = filterWarningLines(sErr);
+            reject(new Error(cleanErr || `"${resolvedCmd}" exited with code ${code}`));
+          }
+        });
+        return;
+      }
 
-      proc.stdout?.on("data", (d) => { stdout += d; });
-      proc.stderr?.on("data", (d) => {
-        stderr += d;
-        opts.onStderr?.(d.toString());
-      });
-      proc.on("error", (err) =>
-        reject(
-          new Error(
-            `Could not start "${resolvedCmd}": ${err.message}\n` +
-              `Make sure it is installed and the path is correct in plugin settings.`
-          )
+      reject(
+        new Error(
+          `Could not start "${resolvedCmd}": ${err.message}\n` +
+            `Make sure it is installed and the path is correct in plugin settings.`
         )
       );
-      proc.on("close", (code) => {
-        if (code === 0 || code === null) resolve(stdout);
-        else reject(new Error(stderr.trim() || `"${resolvedCmd}" exited with code ${code}`));
-      });
-    } else {
-      const child = spawn(resolvedCmd, args, { cwd: opts.cwd, env: process.env });
-      let stdout = "";
-      let stderr = "";
+    });
 
-      child.stdout?.on("data", (d: Buffer) => { stdout += d.toString(); });
-      child.stderr?.on("data", (d: Buffer) => {
-        const s = d.toString();
-        stderr += s;
-        opts.onStderr?.(s);
-      });
-      child.on("error", (err: Error) =>
-        reject(
-          new Error(
-            `Could not start "${resolvedCmd}": ${err.message}\n` +
-              `Make sure it is installed and the path is correct in plugin settings.`
-          )
-        )
-      );
-      child.on("close", (code) => {
-        if (code === 0 || code === null) resolve(stdout);
-        else reject(new Error(stderr.trim() || `"${resolvedCmd}" exited with code ${code}`));
-      });
-    }
+    child.on("close", (code) => {
+      if (code === 0 || code === null) {
+        resolve(stdout);
+      } else {
+        const cleanErr = filterWarningLines(stderr);
+        reject(new Error(cleanErr || `"${resolvedCmd}" exited with code ${code}`));
+      }
+    });
   });
 }

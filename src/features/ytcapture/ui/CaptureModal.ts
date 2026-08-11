@@ -1,13 +1,14 @@
 /**
- * CaptureModal — multi-step evidence capture UI for PakCLI Suite.
- * Steps: input → preview → processing → done
+ * CaptureModal — multi-step evidence capture UI with video preview player,
+ * Quality & FPS settings, range slider, full duration button, progress bar,
+ * and background download support.
  */
 import { App, FileSystemAdapter, Modal, Notice, TFile } from "obsidian";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import type PakCLIPlugin from "../../../main";
-import type { VideoPreview, CaptureResult, TranscriptEntry } from "../types";
+import type { VideoPreview, CaptureResult, TranscriptEntry, VideoQuality, VideoFps, ProgressInfo } from "../types";
 import { parseYouTubeUrl, buildYouTubeUrl } from "../utils/urlParser";
 import {
   fetchVideoInfo,
@@ -27,28 +28,42 @@ import {
   buildNotesMarkdown,
 } from "../utils/fileHelpers";
 import { buildZip } from "../utils/zipBuilder";
+import { parseYtDlpProgress } from "../utils/progressParser";
+import { YTCaptureBackgroundManager } from "../utils/backgroundManager";
 
 type Step = "input" | "preview" | "processing" | "done";
 
 export class CaptureModal extends Modal {
   private plugin: PakCLIPlugin;
+  private bgManager: YTCaptureBackgroundManager;
 
   private step: Step = "input";
   private urlValue = "";
   private durationValue: number;
-  private editedDuration: number;
+  private editedStart: number = 0;
+  private editedEnd: number = 10;
+  private selectedQuality: VideoQuality = "best";
+  private selectedFps: VideoFps = "auto";
+
   private preview: VideoPreview | null = null;
   private result: CaptureResult | null = null;
 
+  // Live DOM refs for progress updating
   private statusEl: HTMLElement | null = null;
+  private progressBarEl: HTMLElement | null = null;
+  private progressStatsEl: HTMLElement | null = null;
   private logEl: HTMLElement | null = null;
+
+  private currentTaskId: string | null = null;
 
   constructor(app: App, plugin: PakCLIPlugin) {
     super(app);
     this.plugin = plugin;
+    this.bgManager = new YTCaptureBackgroundManager(plugin);
     const defDur = plugin.settings.ytCaptureDefaultDuration ?? 10;
     this.durationValue = defDur;
-    this.editedDuration = defDur;
+    this.selectedQuality = plugin.settings.ytCaptureQuality ?? "best";
+    this.selectedFps = plugin.settings.ytCaptureFps ?? "auto";
     this.modalEl.addClass("ytec-modal");
   }
 
@@ -63,6 +78,8 @@ export class CaptureModal extends Modal {
   private render(): void {
     this.contentEl.empty();
     this.statusEl = null;
+    this.progressBarEl = null;
+    this.progressStatsEl = null;
     this.logEl = null;
 
     switch (this.step) {
@@ -81,7 +98,7 @@ export class CaptureModal extends Modal {
     hdr.createEl("h2", { cls: "ytec-title", text: "YT Extension" });
     hdr.createEl("p", {
       cls: "ytec-subtitle",
-      text: "Paste a YouTube link → get a .zip with clip, thumbnail & transcript.",
+      text: "Paste a YouTube link → preview, select range & capture to .zip",
     });
 
     const form = contentEl.createDiv({ cls: "ytec-form" });
@@ -100,7 +117,7 @@ export class CaptureModal extends Modal {
     });
 
     const durGroup = form.createDiv({ cls: "ytec-field-group" });
-    durGroup.createEl("label", { cls: "ytec-label", text: "Clip Duration (seconds)" });
+    durGroup.createEl("label", { cls: "ytec-label", text: "Default Clip Duration (seconds)" });
     const durRow = durGroup.createDiv({ cls: "ytec-dur-row" });
     const durInput = durRow.createEl("input", {
       cls: "ytec-input ytec-dur-input",
@@ -109,7 +126,8 @@ export class CaptureModal extends Modal {
     }) as HTMLInputElement;
     durInput.value = String(this.durationValue);
     durInput.min = "1";
-    durInput.max = "300";
+    durInput.max = "7200";
+
     const durBtns = durRow.createDiv({ cls: "ytec-dur-presets" });
     for (const s of [10, 30, 60]) {
       const btn = durBtns.createEl("button", {
@@ -153,7 +171,6 @@ export class CaptureModal extends Modal {
 
       this.urlValue = url;
       this.durationValue = dur;
-      this.editedDuration = dur;
 
       await this.goToPreview();
     });
@@ -173,11 +190,16 @@ export class CaptureModal extends Modal {
 
     try {
       const parsed = parseYouTubeUrl(this.urlValue)!;
-      const info = await fetchVideoInfo(this.urlValue, this.plugin.settings);
+      const targetUrl = buildYouTubeUrl(parsed.videoId);
+      const info = await fetchVideoInfo(targetUrl, this.plugin.settings);
       this.addLog(`✓ Got info: "${info.title}"`);
 
       const start = parsed.startSeconds;
-      const end = start + this.durationValue;
+      const videoDur = info.duration || 300;
+      const end = Math.min(videoDur, start + this.durationValue);
+
+      this.editedStart = start;
+      this.editedEnd = end;
 
       const hasSubs =
         info.subtitles && Object.keys(info.subtitles).length > 0;
@@ -192,13 +214,15 @@ export class CaptureModal extends Modal {
         thumbnail: info.thumbnail || (info.thumbnails && info.thumbnails.length > 0 ? info.thumbnails[info.thumbnails.length - 1].url : ""),
         start,
         end,
-        duration: this.durationValue,
+        duration: end - start,
         has_transcript: Boolean(hasSubs || hasAutoCaps),
-        video_duration: info.duration || 0,
+        video_duration: videoDur,
         upload_date: info.upload_date || "",
         view_count: info.view_count || 0,
         tags: info.tags ?? [],
         description: info.description ?? "",
+        quality: this.selectedQuality,
+        fps: this.selectedFps,
       };
 
       this.step = "preview";
@@ -215,58 +239,135 @@ export class CaptureModal extends Modal {
     const p = this.preview!;
     const { contentEl } = this;
 
-    contentEl.createEl("h2", { cls: "ytec-title ytec-preview-title", text: "Preview" });
+    contentEl.createEl("h2", { cls: "ytec-title ytec-preview-title", text: "Preview & Range Selector" });
 
-    if (p.thumbnail) {
-      const thumbWrap = contentEl.createDiv({ cls: "ytec-thumb-wrap" });
-      thumbWrap.createEl("img", {
-        cls: "ytec-thumb",
-        attr: { src: p.thumbnail, alt: "Video thumbnail" },
-      });
-    }
+    // Embedded Video Player (Allows user to play while configuring or downloading!)
+    const playerBox = contentEl.createDiv({ cls: "ytec-player-box" });
+    const embedUrl = `https://www.youtube.com/embed/${p.video_id}?autoplay=0&start=${this.editedStart}`;
+    playerBox.createEl("iframe", {
+      cls: "ytec-video-iframe",
+      attr: {
+        src: embedUrl,
+        title: p.title,
+        frameborder: "0",
+        allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+        allowfullscreen: "true",
+      },
+    });
 
+    // Video Meta
     const meta = contentEl.createDiv({ cls: "ytec-meta" });
     meta.createEl("div", { cls: "ytec-video-title", text: p.title });
     meta.createEl("div", { cls: "ytec-channel", text: p.channel });
-    meta.createEl("div", {
-      cls: "ytec-video-dur",
-      text: `Full video: ${formatTime(p.video_duration)}`,
+
+    // ── Quality & FPS Selectors Row ───────────────────────────────────────────
+    const settingsBox = contentEl.createDiv({ cls: "ytec-settings-grid" });
+
+    // Quality Selector
+    const qGroup = settingsBox.createDiv({ cls: "ytec-field-group" });
+    qGroup.createEl("label", { cls: "ytec-label", text: "Quality" });
+    const qSelect = qGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
+    const qOpts: { val: VideoQuality; label: string }[] = [
+      { val: "best",  label: "Best Available (1080p+)" },
+      { val: "720p",  label: "720p HD" },
+      { val: "480p",  label: "480p SD" },
+      { val: "360p",  label: "360p Low" },
+      { val: "audio", label: "Audio Only (m4a/mp3)" },
+    ];
+    qOpts.forEach(o => {
+      const opt = qSelect.createEl("option", { value: o.val, text: o.label });
+      if (o.val === this.selectedQuality) opt.selected = true;
+    });
+    qSelect.addEventListener("change", () => {
+      this.selectedQuality = qSelect.value as VideoQuality;
     });
 
-    const clipBox = contentEl.createDiv({ cls: "ytec-clip-box" });
-    clipBox.createEl("div", {
-      cls: "ytec-clip-start",
-      text: `Start: ${formatTime(p.start)}`,
+    // FPS Selector
+    const fpsGroup = settingsBox.createDiv({ cls: "ytec-field-group" });
+    fpsGroup.createEl("label", { cls: "ytec-label", text: "Frame Rate (FPS)" });
+    const fpsSelect = fpsGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
+    const fpsOpts: { val: VideoFps; label: string }[] = [
+      { val: "auto", label: "Auto / Best (60fps)" },
+      { val: "30",   label: "Cap at 30 fps" },
+    ];
+    fpsOpts.forEach(o => {
+      const opt = fpsSelect.createEl("option", { value: o.val, text: o.label });
+      if (o.val === this.selectedFps) opt.selected = true;
+    });
+    fpsSelect.addEventListener("change", () => {
+      this.selectedFps = fpsSelect.value as VideoFps;
     });
 
-    const durRow = clipBox.createDiv({ cls: "ytec-clip-dur-row" });
-    durRow.createEl("span", { text: "Duration:" });
-    const durInput = durRow.createEl("input", {
-      cls: "ytec-input ytec-dur-inline",
-      type: "number",
+    // ── Interactive Range Selector & Full Duration Button ─────────────────────
+    const rangeBox = contentEl.createDiv({ cls: "ytec-range-box" });
+
+    const rangeHeader = rangeBox.createDiv({ cls: "ytec-range-header" });
+    rangeHeader.createEl("div", { cls: "ytec-label", text: "Duration & Range Selection" });
+
+    // Full Duration Button
+    const fullDurBtn = rangeHeader.createEl("button", {
+      cls: "ytec-preset-btn ytec-full-dur-btn",
+      text: `⚡ Full Video (${formatTime(p.video_duration)})`,
+    });
+
+    const rangeInfoEl = rangeBox.createDiv({ cls: "ytec-range-info" });
+
+    // Range Sliders
+    const sliderGroup = rangeBox.createDiv({ cls: "ytec-slider-group" });
+
+    // Start Slider
+    sliderGroup.createEl("label", { cls: "ytec-hint", text: "Start Time:" });
+    const startSlider = sliderGroup.createEl("input", {
+      cls: "ytec-range-slider",
+      type: "range",
+      attr: { min: "0", max: String(p.video_duration), step: "1" },
     }) as HTMLInputElement;
-    durInput.value = String(this.editedDuration);
-    durInput.min = "1";
-    durInput.max = "300";
-    durRow.createEl("span", { text: "s" });
+    startSlider.value = String(this.editedStart);
 
-    const endEl = clipBox.createEl("div", { cls: "ytec-clip-end" });
-    const refreshEnd = () => {
-      const d = parseInt(durInput.value, 10) || this.editedDuration;
-      this.editedDuration = d;
-      endEl.textContent = `End: ${formatTime(p.start + d)}`;
+    // End Slider
+    sliderGroup.createEl("label", { cls: "ytec-hint", text: "End Time:" });
+    const endSlider = sliderGroup.createEl("input", {
+      cls: "ytec-range-slider",
+      type: "range",
+      attr: { min: "0", max: String(p.video_duration), step: "1" },
+    }) as HTMLInputElement;
+    endSlider.value = String(this.editedEnd);
+
+    const updateRangeUI = () => {
+      let st = parseInt(startSlider.value, 10) || 0;
+      let en = parseInt(endSlider.value, 10) || p.video_duration;
+
+      if (st >= en) st = Math.max(0, en - 1);
+      if (en <= st) en = Math.min(p.video_duration, st + 1);
+
+      this.editedStart = st;
+      this.editedEnd = en;
+
+      const dur = en - st;
+      rangeInfoEl.textContent = `Clip Range: ${formatTime(st)} ──▶ ${formatTime(en)}  (${dur}s total)`;
     };
-    refreshEnd();
-    durInput.addEventListener("input", refreshEnd);
 
+    updateRangeUI();
+
+    startSlider.addEventListener("input", updateRangeUI);
+    endSlider.addEventListener("input", updateRangeUI);
+
+    fullDurBtn.addEventListener("click", () => {
+      startSlider.value = "0";
+      endSlider.value = String(p.video_duration);
+      updateRangeUI();
+    });
+
+    // Badges
     const badges = contentEl.createDiv({ cls: "ytec-badges" });
     badges.createEl("span", {
       cls: p.has_transcript
         ? "ytec-badge ytec-badge-ok"
         : "ytec-badge ytec-badge-warn",
-      text: p.has_transcript ? "✓ Transcript available" : "⚠ No transcript",
+      text: p.has_transcript ? "✓ Subtitles Available" : "⚠ No Subtitles",
     });
 
+    // Actions
     const actions = contentEl.createDiv({ cls: "ytec-actions ytec-actions-row" });
 
     const backBtn = actions.createEl("button", {
@@ -280,11 +381,15 @@ export class CaptureModal extends Modal {
 
     const confirmBtn = actions.createEl("button", {
       cls: "ytec-btn ytec-btn-primary",
-      text: "Capture →",
+      text: "Start Capture →",
     });
     confirmBtn.addEventListener("click", async () => {
-      this.preview!.duration = this.editedDuration;
-      this.preview!.end = p.start + this.editedDuration;
+      this.preview!.start = this.editedStart;
+      this.preview!.end = this.editedEnd;
+      this.preview!.duration = this.editedEnd - this.editedStart;
+      this.preview!.quality = this.selectedQuality;
+      this.preview!.fps = this.selectedFps;
+
       await this.doCapture();
     });
   }
@@ -296,6 +401,7 @@ export class CaptureModal extends Modal {
     this.step = "processing";
     this.render();
 
+    this.currentTaskId = `task_${Date.now()}`;
     const tempDir = path.join(os.tmpdir(), `ytec_${Date.now()}`);
 
     try {
@@ -304,17 +410,29 @@ export class CaptureModal extends Modal {
       this.setStatus("Downloading clip…");
       this.addLog("Starting yt-dlp clip download…");
 
+      const targetUrl = buildYouTubeUrl(p.video_id);
       const clipOutPath = path.join(tempDir, "clip.mp4");
+
       await downloadClip(
-        this.urlValue,
+        targetUrl,
         p.start,
         p.end,
         clipOutPath,
         this.plugin.settings,
+        p.quality,
+        p.fps,
         (msg) => {
           const line = msg.trim();
-          if (line && (line.includes("%") || line.includes("[download]") || line.includes("[ffmpeg]"))) {
-            this.addLog(line.substring(0, 120));
+          if (line) {
+            const prog = parseYtDlpProgress(line);
+            if (prog) {
+              this.updateProgressBar(prog);
+              if (this.currentTaskId) {
+                this.bgManager.updateTaskProgress(this.currentTaskId, prog.percent, prog);
+              }
+            } else if (line.includes("[download]") || line.includes("[ffmpeg]")) {
+              this.addLog(line.substring(0, 120));
+            }
           }
         }
       );
@@ -343,7 +461,7 @@ export class CaptureModal extends Modal {
 
       if (p.has_transcript) {
         try {
-          await downloadSubtitles(this.urlValue, tempDir, this.plugin.settings);
+          await downloadSubtitles(targetUrl, tempDir, this.plugin.settings);
           const subFile = findSubtitleFile(tempDir);
           if (subFile) {
             const raw = JSON.parse(fs.readFileSync(subFile, "utf-8"));
@@ -377,11 +495,9 @@ export class CaptureModal extends Modal {
           ? formatTranscriptForMarkdown(transcriptEntries, true)
           : "_No transcript available._";
 
-      const canonicalUrl = buildYouTubeUrl(p.video_id, p.start || undefined);
-
       const notesContent = buildNotesMarkdown({
         title: p.title,
-        url: canonicalUrl,
+        url: targetUrl,
         videoId: p.video_id,
         channel: p.channel,
         channelUrl: p.channel_url,
@@ -416,7 +532,7 @@ export class CaptureModal extends Modal {
       try {
         await this.app.vault.createFolder(outputFolder);
       } catch {
-        // Folder already exists
+        // Folder exists
       }
 
       const existing = this.app.vault.getAbstractFileByPath(vaultFilePath);
@@ -436,12 +552,21 @@ export class CaptureModal extends Modal {
       const fsDirPath = path.join(adapter.getBasePath(), outputFolder);
 
       this.result = { filename, vaultPath: vaultFilePath, fsDirPath };
+
+      if (this.currentTaskId) {
+        this.bgManager.completeTask(this.currentTaskId, p.title, vaultFilePath);
+      }
+
       this.step = "done";
       this.render();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.addLog(`✗ Error: ${msg}`);
-      new Notice(`Capture failed: ${msg}`, 12_000);
+      if (this.currentTaskId) {
+        this.bgManager.failTask(this.currentTaskId, msg);
+      } else {
+        new Notice(`Capture failed: ${msg}`, 12_000);
+      }
       this.step = "preview";
       this.render();
     } finally {
@@ -455,12 +580,61 @@ export class CaptureModal extends Modal {
 
   private renderProcessing(): void {
     const { contentEl } = this;
+    const p = this.preview;
 
     const wrap = contentEl.createDiv({ cls: "ytec-processing" });
-    wrap.createDiv({ cls: "ytec-spinner" });
+
+    // Live Video Player so user can play & watch while downloading!
+    if (p) {
+      const playerBox = wrap.createDiv({ cls: "ytec-player-box ytec-player-box-sm" });
+      const embedUrl = `https://www.youtube.com/embed/${p.video_id}?autoplay=1&start=${p.start}`;
+      playerBox.createEl("iframe", {
+        cls: "ytec-video-iframe",
+        attr: {
+          src: embedUrl,
+          title: p.title,
+          frameborder: "0",
+          allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+          allowfullscreen: "true",
+        },
+      });
+    }
+
+    // Status Title
     this.statusEl = wrap.createEl("p", {
       cls: "ytec-status-text",
-      text: "Please wait…",
+      text: "Downloading clip…",
+    });
+
+    // Visual Progress Bar Container
+    const progressTrack = wrap.createDiv({ cls: "ytec-progress-track" });
+    this.progressBarEl = progressTrack.createDiv({ cls: "ytec-progress-fill" });
+    this.progressBarEl.style.width = "0%";
+
+    // Stats Info Label
+    this.progressStatsEl = wrap.createDiv({
+      cls: "ytec-progress-stats",
+      text: "0% (Connecting…)",
+    });
+
+    // Background Download Action Button
+    const bgActionRow = wrap.createDiv({ cls: "ytec-actions ytec-actions-row" });
+    const bgBtn = bgActionRow.createEl("button", {
+      cls: "ytec-btn ytec-btn-secondary ytec-btn-full",
+      text: "⚡ Send to Background (Play/Use Obsidian)",
+    });
+
+    bgBtn.addEventListener("click", () => {
+      if (this.preview && !this.currentTaskId) {
+        this.currentTaskId = `task_${Date.now()}`;
+        this.bgManager.addTask({
+          id: this.currentTaskId,
+          title: this.preview.title,
+          progress: 0,
+          statusText: "Downloading…",
+        });
+      }
+      this.close();
     });
 
     this.logEl = contentEl.createDiv({ cls: "ytec-log" });
@@ -468,6 +642,21 @@ export class CaptureModal extends Modal {
 
   private setStatus(msg: string): void {
     if (this.statusEl) this.statusEl.textContent = msg;
+  }
+
+  private updateProgressBar(info: ProgressInfo): void {
+    if (this.progressBarEl) {
+      this.progressBarEl.style.width = `${info.percent}%`;
+    }
+    if (this.progressStatsEl) {
+      const stats = [
+        `${info.percent.toFixed(1)}%`,
+        info.total ? `of ${info.total}` : "",
+        info.speed ? `@ ${info.speed}` : "",
+        info.eta ? `ETA: ${info.eta}` : "",
+      ].filter(Boolean).join(" | ");
+      this.progressStatsEl.textContent = stats;
+    }
   }
 
   private addLog(msg: string): void {

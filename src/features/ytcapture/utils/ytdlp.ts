@@ -4,7 +4,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import { requestUrl } from "obsidian";
-import type { YTCaptureSettings, YtDlpInfo } from "../types";
+import type { YTCaptureSettings, YtDlpInfo, VideoQuality, VideoFps } from "../types";
 import { runCommand } from "./process";
 
 export async function fetchVideoInfo(
@@ -17,10 +17,24 @@ export async function fetchVideoInfo(
     "--no-playlist",
     url,
   ]);
+
+  // Robust JSON parsing: find first '{' and last '}' to ignore any stdout warning lines
+  const jsonStart = stdout.indexOf("{");
+  const jsonEnd = stdout.lastIndexOf("}");
+
+  if (jsonStart !== -1 && jsonEnd > jsonStart) {
+    const jsonStr = stdout.substring(jsonStart, jsonEnd + 1);
+    try {
+      return JSON.parse(jsonStr) as YtDlpInfo;
+    } catch {
+      // Fallback parse attempt
+    }
+  }
+
   try {
     return JSON.parse(stdout) as YtDlpInfo;
   } catch {
-    throw new Error("yt-dlp returned invalid JSON. Is yt-dlp up to date?");
+    throw new Error("yt-dlp returned invalid metadata. Try updating yt-dlp via plugin settings.");
   }
 }
 
@@ -30,14 +44,34 @@ export async function downloadClip(
   end: number,
   outputPath: string,
   settings: YTCaptureSettings,
+  quality: VideoQuality = "best",
+  fps: VideoFps = "auto",
   onProgress?: (msg: string) => void
 ): Promise<void> {
+  let formatStr = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
+
+  if (quality === "audio") {
+    formatStr = "bestaudio[ext=m4a]/bestaudio/best";
+  } else {
+    let maxH = "";
+    if (quality === "1080p") maxH = "[height<=1080]";
+    else if (quality === "720p") maxH = "[height<=720]";
+    else if (quality === "480p") maxH = "[height<=480]";
+    else if (quality === "360p") maxH = "[height<=360]";
+
+    let maxFps = "";
+    if (fps === "60") maxFps = "[fps<=60]";
+    else if (fps === "30") maxFps = "[fps<=30]";
+
+    formatStr = `bestvideo${maxH}${maxFps}[ext=mp4]+bestaudio[ext=m4a]/best${maxH}${maxFps}[ext=mp4]/best`;
+  }
+
   const args: string[] = [
     "--download-sections",
     `*${start}-${end}`,
     "--force-keyframes-at-cuts",
     "-f",
-    "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+    formatStr,
     "--merge-output-format",
     "mp4",
     "--no-playlist",
