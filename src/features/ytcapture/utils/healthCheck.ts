@@ -1,6 +1,6 @@
-/** Dependency health check for YT Capture */
-import { Notice } from "obsidian";
-import { runCommand } from "./process";
+/** Dependency health check for YT Extension */
+import { Notice, requestUrl } from "obsidian";
+import { runCommand, resolveBinary, ensureWinGetInPath } from "./process";
 import type { YTCaptureSettings } from "../types";
 
 export interface HealthStatus {
@@ -9,48 +9,64 @@ export interface HealthStatus {
   ffmpeg: boolean;
   ytDlpVersion: string;
   ffmpegVersion: string;
+  resolvedYtDlp: string;
+  resolvedFfmpeg: string;
   errors: string[];
 }
 
 export async function checkYTCaptureDeps(
   settings: YTCaptureSettings
 ): Promise<HealthStatus> {
+  ensureWinGetInPath();
+
   const status: HealthStatus = {
     internet: false,
     ytDlp: false,
     ffmpeg: false,
     ytDlpVersion: "",
     ffmpegVersion: "",
+    resolvedYtDlp: resolveBinary(settings.ytDlpPath),
+    resolvedFfmpeg: resolveBinary(settings.ffmpegPath),
     errors: [],
   };
 
+  // 1. Internet Check using Obsidian requestUrl (bypasses browser CORS)
   try {
-    const resp = await fetch("https://www.youtube.com/favicon.ico", {
-      method: "HEAD",
-      signal: AbortSignal.timeout(5000),
+    const res = await requestUrl({
+      url: "https://www.google.com/generate_204",
+      method: "GET",
     });
-    status.internet = resp.ok || resp.status < 500;
-  } catch {
-    status.errors.push("No internet — YouTube cannot be reached.");
+    status.internet = res.status >= 200 && res.status < 400;
+  } catch (err) {
+    // Fallback try youtube
+    try {
+      const res = await requestUrl({
+        url: "https://www.youtube.com",
+        method: "GET",
+      });
+      status.internet = res.status >= 200 && res.status < 400;
+    } catch {
+      status.errors.push("No internet connection or requests blocked.");
+    }
   }
 
+  // 2. yt-dlp check
   try {
     status.ytDlpVersion = (await runCommand(settings.ytDlpPath, ["--version"])).trim();
     status.ytDlp = true;
-  } catch {
-    status.errors.push(
-      `yt-dlp not found at "${settings.ytDlpPath}". Go to YT Capture settings and click Install Dependencies.`
-    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    status.errors.push(`yt-dlp error: ${msg.split("\n")[0]}`);
   }
 
+  // 3. ffmpeg check
   try {
     const out = await runCommand(settings.ffmpegPath, ["-version"]);
     status.ffmpegVersion = out.split("\n")[0]?.trim() ?? "";
     status.ffmpeg = true;
-  } catch {
-    status.errors.push(
-      `ffmpeg not found at "${settings.ffmpegPath}". Go to YT Capture settings and click Install Dependencies.`
-    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    status.errors.push(`ffmpeg error: ${msg.split("\n")[0]}`);
   }
 
   return status;
@@ -65,5 +81,5 @@ export async function runYTCaptureStartupCheck(
     return;
   }
   const lines = ["⚠ YT Extension — missing dependencies:", ...status.errors];
-  new Notice(lines.join("\n"), 12_000);
+  new Notice(lines.join("\n"), 10_000);
 }

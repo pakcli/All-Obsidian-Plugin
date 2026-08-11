@@ -1,10 +1,12 @@
 /**
- * Settings tab content for YT Capture tab inside PakCLI Suite.
+ * Settings tab content for YT Extension inside PakCLI Suite.
  */
 import { App, Setting } from "obsidian";
 import type PakCLIPlugin from "../../main";
 import { checkYTCaptureDeps } from "./utils/healthCheck";
 import { SetupModal } from "./ui/SetupModal";
+import { resolveBinary, findWinGetBinary } from "./utils/process";
+import { downloadYtDlpDirect } from "./utils/downloader";
 
 function statusIcon(ok: boolean): string {
   return ok ? "✅" : "❌";
@@ -78,9 +80,28 @@ export function renderYTCaptureSettings(
     text: "▶ Install Dependencies",
   });
   installBtn.addEventListener("click", () => {
-    new SetupModal(app, plugin.settings, () => {
+    new SetupModal(app, plugin, () => {
       setTimeout(() => runCheck(), 1500);
     }).open();
+  });
+
+  const directDlBtn = btnRow.createEl("button", {
+    cls: "ytec-settings-btn ytec-settings-btn-secondary",
+    text: "⬇ Direct Download yt-dlp",
+  });
+  directDlBtn.addEventListener("click", async () => {
+    directDlBtn.textContent = "⏳ Downloading…";
+    try {
+      await downloadYtDlpDirect(plugin);
+      await runCheck();
+      directDlBtn.textContent = "✓ Downloaded!";
+      setTimeout(() => { directDlBtn.textContent = "⬇ Direct Download yt-dlp"; }, 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      directDlBtn.textContent = "✗ Failed";
+      alert(`Download failed: ${msg}`);
+      setTimeout(() => { directDlBtn.textContent = "⬇ Direct Download yt-dlp"; }, 3000);
+    }
   });
 
   setupSection.createEl("div", {
@@ -165,4 +186,86 @@ export function renderYTCaptureSettings(
           await plugin.saveSettings();
         })
     );
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SECTION 4 — Debug & Diagnostics (Inside Obsidian UI)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const debugSection = containerEl.createDiv({ cls: "ytec-settings-section" });
+  debugSection.createEl("h2", {
+    cls: "ytec-settings-heading",
+    text: "🔍  Debug & Diagnostics",
+  });
+  debugSection.createEl("p", {
+    cls: "ytec-settings-desc",
+    text: "Detailed system paths and binary resolution info for troubleshooting.",
+  });
+
+  const debugLogEl = debugSection.createEl("pre", {
+    cls: "ytec-confirm-code",
+  });
+
+  const runDebugDiagnostics = async () => {
+    debugLogEl.textContent = "Running diagnostics…";
+    const status = await checkYTCaptureDeps(plugin.settings);
+
+    const wingetYtDlp = findWinGetBinary("yt-dlp");
+    const wingetFfmpeg = findWinGetBinary("ffmpeg");
+
+    const lines = [
+      `=== ENVIRONMENT ===`,
+      `Platform: ${process.platform}`,
+      `Node Version: ${process.version}`,
+      `PATH: ${process.env.PATH || "empty"}`,
+      ``,
+      `=== BINARY RESOLUTION ===`,
+      `Configured yt-dlp path: "${plugin.settings.ytDlpPath}"`,
+      `Resolved yt-dlp path:   "${status.resolvedYtDlp}"`,
+      `WinGet fallback yt-dlp: "${wingetYtDlp || "not found"}"`,
+      `yt-dlp check status:    ${status.ytDlp ? "OK (" + status.ytDlpVersion + ")" : "FAILED"}`,
+      ``,
+      `Configured ffmpeg path: "${plugin.settings.ffmpegPath}"`,
+      `Resolved ffmpeg path:   "${status.resolvedFfmpeg}"`,
+      `WinGet fallback ffmpeg: "${wingetFfmpeg || "not found"}"`,
+      `ffmpeg check status:    ${status.ffmpeg ? "OK (" + status.ffmpegVersion + ")" : "FAILED"}`,
+      ``,
+      `=== INTERNET & ERRORS ===`,
+      `Internet status:        ${status.internet ? "OK" : "FAILED"}`,
+    ];
+
+    if (status.errors.length > 0) {
+      lines.push(``, `=== ERRORS DETECTED ===`, ...status.errors);
+    }
+
+    debugLogEl.textContent = lines.join("\n");
+  };
+
+  runDebugDiagnostics();
+
+  const debugBtnRow = debugSection.createDiv({ cls: "ytec-settings-btn-row" });
+  const diagBtn = debugBtnRow.createEl("button", {
+    cls: "ytec-settings-btn ytec-settings-btn-secondary",
+    text: "🔍 Re-run Diagnostics",
+  });
+  diagBtn.addEventListener("click", () => runDebugDiagnostics());
+
+  // Auto-fix button if Winget binaries were detected but not set in settings
+  const autoFixBtn = debugBtnRow.createEl("button", {
+    cls: "ytec-settings-btn ytec-settings-btn-primary",
+    text: "⚡ Auto-Detect & Fix Binary Paths",
+  });
+  autoFixBtn.addEventListener("click", async () => {
+    const wingetYtDlp = findWinGetBinary("yt-dlp");
+    const wingetFfmpeg = findWinGetBinary("ffmpeg");
+
+    if (wingetYtDlp) {
+      plugin.settings.ytDlpPath = wingetYtDlp;
+    }
+    if (wingetFfmpeg) {
+      plugin.settings.ffmpegPath = wingetFfmpeg;
+    }
+
+    await plugin.saveSettings();
+    renderYTCaptureSettings(app, plugin, containerEl);
+  });
 }

@@ -1,22 +1,24 @@
 /**
  * SetupModal — confirmation + live progress for dependency installation in PakCLI.
+ * Includes direct GitHub download fallback for yt-dlp if Winget fails.
  */
-import { App, Modal } from "obsidian";
-import { runCommand } from "../utils/process";
-import type { YTCaptureSettings } from "../types";
+import { App, Modal, requestUrl } from "obsidian";
+import type PakCLIPlugin from "../../../main";
+import { runCommand, ensureWinGetInPath } from "../utils/process";
+import { ensureYtDlpAvailable, downloadYtDlpDirect } from "../utils/downloader";
 
 type SetupStep = "confirm" | "running" | "done";
 
 export class SetupModal extends Modal {
   private step: SetupStep = "confirm";
-  private settings: YTCaptureSettings;
+  private plugin: PakCLIPlugin;
   private logEl: HTMLElement | null = null;
   private statusEl: HTMLElement | null = null;
   private onComplete: () => void;
 
-  constructor(app: App, settings: YTCaptureSettings, onComplete: () => void) {
+  constructor(app: App, plugin: PakCLIPlugin, onComplete: () => void) {
     super(app);
-    this.settings = settings;
+    this.plugin = plugin;
     this.onComplete = onComplete;
     this.modalEl.addClass("ytec-modal");
   }
@@ -44,19 +46,23 @@ export class SetupModal extends Modal {
     hdr.createEl("h2", { cls: "ytec-title", text: "Install Dependencies" });
     hdr.createEl("p", {
       cls: "ytec-subtitle",
-      text: "This will install yt-dlp and ffmpeg on your machine via winget.",
+      text: "This will check, install, or download yt-dlp and ffmpeg for your system.",
     });
 
     const box = contentEl.createDiv({ cls: "ytec-confirm-box" });
-    box.createEl("p", { cls: "ytec-confirm-label", text: "Commands that will run:" });
+    box.createEl("p", { cls: "ytec-confirm-label", text: "Actions that will run:" });
 
-    const cmds = ["winget install yt-dlp.yt-dlp", "winget install Gyan.FFmpeg"];
+    const cmds = [
+      "1. Check & download yt-dlp (via winget or direct GitHub release)",
+      "2. Check & install ffmpeg (via winget)",
+      "3. Auto-configure binary paths in settings"
+    ];
     const codeEl = box.createEl("pre", { cls: "ytec-confirm-code" });
     codeEl.textContent = cmds.join("\n");
 
     box.createEl("p", {
       cls: "ytec-confirm-note",
-      text: "Already installed tools will be skipped automatically.",
+      text: "Already installed and working tools will be kept as-is.",
     });
 
     const actions = contentEl.createDiv({ cls: "ytec-actions ytec-actions-row" });
@@ -100,83 +106,97 @@ export class SetupModal extends Modal {
   private async runSetup(): Promise<void> {
     this.step = "running";
     this.render();
+    ensureWinGetInPath();
 
     const errors: string[] = [];
 
+    // 1. Internet Check using requestUrl
     this.setStatus("Checking internet…");
-    this.addLog("Pinging youtube.com…");
+    this.addLog("Testing network connection via requestUrl…");
     try {
-      await fetch("https://www.youtube.com/favicon.ico", {
-        method: "HEAD",
-        signal: AbortSignal.timeout(5000),
+      const res = await requestUrl({
+        url: "https://www.google.com/generate_204",
+        method: "GET",
       });
-      this.addLog("✓ Internet OK");
+      if (res.status >= 200 && res.status < 400) {
+        this.addLog("✓ Internet connection OK");
+      } else {
+        this.addLog(`⚠ Network returned status ${res.status}`);
+      }
     } catch {
-      this.addLog("✗ No internet connection");
-      errors.push("No internet — connect and try again.");
-      this.step = "done";
-      this.render();
-      return;
+      this.addLog("⚠ Could not verify network via requestUrl, continuing anyway…");
     }
 
-    this.setStatus("Checking winget…");
-    try {
-      const v = await runCommand("winget", ["--version"]);
-      this.addLog(`✓ winget ${v.trim()}`);
-    } catch {
-      this.addLog("✗ winget not found");
-      errors.push(
-        "winget not available. Install it from https://aka.ms/getwinget or install yt-dlp/ffmpeg manually."
-      );
-      this.step = "done";
-      this.renderDoneWithErrors(errors);
-      return;
-    }
+    // 2. Install / Ensure yt-dlp
+    this.setStatus("Setting up yt-dlp…");
+    this.addLog("Checking yt-dlp status…");
 
-    this.setStatus("Installing yt-dlp…");
-    this.addLog("Running: winget install yt-dlp.yt-dlp");
+    let ytdlpOk = false;
     try {
-      await runCommand(
-        "winget",
-        [
-          "install",
-          "--id", "yt-dlp.yt-dlp",
-          "-e",
-          "--accept-source-agreements",
-          "--accept-package-agreements",
-        ],
-        { onStderr: (d) => this.addLog(d.trim()) }
-      );
-      this.addLog("✓ yt-dlp installed / already up to date");
+      // First try winget if available
+      try {
+        this.addLog("Attempting: winget install yt-dlp.yt-dlp");
+        await runCommand("winget", [
+          "install", "--id", "yt-dlp.yt-dlp",
+          "-e", "--accept-source-agreements", "--accept-package-agreements"
+        ], { onStderr: (d) => this.addLog(d.trim()) });
+      } catch {
+        // Ignore winget error — fallback to direct downloader
+      }
+
+      // Verify or Direct Download fallback
+      ytdlpOk = await ensureYtDlpAvailable(this.plugin, (msg) => this.addLog(msg));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.addLog(`⚠ yt-dlp: ${msg}`);
-      errors.push(`yt-dlp install issue: ${msg}`);
+      this.addLog(`⚠ yt-dlp setup note: ${msg}`);
     }
 
-    this.setStatus("Installing ffmpeg…");
-    this.addLog("Running: winget install Gyan.FFmpeg");
+    if (!ytdlpOk) {
+      this.addLog("Attempting direct download of yt-dlp.exe from GitHub…");
+      try {
+        await downloadYtDlpDirect(this.plugin, (msg) => this.addLog(msg));
+        ytdlpOk = true;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.addLog(`✗ Direct download failed: ${msg}`);
+        errors.push(`yt-dlp could not be installed: ${msg}`);
+      }
+    }
+
+    // 3. Install / Ensure ffmpeg
+    this.setStatus("Setting up ffmpeg…");
+    this.addLog("Checking ffmpeg status…");
+
     try {
-      await runCommand(
-        "winget",
-        [
-          "install",
-          "--id", "Gyan.FFmpeg",
-          "-e",
-          "--accept-source-agreements",
-          "--accept-package-agreements",
-        ],
-        { onStderr: (d) => this.addLog(d.trim()) }
-      );
-      this.addLog("✓ ffmpeg installed / already up to date");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.addLog(`⚠ ffmpeg: ${msg}`);
-      errors.push(`ffmpeg install issue: ${msg}`);
+      const v = await runCommand(this.plugin.settings.ffmpegPath, ["-version"]);
+      this.addLog(`✓ ffmpeg ready (${v.split("\n")[0].trim()})`);
+    } catch {
+      this.addLog("Attempting winget install for ffmpeg…");
+      try {
+        await runCommand("winget", [
+          "install", "--id", "Gyan.FFmpeg",
+          "-e", "--accept-source-agreements", "--accept-package-agreements"
+        ], { onStderr: (d) => this.addLog(d.trim()) });
+
+        const v = await runCommand(this.plugin.settings.ffmpegPath, ["-version"]);
+        this.addLog(`✓ ffmpeg installed successfully (${v.split("\n")[0].trim()})`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.addLog(`⚠ ffmpeg winget note: ${msg}`);
+        // Check if ffmpeg is on system PATH anyway
+        try {
+          const v = await runCommand("ffmpeg", ["-version"]);
+          this.plugin.settings.ffmpegPath = "ffmpeg";
+          await this.plugin.saveSettings();
+          this.addLog(`✓ ffmpeg found on PATH (${v.split("\n")[0].trim()})`);
+        } catch {
+          errors.push(`ffmpeg issue: Could not run ffmpeg. Please install ffmpeg or set path in settings.`);
+        }
+      }
     }
 
     this.addLog("");
-    this.addLog(errors.length === 0 ? "✅ All done! Restart Obsidian if needed." : "⚠ Done with some issues.");
+    this.addLog(errors.length === 0 ? "✅ All dependencies configured!" : "⚠ Completed with warnings.");
 
     this.step = "done";
     this.render();
@@ -191,7 +211,7 @@ export class SetupModal extends Modal {
     wrap.createEl("h2", { cls: "ytec-done-title", text: "Setup Complete" });
     wrap.createEl("p", {
       cls: "ytec-subtitle",
-      text: "yt-dlp and ffmpeg are ready. Restart Obsidian if this is your first install.",
+      text: "yt-dlp and ffmpeg setup has finished.",
     });
 
     const actions = contentEl.createDiv({ cls: "ytec-actions" });
@@ -208,7 +228,7 @@ export class SetupModal extends Modal {
 
     const wrap = contentEl.createDiv({ cls: "ytec-done" });
     wrap.createDiv({ cls: "ytec-done-icon ytec-done-icon-warn", text: "⚠" });
-    wrap.createEl("h2", { cls: "ytec-done-title ytec-done-title-warn", text: "Setup Failed" });
+    wrap.createEl("h2", { cls: "ytec-done-title ytec-done-title-warn", text: "Setup Warning" });
 
     const errBox = contentEl.createDiv({ cls: "ytec-error" });
     errBox.textContent = errors.join("\n");
