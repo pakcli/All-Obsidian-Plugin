@@ -22,6 +22,9 @@ import { registerCommands as registerTreeCommands } from './features/tree/comman
 // Docmost Sync Imports
 import { DocmostSyncManager } from './features/docmost/docmost-sync';
 
+// Codeblock Auto-Scaler
+import { CodeblockScaler, renderAsciiSvg } from './features/codeblock/scaler';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
     
@@ -36,8 +39,18 @@ export default class PakCLIPlugin extends Plugin {
 	settingsPanelStates: Map<string, boolean> = new Map();
 	router!: AssetRouter;
 
+	// Codeblock Scaler
+	codeblockScaler!: CodeblockScaler;
+
 	async onload(): Promise<void> {
 		await this.loadSettings();
+
+		this.codeblockScaler = new CodeblockScaler(this);
+		this.codeblockScaler.init();
+
+		this.registerCodeblockProcessors();
+
+		this.applyCodeblockStyle();
 
 		const adapter = this.app.vault.adapter;
 		if (!(adapter instanceof FileSystemAdapter)) {
@@ -258,9 +271,58 @@ export default class PakCLIPlugin extends Plugin {
 		this.badges?.clearAll();
 		this.badges = null;
 
+		document.body.classList.remove('codeblock-flowclip', 'codeblock-wrap', 'codeblock-scalefit');
+
+		if (this.codeblockScaler) {
+			this.codeblockScaler.destroy();
+		}
+
 		if (this.leafletPlugin) {
 			this.leafletPlugin.onunload();
 		}
+	}
+
+	applyCodeblockStyle(): void {
+		document.body.classList.remove('codeblock-flowclip', 'codeblock-wrap', 'codeblock-scalefit');
+		const mode = this.settings.codeblockWrapMode || 'flowclip';
+		document.body.classList.add(`codeblock-${mode}`);
+		this.codeblockScaler?.rescaleAll();
+	}
+
+	registerCodeblockProcessors(): void {
+		const defaultLangs = ['asci', 'ascii', 'scalefit', 'flowclip'];
+		const customRules = this.settings.codeblockLanguageRules || [];
+		const langsToRegister = new Set([
+			...defaultLangs,
+			...customRules.map((r) => r.language.trim().toLowerCase()).filter(Boolean),
+		]);
+
+		langsToRegister.forEach((lang) => {
+			try {
+				this.registerMarkdownCodeBlockProcessor(lang, (source, el) => {
+					const scaler = this.codeblockScaler;
+					const behavior = scaler ? scaler.getBehaviorForLanguage(lang) : 'scalefit';
+
+					if (behavior === 'scalefit') {
+						renderAsciiSvg(source, el);
+					} else if (behavior === 'wrap') {
+						el.empty();
+						const pre = el.createEl('pre', { cls: 'pakcli-codeblock pakcli-codeblock-wrap' });
+						const code = pre.createEl('code');
+						code.textContent = source;
+						pre.style.cssText = 'white-space: pre-wrap !important; word-break: break-all !important; overflow-x: hidden !important;';
+					} else {
+						el.empty();
+						const pre = el.createEl('pre', { cls: 'pakcli-codeblock pakcli-codeblock-flowclip' });
+						const code = pre.createEl('code');
+						code.textContent = source;
+						pre.style.cssText = 'white-space: pre !important; word-break: normal !important; overflow-x: auto !important; max-width: 100% !important; display: block !important;';
+					}
+				});
+			} catch (e) {
+				// Ignore if already registered
+			}
+		});
 	}
 
 	// =========================================================================
@@ -319,11 +381,13 @@ export default class PakCLIPlugin extends Plugin {
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
+		this.applyCodeblockStyle();
 	}
 
 	async saveData(data: unknown): Promise<void> {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, this.settings || {}, (data as Partial<PakCLIPluginSettings>) || {});
 		await super.saveData(this.settings);
+		this.applyCodeblockStyle();
 	}
 
 	formatDate(date: Date, format: string): string {

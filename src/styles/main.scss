@@ -146,4 +146,92 @@
 .pakcli-tab-content {
     flex-grow: 1;
     min-width: 0;
-}
+}
+
+/* =========================================================================
+   Codeblock Wrapping, Flow Clip & Scale Fit Modes
+   ========================================================================= */
+
+/* Ensure editor lines in Live Preview Mode never get per-line scrollbars and respect pre formatting */
+.markdown-source-view.mod-cm6 .cm-content .cm-line.HyperMD-codeblock,
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock,
+.cm-line.HyperMD-codeblock {
+    word-break: normal !important;
+    word-wrap: normal !important;
+    overflow-wrap: normal !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+}
+
+.markdown-rendered pre {
+    max-width: 100% !important;
+}
+
+body.codeblock-flowclip {
+    .markdown-rendered pre {
+        white-space: pre !important;
+        word-break: normal !important;
+        word-wrap: normal !important;
+        overflow-x: auto !important;
+    }
+
+    .markdown-rendered pre code {
+        white-space: pre !important;
+        word-break: normal !important;
+        overflow-x: visible !important;
+    }
+
+    .markdown-source-view.mod-cm6 .cm-content .cm-line.HyperMD-codeblock {
+        white-space: pre !important;
+    }
+}
+
+body.codeblock-wrap {
+    .markdown-rendered pre,
+    .markdown-rendered pre code {
+        white-space: pre-wrap !important;
+        word-break: break-all !important;
+        overflow-wrap: anywhere !important;
+        overflow-x: hidden !important;
+    }
+
+    .markdown-source-view.mod-cm6 .cm-content .cm-line.HyperMD-codeblock {
+        white-space: pre-wrap !important;
+        word-break: break-all !important;
+    }
+}
+
+body.codeblock-scalefit {
+    .markdown-rendered pre,
+    .markdown-rendered pre code {
+        white-space: pre !important;
+        word-break: normal !important;
+        overflow-x: hidden !important;
+        font-family: var(--font-monospace), monospace !important;
+    }
+
+    .markdown-source-view.mod-cm6 .cm-content .cm-line.HyperMD-codeblock {
+        white-space: pre !important;
+        font-family: var(--font-monospace), monospace !important;
+    }
+}
+
+.pakcli-codeblock-slider {
+    display: block !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    margin: 6px 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+
+    .cm-line.HyperMD-codeblock {
+        white-space: pre !important;
+        word-break: normal !important;
+        word-wrap: normal !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+    }
+}
+
+

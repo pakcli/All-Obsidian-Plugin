@@ -11,6 +11,8 @@ import { DocmostSettings, DEFAULT_DOCMOST_SETTINGS, DocmostSettingsTab } from '.
 
 import type PakCLIPlugin from './main';
 
+import { CodeblockLanguageRule } from './features/codeblock/scaler';
+
 export interface PakCLIPluginSettings extends 
     SymlinkManagerSettings, 
     AssetRouterSettings, 
@@ -19,6 +21,8 @@ export interface PakCLIPluginSettings extends
     DocmostSettings 
 {
     dateFormat: string;
+    codeblockWrapMode: 'flowclip' | 'wrap' | 'scalefit';
+    codeblockLanguageRules: CodeblockLanguageRule[];
 }
 
 export const DEFAULT_ASSET_ROUTER_SETTINGS: AssetRouterSettings = {
@@ -46,7 +50,12 @@ export const DEFAULT_SETTINGS: PakCLIPluginSettings = {
     ...DEFAULT_SQLSEAL_SETTINGS,
     ...DEFAULT_LEAFLET_SETTINGS,
     ...DEFAULT_DOCMOST_SETTINGS,
-    dateFormat: '_{yyyy}{mm}{dd}'
+    dateFormat: '_{yyyy}{mm}{dd}',
+    codeblockWrapMode: 'flowclip',
+    codeblockLanguageRules: [
+        { id: '1', language: 'asci', behavior: 'scalefit' },
+        { id: '2', language: 'ascii', behavior: 'scalefit' }
+    ]
 };
 
 export class PakCLISettingTab extends PluginSettingTab {
@@ -94,6 +103,7 @@ export class PakCLISettingTab extends PluginSettingTab {
         createTabBtn('docmost', 'Docmost Sync');
         createTabBtn('symlink', 'Symlink Manager');
         createTabBtn('router', 'Asset Router');
+        createTabBtn('codeblock', 'Codeblock Mode');
         createTabBtn('datepicker', 'Date Picker');
 
         const contentContainer = layoutContainer.createDiv({ cls: 'pakcli-tab-content' });
@@ -108,6 +118,101 @@ export class PakCLISettingTab extends PluginSettingTab {
             (this.sqlsealTab as unknown as { display(el?: HTMLElement): void }).display(contentContainer);
         } else if (this.activeTab === 'leaflet') {
             (this.leafletTab as unknown as { display(el?: HTMLElement): void }).display(contentContainer);
+        } else if (this.activeTab === 'codeblock') {
+            const pluginSettings = this.plugin.settings;
+            if (!pluginSettings.codeblockLanguageRules) {
+                pluginSettings.codeblockLanguageRules = [
+                    { id: '1', language: 'asci', behavior: 'scalefit' },
+                    { id: '2', language: 'ascii', behavior: 'scalefit' }
+                ];
+            }
+
+            const saveSettings = async () => {
+                await this.plugin.saveSettings();
+                this.plugin.applyCodeblockStyle();
+            };
+
+            new Setting(contentContainer).setName('Codeblock Display & Language Rules').setHeading();
+
+            new Setting(contentContainer)
+                .setName('Default Fallback Mode')
+                .setDesc('Fallback mode for codeblocks that do not match any custom language rule below.')
+                .addDropdown((dropdown) =>
+                    dropdown
+                        .addOption('flowclip', 'Flow Clip (Horizontal Scroll / No Wrap)')
+                        .addOption('wrap', 'Wrap Text (Multi-line)')
+                        .addOption('scalefit', 'Scale to Fit (Auto-scale font to fit page width)')
+                        .setValue(pluginSettings.codeblockWrapMode || 'flowclip')
+                        .onChange(async (value: 'flowclip' | 'wrap' | 'scalefit') => {
+                            pluginSettings.codeblockWrapMode = value;
+                            await saveSettings();
+                        })
+                );
+
+            new Setting(contentContainer).setName('Language Format Mappings').setHeading();
+            contentContainer.createEl('p', {
+                text: 'Map specific codeblock format tags (e.g. asci, ascii, python, text) to custom behaviors.',
+                cls: 'setting-item-description'
+            });
+
+            const rulesContainer = contentContainer.createDiv({ cls: 'codeblock-rules-container' });
+
+            const renderRules = () => {
+                rulesContainer.empty();
+                pluginSettings.codeblockLanguageRules.forEach((rule, index) => {
+                    const setting = new Setting(rulesContainer);
+
+                    setting
+                        .addText((text) =>
+                            text
+                                .setPlaceholder('Language (e.g. asci)')
+                                .setValue(rule.language)
+                                .onChange(async (val) => {
+                                    rule.language = val.trim();
+                                    await saveSettings();
+                                })
+                        )
+                        .addDropdown((dropdown) =>
+                            dropdown
+                                .addOption('scalefit', 'Scale to Fit (1:1 Aspect Ratio)')
+                                .addOption('flowclip', 'Flow Clip (Horizontal Scroll)')
+                                .addOption('wrap', 'Wrap Text (Multi-line)')
+                                .setValue(rule.behavior)
+                                .onChange(async (val: 'scalefit' | 'flowclip' | 'wrap') => {
+                                    rule.behavior = val;
+                                    await saveSettings();
+                                })
+                        )
+                        .addButton((btn) =>
+                            btn
+                                .setIcon('trash')
+                                .setTooltip('Delete rule')
+                                .onClick(async () => {
+                                    pluginSettings.codeblockLanguageRules.splice(index, 1);
+                                    await saveSettings();
+                                    renderRules();
+                                })
+                        );
+                });
+            };
+
+            renderRules();
+
+            new Setting(contentContainer)
+                .addButton((btn) =>
+                    btn
+                        .setButtonText('+ Add Language Rule')
+                        .setCta()
+                        .onClick(async () => {
+                            pluginSettings.codeblockLanguageRules.push({
+                                id: Date.now().toString(),
+                                language: '',
+                                behavior: 'scalefit'
+                            });
+                            await saveSettings();
+                            renderRules();
+                        })
+                );
         } else if (this.activeTab === 'datepicker') {
             const pluginSettings = this.plugin.settings;
             const saveSettings = async () => await this.plugin.saveData(pluginSettings);
