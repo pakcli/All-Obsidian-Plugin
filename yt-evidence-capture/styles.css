@@ -1,0 +1,608 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   YT Evidence Capture — Plugin Styles
+   Compatible with Obsidian light & dark themes via CSS variables.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Modal shell ──────────────────────────────────────────────────────────── */
+
+.ytec-modal {
+  --ytec-accent: #e53935;
+  --ytec-accent-hover: #b71c1c;
+  --ytec-accent-muted: rgba(229, 57, 53, 0.12);
+  --ytec-ok: #2e7d32;
+  --ytec-ok-bg: rgba(46, 125, 50, 0.12);
+  --ytec-warn: #f57c00;
+  --ytec-warn-bg: rgba(245, 124, 0, 0.12);
+  --ytec-radius: 8px;
+  --ytec-radius-sm: 5px;
+  --ytec-gap: 14px;
+  --ytec-font-mono: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+}
+
+.ytec-modal .modal-content {
+  padding: 28px 28px 22px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.ytec-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+.ytec-logo {
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.ytec-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-normal);
+}
+
+.ytec-preview-title {
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+}
+
+.ytec-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 380px;
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────────── */
+
+.ytec-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ytec-gap);
+}
+
+.ytec-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ytec-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ytec-hint {
+  font-size: 0.76rem;
+  color: var(--text-faint);
+}
+
+.ytec-input {
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius-sm);
+  color: var(--text-normal);
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+  outline: none;
+}
+
+.ytec-input:focus {
+  border-color: var(--ytec-accent);
+  box-shadow: 0 0 0 2px var(--ytec-accent-muted);
+}
+
+/* ── Duration preset buttons ──────────────────────────────────────────────── */
+
+.ytec-dur-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ytec-dur-input {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.ytec-dur-presets {
+  display: flex;
+  gap: 5px;
+}
+
+.ytec-preset-btn {
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 4px 9px;
+  transition: all 0.12s ease;
+}
+
+.ytec-preset-btn:hover {
+  background: var(--ytec-accent-muted);
+  border-color: var(--ytec-accent);
+  color: var(--ytec-accent);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.ytec-btn {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius-sm);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 9px 18px;
+  transition: all 0.15s ease;
+}
+
+.ytec-btn-primary {
+  background: var(--ytec-accent);
+  border-color: var(--ytec-accent);
+  color: #fff;
+}
+
+.ytec-btn-primary:hover {
+  background: var(--ytec-accent-hover);
+  border-color: var(--ytec-accent-hover);
+  box-shadow: 0 2px 8px rgba(183, 28, 28, 0.3);
+}
+
+.ytec-btn-secondary {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+.ytec-btn-secondary:hover {
+  background: var(--background-modifier-hover);
+}
+
+.ytec-btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+.ytec-btn-ghost:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.ytec-btn-full {
+  width: 100%;
+}
+
+/* ── Actions rows ─────────────────────────────────────────────────────────── */
+
+.ytec-actions {
+  margin-top: 18px;
+}
+
+.ytec-actions-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ytec-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Error display ────────────────────────────────────────────────────────── */
+
+.ytec-error {
+  background: rgba(229, 57, 53, 0.1);
+  border: 1px solid rgba(229, 57, 53, 0.3);
+  border-radius: var(--ytec-radius-sm);
+  color: var(--ytec-accent);
+  font-size: 0.84rem;
+  margin-top: 10px;
+  padding: 8px 12px;
+}
+
+.ytec-hidden {
+  display: none;
+}
+
+/* ── Preview: thumbnail ───────────────────────────────────────────────────── */
+
+.ytec-thumb-wrap {
+  margin-bottom: 14px;
+  border-radius: var(--ytec-radius);
+  overflow: hidden;
+  line-height: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+.ytec-thumb {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  max-height: 210px;
+}
+
+/* ── Preview: meta ────────────────────────────────────────────────────────── */
+
+.ytec-meta {
+  margin-bottom: 14px;
+}
+
+.ytec-video-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-normal);
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+.ytec-channel {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.ytec-video-dur {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+/* ── Preview: clip box ────────────────────────────────────────────────────── */
+
+.ytec-clip-box {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.ytec-clip-dur-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ytec-dur-inline {
+  width: 72px;
+  padding: 4px 8px;
+  font-size: 0.88rem;
+}
+
+.ytec-clip-end {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.ytec-clip-start {
+  color: var(--text-muted);
+}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+
+.ytec-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.ytec-badge {
+  border-radius: 100px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+.ytec-badge-ok {
+  background: var(--ytec-ok-bg);
+  color: var(--ytec-ok);
+}
+
+.ytec-badge-warn {
+  background: var(--ytec-warn-bg);
+  color: var(--ytec-warn);
+}
+
+/* ── Processing step ──────────────────────────────────────────────────────── */
+
+.ytec-processing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 16px;
+  gap: 12px;
+}
+
+/* CSS spinner ring */
+.ytec-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid var(--background-modifier-border);
+  border-top-color: var(--ytec-accent);
+  border-radius: 50%;
+  animation: ytec-spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ytec-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ytec-status-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Processing log ───────────────────────────────────────────────────────── */
+
+.ytec-log {
+  background: var(--background-primary-alt, var(--background-secondary));
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius);
+  font-family: var(--ytec-font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+
+.ytec-log-entry {
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ytec-log-entry:last-child {
+  color: var(--text-normal);
+}
+
+/* ── Done step ────────────────────────────────────────────────────────────── */
+
+.ytec-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 0 10px;
+  gap: 8px;
+}
+
+.ytec-done-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--ytec-ok-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  color: var(--ytec-ok);
+  margin-bottom: 6px;
+  animation: ytec-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes ytec-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.ytec-done-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ytec-ok);
+}
+
+.ytec-done-filename {
+  font-family: var(--ytec-font-mono);
+  font-size: 0.82rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius-sm);
+  padding: 5px 12px;
+  color: var(--text-normal);
+  word-break: break-all;
+}
+
+.ytec-done-path {
+  font-size: 0.76rem;
+  color: var(--text-faint);
+}
+
+/* ── Settings page extras ─────────────────────────────────────────────────── */
+
+.ytec-prereq {
+  background: var(--background-secondary);
+  border-radius: var(--ytec-radius);
+  padding: 14px 16px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.ytec-prereq ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.ytec-prereq a {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
+.ytec-prereq a:hover {
+  text-decoration: underline;
+}
+
+/* ── Settings tab layout ──────────────────────────────────────────────────── */
+
+.ytec-settings .ytec-settings-section {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.ytec-settings-heading {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  color: var(--text-normal);
+}
+
+.ytec-settings-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0 0 14px 0;
+  line-height: 1.5;
+}
+
+.ytec-settings-hint {
+  font-size: 0.76rem;
+  color: var(--text-faint);
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+/* ── Dependency status panel ──────────────────────────────────────────────── */
+
+.ytec-dep-panel {
+  background: var(--background-primary-alt, var(--background-primary));
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ytec-dep-row {
+  font-size: 0.88rem;
+  font-family: var(--ytec-font-mono);
+  color: var(--text-normal);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ── Settings action buttons ──────────────────────────────────────────────── */
+
+.ytec-settings-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ytec-settings-btn {
+  border-radius: var(--ytec-radius-sm);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.ytec-settings-btn-primary {
+  background: var(--ytec-accent);
+  color: #fff;
+  border-color: var(--ytec-accent);
+}
+
+.ytec-settings-btn-primary:hover {
+  background: var(--ytec-accent-hover);
+  box-shadow: 0 2px 8px rgba(183, 28, 28, 0.3);
+}
+
+.ytec-settings-btn-secondary {
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  border-color: var(--background-modifier-border);
+}
+
+.ytec-settings-btn-secondary:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-active-hover);
+}
+
+/* ── SetupModal: confirm box ─────────────────────────────────────────────── */
+
+.ytec-confirm-box {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius);
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+
+.ytec-confirm-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px 0;
+}
+
+.ytec-confirm-code {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--ytec-radius-sm);
+  color: var(--text-normal);
+  font-family: var(--ytec-font-mono);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  margin: 0 0 10px 0;
+  padding: 10px 12px;
+  white-space: pre;
+}
+
+.ytec-confirm-note {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+/* ── Done step warn variant ──────────────────────────────────────────────── */
+
+.ytec-done-icon-warn {
+  background: var(--ytec-warn-bg) !important;
+  color: var(--ytec-warn) !important;
+}
+
+.ytec-done-title-warn {
+  color: var(--ytec-warn) !important;
+}

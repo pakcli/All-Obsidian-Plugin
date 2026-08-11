@@ -17,6 +17,7 @@
 
 @import "tree.css";
 @import "leaflet.css";
+@import "ytcapture.css";
 
 .sqlseal-edit-banner {
     display: flex;
@@ -90,57 +91,150 @@
 }
 
 .pakcli-settings-sidebar {
-    width: 220px;
+    width: 230px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
     border-right: 1px solid var(--background-modifier-border);
     padding-right: 15px;
+}
 
-    h2 {
-        margin: 0;
-        padding: 4px 12px;
-        font-size: 1.15em;
-        font-weight: 600;
-        color: var(--text-normal);
-        border-bottom: 1px solid var(--background-modifier-border);
-        padding-bottom: 10px;
-        margin-bottom: 5px;
+.pakcli-sidebar-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.pakcli-sidebar-search {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-modifier-form-field);
+    color: var(--text-normal);
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        border-color: var(--interactive-accent);
+        box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.15);
     }
 }
 
-.pakcli-tabs-header {
+.pakcli-sidebar-sort {
+    width: 100%;
+    padding: 5px 8px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &:hover {
+        color: var(--text-normal);
+        background: var(--background-modifier-hover);
+    }
+}
+
+.pakcli-tabs-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 0;
+    gap: 4px;
+}
 
-    button {
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        cursor: pointer;
-        padding: 8px 12px !important;
-        font-size: 14px !important;
-        font-weight: 500;
-        border-radius: 4px;
-        color: var(--text-muted);
-        text-align: left;
-        width: 100%;
-        transition: all 0.2s ease;
+.pakcli-sidebar-section-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    margin-top: 8px;
+    margin-bottom: 2px;
+    padding: 0 4px;
+}
 
-        &:hover {
-            background-color: var(--background-modifier-hover) !important;
-            color: var(--text-normal) !important;
+.pakcli-tab-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+
+    &:hover {
+        background-color: var(--background-modifier-hover);
+
+        .pakcli-pin-btn {
+            opacity: 1;
         }
+    }
 
-        &.active-tab {
-            background-color: var(--background-modifier-active-hover) !important;
+    &.active {
+        background-color: var(--background-modifier-active-hover);
+
+        .pakcli-tab-btn {
             color: var(--interactive-accent) !important;
             font-weight: 600;
         }
     }
+
+    &.pinned {
+        border-left: 2px solid var(--interactive-accent);
+        padding-left: 2px;
+    }
+}
+
+.pakcli-tab-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    padding: 7px 10px !important;
+    font-size: 0.84rem !important;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-align: left;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover {
+        color: var(--text-normal) !important;
+    }
+}
+
+.pakcli-pin-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    font-size: 0.78rem !important;
+    padding: 4px 6px !important;
+    opacity: 0.35;
+    transition: opacity 0.15s ease, transform 0.12s ease;
+    flex-shrink: 0;
+
+    &:hover {
+        opacity: 1 !important;
+        transform: scale(1.15);
+    }
+
+    &.is-pinned {
+        opacity: 1 !important;
+    }
+}
+
+.pakcli-sidebar-empty {
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    padding: 12px 6px;
+    text-align: center;
+    font-style: italic;
 }
 
 .pakcli-tab-content {

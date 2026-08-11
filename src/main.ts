@@ -25,6 +25,10 @@ import { DocmostSyncManager } from './features/docmost/docmost-sync';
 // Codeblock Auto-Scaler
 import { CodeblockScaler, renderAsciiSvg } from './features/codeblock/scaler';
 
+// YT Evidence Capture Imports
+import { CaptureModal as YTCaptureModal } from './features/ytcapture/ui/CaptureModal';
+import { runYTCaptureStartupCheck } from './features/ytcapture/utils/healthCheck';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
     
@@ -254,7 +258,24 @@ export default class PakCLIPlugin extends Plugin {
 		});
 
 		// =========================================================================
-		// 6. Register Settings Tab
+		// 6. Initialize YT Extension
+		// =========================================================================
+		this.addRibbonIcon('film', 'YT Extension', () => {
+			new YTCaptureModal(this.app, this).open();
+		});
+
+		this.addCommand({
+			id: 'yt-extension-open-modal',
+			name: 'YT Extension: Capture YouTube video clip',
+			callback: () => {
+				new YTCaptureModal(this.app, this).open();
+			},
+		});
+
+		setTimeout(() => runYTCaptureStartupCheck(this.settings), 2000);
+
+		// =========================================================================
+		// 7. Register Settings Tab
 		// =========================================================================
 		this.addSettingTab(new PakCLISettingTab(
 			this.app, 

@@ -8,21 +8,29 @@ import { ConfirmModal, ConflictModal } from './features/tree/ui/modals';
 import { FolderSuggest } from './features/tree/ui/folder-suggest';
 
 import { DocmostSettings, DEFAULT_DOCMOST_SETTINGS, DocmostSettingsTab } from './features/docmost/settings';
+import { YTCaptureSettings, DEFAULT_YTCAPTURE_SETTINGS } from './features/ytcapture/types';
+import { renderYTCaptureSettings } from './features/ytcapture/settings';
 
 import type PakCLIPlugin from './main';
 
 import { CodeblockLanguageRule } from './features/codeblock/scaler';
+
+export type TabSortOption = 'a-z' | 'z-a' | 'lightest' | 'heavy' | 'recent' | 'least-recent';
 
 export interface PakCLIPluginSettings extends 
     SymlinkManagerSettings, 
     AssetRouterSettings, 
     SQLSealSettings, 
     BasesLeafletViewSettings,
-    DocmostSettings 
+    DocmostSettings,
+    YTCaptureSettings
 {
     dateFormat: string;
     codeblockWrapMode: 'flowclip' | 'wrap' | 'scalefit';
     codeblockLanguageRules: CodeblockLanguageRule[];
+    pinnedTabs?: string[];
+    tabSortOrder?: TabSortOption;
+    tabUsageHistory?: Record<string, number>;
 }
 
 export const DEFAULT_ASSET_ROUTER_SETTINGS: AssetRouterSettings = {
@@ -50,19 +58,41 @@ export const DEFAULT_SETTINGS: PakCLIPluginSettings = {
     ...DEFAULT_SQLSEAL_SETTINGS,
     ...DEFAULT_LEAFLET_SETTINGS,
     ...DEFAULT_DOCMOST_SETTINGS,
+    ...DEFAULT_YTCAPTURE_SETTINGS,
     dateFormat: '_{yyyy}{mm}{dd}',
     codeblockWrapMode: 'flowclip',
     codeblockLanguageRules: [
         { id: '1', language: 'asci', behavior: 'scalefit' },
         { id: '2', language: 'ascii', behavior: 'scalefit' }
-    ]
+    ],
+    pinnedTabs: [],
+    tabSortOrder: 'a-z',
+    tabUsageHistory: {}
 };
+
+interface SuiteTabInfo {
+    id: string;
+    label: string;
+    weight: number; // 1 (lightest) to 5 (heaviest)
+}
+
+const ALL_SUITE_TABS: SuiteTabInfo[] = [
+    { id: 'sqlseal',    label: 'SQLSeal & Tablite', weight: 5 },
+    { id: 'leaflet',    label: 'Leaflet Map',      weight: 4 },
+    { id: 'docmost',    label: 'Docmost Sync',     weight: 3 },
+    { id: 'ytcapture',  label: 'YT Extension',     weight: 3 },
+    { id: 'router',     label: 'Asset Router',     weight: 3 },
+    { id: 'symlink',    label: 'Symlink Manager',  weight: 2 },
+    { id: 'codeblock',  label: 'Codeblock Mode',   weight: 1 },
+    { id: 'datepicker', label: 'Date Picker',      weight: 1 },
+];
 
 export class PakCLISettingTab extends PluginSettingTab {
     private symlinkTab: SymlinkManagerSettingTab;
     private sqlsealTab: SQLSealSettingsTab | null;
     private leafletTab: PluginSettingTab; // BaseLeafletViewSettingsTab
     private activeTab: string;
+    private searchQuery: string = '';
 
     constructor(
         app: App, 
@@ -75,7 +105,7 @@ export class PakCLISettingTab extends PluginSettingTab {
         this.symlinkTab = symlinkTab;
         this.sqlsealTab = sqlsealTab;
         this.leafletTab = leafletTab;
-        this.activeTab = sqlsealTab ? 'sqlseal' : 'leaflet';
+        this.activeTab = sqlsealTab ? 'sqlseal' : 'ytcapture';
     }
 
     display(): void {
@@ -87,28 +117,164 @@ export class PakCLISettingTab extends PluginSettingTab {
         const layoutContainer = containerEl.createDiv({ cls: 'pakcli-settings-layout' });
         const sidebar = layoutContainer.createDiv({ cls: 'pakcli-settings-sidebar' });
 
-        const createTabBtn = (id: string, label: string) => {
-            const btn = sidebar.createEl('button', {
-                cls: `pakcli-tab-btn ${this.activeTab === id ? 'active' : ''}`,
-                text: label,
+        const pinned = this.plugin.settings.pinnedTabs || [];
+        const sortOrder = this.plugin.settings.tabSortOrder || 'a-z';
+        const usageHistory = this.plugin.settings.tabUsageHistory || {};
+
+        // Available tabs (filter out sqlseal if sqlsealTab is null)
+        const availableTabs = ALL_SUITE_TABS.filter(t => t.id !== 'sqlseal' || this.sqlsealTab !== null);
+
+        // Filter by Search Query
+        const query = this.searchQuery.trim().toLowerCase();
+        const filteredTabs = availableTabs.filter(t => t.label.toLowerCase().includes(query));
+
+        // Sort tabs helper
+        const sortTabs = (tabs: SuiteTabInfo[]): SuiteTabInfo[] => {
+            const copy = [...tabs];
+            switch (sortOrder) {
+                case 'a-z':
+                    return copy.sort((a, b) => a.label.localeCompare(b.label));
+                case 'z-a':
+                    return copy.sort((a, b) => b.label.localeCompare(a.label));
+                case 'lightest':
+                    return copy.sort((a, b) => a.weight - b.weight);
+                case 'heavy':
+                    return copy.sort((a, b) => b.weight - a.weight);
+                case 'recent':
+                    return copy.sort((a, b) => (usageHistory[b.id] || 0) - (usageHistory[a.id] || 0));
+                case 'least-recent':
+                    return copy.sort((a, b) => (usageHistory[a.id] || 0) - (usageHistory[b.id] || 0));
+                default:
+                    return copy;
+            }
+        };
+
+        // ── Controls Box (Search + Sort) ──────────────────────────────────────
+        const controlsContainer = sidebar.createDiv({ cls: 'pakcli-sidebar-controls' });
+
+        // Search Box
+        const searchInput = controlsContainer.createEl('input', {
+            cls: 'pakcli-sidebar-search',
+            type: 'text',
+            placeholder: '🔍 Search settings…',
+            value: this.searchQuery,
+        }) as HTMLInputElement;
+
+        searchInput.addEventListener('input', () => {
+            this.searchQuery = searchInput.value;
+            this.display();
+            // Restore focus after re-rendering display
+            const reSearch = sidebar.querySelector('.pakcli-sidebar-search') as HTMLInputElement | null;
+            if (reSearch) {
+                reSearch.focus();
+                reSearch.setSelectionRange(reSearch.value.length, reSearch.value.length);
+            }
+        });
+
+        // Sort Dropdown
+        const sortSelect = controlsContainer.createEl('select', {
+            cls: 'pakcli-sidebar-sort',
+        }) as HTMLSelectElement;
+
+        const options: { val: TabSortOption; label: string }[] = [
+            { val: 'a-z',          label: 'Sort: A-Z' },
+            { val: 'z-a',          label: 'Sort: Z-A' },
+            { val: 'lightest',     label: 'Sort: Lightest → Heavy' },
+            { val: 'heavy',        label: 'Sort: Heavy → Lightest' },
+            { val: 'recent',       label: 'Sort: Recent Used' },
+            { val: 'least-recent', label: 'Sort: Most Not Used' },
+        ];
+
+        options.forEach(opt => {
+            const el = sortSelect.createEl('option', { value: opt.val, text: opt.label });
+            if (opt.val === sortOrder) el.selected = true;
+        });
+
+        sortSelect.addEventListener('change', async () => {
+            this.plugin.settings.tabSortOrder = sortSelect.value as TabSortOption;
+            await this.plugin.saveSettings();
+            this.display();
+        });
+
+        // ── Tab Item Renderer Helper ──────────────────────────────────────────
+        const renderTabItem = (parent: HTMLElement, tab: SuiteTabInfo, isPinned: boolean) => {
+            const row = parent.createDiv({
+                cls: `pakcli-tab-item ${this.activeTab === tab.id ? 'active' : ''} ${isPinned ? 'pinned' : ''}`,
             });
-            btn.addEventListener('click', () => {
-                this.activeTab = id;
+
+            const btn = row.createEl('button', {
+                cls: `pakcli-tab-btn ${this.activeTab === tab.id ? 'active' : ''}`,
+                text: tab.label,
+            });
+
+            btn.addEventListener('click', async () => {
+                this.activeTab = tab.id;
+                if (!this.plugin.settings.tabUsageHistory) {
+                    this.plugin.settings.tabUsageHistory = {};
+                }
+                this.plugin.settings.tabUsageHistory[tab.id] = Date.now();
+                await this.plugin.saveSettings();
+                this.display();
+            });
+
+            const pinBtn = row.createEl('button', {
+                cls: `pakcli-pin-btn ${isPinned ? 'is-pinned' : ''}`,
+                text: isPinned ? '📌' : '📍',
+                attr: { title: isPinned ? 'Unpin tab' : 'Pin tab (max 3)' },
+            });
+
+            pinBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                let curPinned = [...(this.plugin.settings.pinnedTabs || [])];
+                if (isPinned) {
+                    curPinned = curPinned.filter(id => id !== tab.id);
+                } else {
+                    if (curPinned.length >= 3) {
+                        new Notice('Maximum 3 pinned tabs allowed.');
+                        return;
+                    }
+                    curPinned.push(tab.id);
+                }
+                this.plugin.settings.pinnedTabs = curPinned;
+                await this.plugin.saveSettings();
                 this.display();
             });
         };
 
-        if (this.sqlsealTab) createTabBtn('sqlseal', 'SQLSeal & Tablite');
-        createTabBtn('leaflet', 'Leaflet Map');
-        createTabBtn('docmost', 'Docmost Sync');
-        createTabBtn('symlink', 'Symlink Manager');
-        createTabBtn('router', 'Asset Router');
-        createTabBtn('codeblock', 'Codeblock Mode');
-        createTabBtn('datepicker', 'Date Picker');
+        const tabsContainer = sidebar.createDiv({ cls: 'pakcli-tabs-list' });
+
+        // Separate pinned vs unpinned from filtered tabs
+        const pinnedList = pinned
+            .map(id => availableTabs.find(t => t.id === id))
+            .filter((t): t is SuiteTabInfo => t !== undefined && t.label.toLowerCase().includes(query));
+
+        const unpinnedList = sortTabs(
+            filteredTabs.filter(t => !pinned.includes(t.id))
+        );
+
+        // Render Pinned Section if any
+        if (pinnedList.length > 0) {
+            const pinnedHeader = tabsContainer.createDiv({ cls: 'pakcli-sidebar-section-title', text: `📌 PINNED (${pinnedList.length}/3)` });
+            pinnedList.forEach(tab => renderTabItem(tabsContainer, tab, true));
+        }
+
+        // Render All / Unpinned Section
+        if (unpinnedList.length > 0) {
+            if (pinnedList.length > 0) {
+                tabsContainer.createDiv({ cls: 'pakcli-sidebar-section-title', text: 'ALL MODULES' });
+            }
+            unpinnedList.forEach(tab => renderTabItem(tabsContainer, tab, false));
+        }
+
+        if (pinnedList.length === 0 && unpinnedList.length === 0) {
+            tabsContainer.createDiv({ cls: 'pakcli-sidebar-empty', text: 'No matching settings found.' });
+        }
 
         const contentContainer = layoutContainer.createDiv({ cls: 'pakcli-tab-content' });
 
-        if (this.activeTab === 'docmost') {
+        if (this.activeTab === 'ytcapture') {
+            renderYTCaptureSettings(this.app, this.plugin, contentContainer);
+        } else if (this.activeTab === 'docmost') {
             const docmostTab = new DocmostSettingsTab(this.app, this.plugin);
             docmostTab.containerEl = contentContainer;
             docmostTab.display();

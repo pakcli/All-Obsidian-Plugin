@@ -1,0 +1,26 @@
+{
+  "name": "yt-evidence-capture",
+  "version": "1.0.0",
+  "description": "Obsidian plugin to capture YouTube evidence clips with transcript and metadata.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": ["obsidian", "youtube", "clip", "evidence", "transcript"],
+  "author": "pakcli",
+  "license": "MIT",
+  "dependencies": {
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@typescript-eslint/eslint-plugin": "^8.0.1",
+    "@typescript-eslint/parser": "^8.0.1",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "latest",
+    "tslib": "^2.6.2",
+    "typescript": "^5.5.4"
+  }
+}
