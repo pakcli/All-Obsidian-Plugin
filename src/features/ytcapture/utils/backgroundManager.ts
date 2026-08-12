@@ -27,7 +27,7 @@ export class YTCaptureBackgroundManager {
     if (!this.statusBarItem) {
       this.statusBarItem = this.plugin.addStatusBarItem();
       this.statusBarItem.addClass("ytec-status-bar-item");
-      this.statusBarItem.style.display = "none";
+      this.statusBarItem.setCssProps({ 'display': 'none' });
     }
   }
 
@@ -64,11 +64,11 @@ export class YTCaptureBackgroundManager {
     if (!this.statusBarItem) return;
 
     if (this.activeTasks.size === 0) {
-      this.statusBarItem.style.display = "none";
+      this.statusBarItem.setCssProps({ 'display': 'none' });
       return;
     }
 
-    this.statusBarItem.style.display = "inline-flex";
+    this.statusBarItem.setCssProps({ 'display': 'inline-flex' });
     const tasksArr = Array.from(this.activeTasks.values());
     const first = tasksArr[0];
 

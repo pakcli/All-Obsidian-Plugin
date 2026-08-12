@@ -331,13 +331,23 @@ export default class PakCLIPlugin extends Plugin {
 						const pre = el.createEl('pre', { cls: 'pakcli-codeblock pakcli-codeblock-wrap' });
 						const code = pre.createEl('code');
 						code.textContent = source;
-						pre.style.cssText = 'white-space: pre-wrap !important; word-break: break-all !important; overflow-x: hidden !important;';
+						pre.setCssProps({
+							'white-space': 'pre-wrap',
+							'word-break': 'break-all',
+							'overflow-x': 'hidden'
+						});
 					} else {
 						el.empty();
 						const pre = el.createEl('pre', { cls: 'pakcli-codeblock pakcli-codeblock-flowclip' });
 						const code = pre.createEl('code');
 						code.textContent = source;
-						pre.style.cssText = 'white-space: pre !important; word-break: normal !important; overflow-x: auto !important; max-width: 100% !important; display: block !important;';
+						pre.setCssProps({
+							'white-space': 'pre',
+							'word-break': 'normal',
+							'overflow-x': 'auto',
+							'max-width': '100%',
+							'display': 'block'
+						});
 					}
 				});
 			} catch (e) {

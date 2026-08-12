@@ -743,7 +743,7 @@ export class CaptureModal extends Modal {
       });
       revealBtn.addEventListener("click", () => {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          // eslint-disable-next-line @typescript-eslint/no-var-requires -- Dynamic Electron shell import required for desktop file manager integration
           const electronModule = require("electron") as { shell: { openPath: (p: string) => Promise<string> } };
           electronModule.shell.openPath(this.result!.fsDirPath);
         } catch {

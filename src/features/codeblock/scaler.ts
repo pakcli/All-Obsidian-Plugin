@@ -201,28 +201,20 @@ export class CodeblockScaler {
 					renderAsciiSvg(text, pre as HTMLElement);
 				}
 			} else if (behavior === 'wrap') {
-				pre.style.fontSize = '';
-				pre.style.lineHeight = '';
-				pre.style.letterSpacing = '';
-				codeEl.style.fontSize = '';
-				codeEl.style.lineHeight = '';
-				codeEl.style.letterSpacing = '';
-				pre.style.setProperty('white-space', 'pre-wrap', 'important');
-				pre.style.setProperty('word-break', 'break-all', 'important');
-				pre.style.setProperty('overflow-x', 'hidden', 'important');
+				pre.setCssProps({
+					'white-space': 'pre-wrap',
+					'word-break': 'break-all',
+					'overflow-x': 'hidden'
+				});
 			} else {
 				// Flowclip: Each pre is INDIVIDUAL slider!
-				pre.style.fontSize = '';
-				pre.style.lineHeight = '';
-				pre.style.letterSpacing = '';
-				codeEl.style.fontSize = '';
-				codeEl.style.lineHeight = '';
-				codeEl.style.letterSpacing = '';
-				pre.style.setProperty('white-space', 'pre', 'important');
-				pre.style.setProperty('word-break', 'normal', 'important');
-				pre.style.setProperty('overflow-x', 'auto', 'important');
-				pre.style.setProperty('display', 'block', 'important');
-				pre.style.setProperty('max-width', '100%', 'important');
+				pre.setCssProps({
+					'white-space': 'pre',
+					'word-break': 'normal',
+					'overflow-x': 'auto',
+					'display': 'block',
+					'max-width': '100%'
+				});
 			}
 		});
 
@@ -252,13 +244,12 @@ export class CodeblockScaler {
 
 			if (behavior === 'wrap') {
 				currentBlockLines.forEach((line) => {
-					line.style.fontSize = '';
-					line.style.lineHeight = '';
-					line.style.letterSpacing = '';
-					line.style.setProperty('white-space', 'pre-wrap', 'important');
-					line.style.setProperty('word-break', 'break-all', 'important');
-					line.style.setProperty('overflow-wrap', 'anywhere', 'important');
-					line.style.setProperty('overflow-x', 'hidden', 'important');
+					line.setCssProps({
+						'white-space': 'pre-wrap',
+						'word-break': 'break-all',
+						'overflow-wrap': 'anywhere',
+						'overflow-x': 'hidden'
+					});
 				});
 			} else {
 				// FLOWCLIP: 1 CODEBLOCK = 1 INDIVIDUAL SLIDER!
@@ -268,15 +259,15 @@ export class CodeblockScaler {
 				} else {
 					slider = document.createElement('div');
 					slider.className = 'pakcli-codeblock-slider';
-					slider.style.cssText = `
-						display: block !important;
-						max-width: 100% !important;
-						overflow-x: auto !important;
-						overflow-y: hidden !important;
-						margin: 4px 0 !important;
-						padding: 0 !important;
-						box-sizing: border-box !important;
-					`;
+					slider.setCssProps({
+						'display': 'block',
+						'max-width': '100%',
+						'overflow-x': 'auto',
+						'overflow-y': 'hidden',
+						'margin': '4px 0',
+						'padding': '0',
+						'box-sizing': 'border-box'
+					});
 					parent.insertBefore(slider, firstLine);
 					currentBlockLines.forEach((line) => {
 						slider.appendChild(line);
@@ -284,14 +275,13 @@ export class CodeblockScaler {
 				}
 
 				currentBlockLines.forEach((line) => {
-					line.style.fontSize = '';
-					line.style.lineHeight = '';
-					line.style.letterSpacing = '';
-					line.style.setProperty('white-space', 'pre', 'important');
-					line.style.setProperty('word-break', 'normal', 'important');
-					line.style.setProperty('word-wrap', 'normal', 'important');
-					line.style.setProperty('overflow-x', 'visible', 'important');
-					line.style.setProperty('overflow-y', 'visible', 'important');
+					line.setCssProps({
+						'white-space': 'pre',
+						'word-break': 'normal',
+						'word-wrap': 'normal',
+						'overflow-x': 'visible',
+						'overflow-y': 'visible'
+					});
 				});
 			}
 

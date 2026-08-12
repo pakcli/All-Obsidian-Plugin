@@ -112,7 +112,7 @@ export class PakCLISettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'PakCLI Suite Settings' });
+        new Setting(containerEl).setName('Suite configuration').setHeading();
 
         const layoutContainer = containerEl.createDiv({ cls: 'pakcli-settings-layout' });
         const sidebar = layoutContainer.createDiv({ cls: 'pakcli-settings-sidebar' });
