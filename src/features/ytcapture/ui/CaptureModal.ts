@@ -1,7 +1,7 @@
 /**
- * CaptureModal — multi-step evidence capture UI with video preview player,
+ * CaptureModal — 1:1 Component Cards evidence capture UI with video preview player,
  * Quality & FPS settings, range slider, full duration button, progress bar,
- * and background download support.
+ * and active card highlighting with muted inactive cards.
  */
 import { App, FileSystemAdapter, Modal, Notice, TFile } from "obsidian";
 import * as fs from "fs";
@@ -31,6 +31,7 @@ import { buildZip } from "../utils/zipBuilder";
 import { parseYtDlpProgress } from "../utils/progressParser";
 import { YTCaptureBackgroundManager } from "../utils/backgroundManager";
 
+type CardId = "url" | "quality" | "range" | "preview";
 type Step = "input" | "preview" | "processing" | "done";
 
 export class CaptureModal extends Modal {
@@ -38,6 +39,8 @@ export class CaptureModal extends Modal {
   private bgManager: YTCaptureBackgroundManager;
 
   private step: Step = "input";
+  private activeCardId: CardId = "url";
+
   private urlValue = "";
   private durationValue: number;
   private editedStart: number = 0;
@@ -82,41 +85,54 @@ export class CaptureModal extends Modal {
     this.progressStatsEl = null;
     this.logEl = null;
 
-    switch (this.step) {
-      case "input":      this.renderInput(); break;
-      case "preview":    this.renderPreview(); break;
-      case "processing": this.renderProcessing(); break;
-      case "done":       this.renderDone(); break;
+    if (this.step === "processing") {
+      this.renderProcessing();
+      return;
     }
+
+    if (this.step === "done") {
+      this.renderDone();
+      return;
+    }
+
+    this.renderCardsLayout();
   }
 
-  private renderInput(): void {
+  private renderCardsLayout(): void {
     const { contentEl } = this;
 
     const hdr = contentEl.createDiv({ cls: "ytec-header" });
     hdr.createDiv({ cls: "ytec-logo", text: "🎬" });
-    hdr.createEl("h2", { cls: "ytec-title", text: "YT Extension" });
+    hdr.createEl("h2", { cls: "ytec-title", text: "YT Extension — Evidence Capture" });
     hdr.createEl("p", {
       cls: "ytec-subtitle",
-      text: "Paste a YouTube link → preview, select range & capture to .zip",
+      text: "Interactive 1:1 Component Cards: Edit card values directly in place.",
     });
 
-    const form = contentEl.createDiv({ cls: "ytec-form" });
+    const cardGrid = contentEl.createDiv({ cls: "ytec-card-grid" });
 
-    const urlGroup = form.createDiv({ cls: "ytec-field-group" });
-    urlGroup.createEl("label", { cls: "ytec-label", text: "YouTube URL" });
-    const urlInput = urlGroup.createEl("input", {
+    // ── CARD 1: Source & URL (1:1 Component Card) ──────────────────────
+    const cardUrl = cardGrid.createDiv({ cls: "ytec-card" });
+    cardUrl.dataset.cardId = "url";
+
+    const headerUrl = cardUrl.createDiv({ cls: "ytec-card-header" });
+    headerUrl.createDiv({ cls: "ytec-card-title", text: "🎬 1. YouTube URL & Source" });
+    headerUrl.createDiv({ cls: "ytec-card-badge", text: "Source" });
+
+    const groupUrl = cardUrl.createDiv({ cls: "ytec-field-group" });
+    const urlInput = groupUrl.createEl("input", {
       cls: "ytec-input ytec-url-input",
       type: "text",
       placeholder: "https://youtube.com/watch?v=...&t=94s",
     }) as HTMLInputElement;
     urlInput.value = this.urlValue;
-    urlGroup.createEl("div", {
+    groupUrl.createEl("div", {
       cls: "ytec-hint",
-      text: "Include ?t= for a specific timestamp. Without it, capture starts at 00:00.",
+      text: "Include ?t= for start timestamp. Edits take effect immediately.",
     });
 
-    const durGroup = form.createDiv({ cls: "ytec-field-group" });
+    const durGroup = cardUrl.createDiv({ cls: "ytec-field-group" });
+    durGroup.setAttribute("style", "margin-top: 10px;");
     durGroup.createEl("label", { cls: "ytec-label", text: "Default Clip Duration (seconds)" });
     const durRow = durGroup.createDiv({ cls: "ytec-dur-row" });
     const durInput = durRow.createEl("input", {
@@ -136,23 +152,202 @@ export class CaptureModal extends Modal {
       });
       btn.addEventListener("click", () => {
         durInput.value = String(s);
+        this.durationValue = s;
       });
     }
 
-    const errorEl = contentEl.createDiv({ cls: "ytec-error ytec-hidden" });
+    const fetchBtn = cardUrl.createEl("button", {
+      cls: "ytec-btn ytec-btn-primary",
+      text: "Fetch Video Info →",
+    });
+    fetchBtn.setAttribute("style", "margin-top: 10px; width: 100%;");
 
+    // ── CARD 2: Quality & Format (1:1 Component Card) ──────────────────
+    const cardQuality = cardGrid.createDiv({ cls: "ytec-card" });
+    cardQuality.dataset.cardId = "quality";
+
+    const headerQuality = cardQuality.createDiv({ cls: "ytec-card-header" });
+    headerQuality.createDiv({ cls: "ytec-card-title", text: "⚙️ 2. Quality & Frame Rate" });
+    headerQuality.createDiv({ cls: "ytec-card-badge", text: "Format" });
+
+    const settingsGrid = cardQuality.createDiv({ cls: "ytec-settings-grid" });
+
+    const qGroup = settingsGrid.createDiv({ cls: "ytec-field-group" });
+    qGroup.createEl("label", { cls: "ytec-label", text: "Quality" });
+    const qSelect = qGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
+    const qOpts: { val: VideoQuality; label: string }[] = [
+      { val: "best",  label: "Best Available (1080p+)" },
+      { val: "720p",  label: "720p HD" },
+      { val: "480p",  label: "480p SD" },
+      { val: "360p",  label: "360p Low" },
+      { val: "audio", label: "Audio Only (m4a/mp3)" },
+    ];
+    qOpts.forEach(o => {
+      const opt = qSelect.createEl("option", { value: o.val, text: o.label });
+      if (o.val === this.selectedQuality) opt.selected = true;
+    });
+    qSelect.addEventListener("change", () => {
+      this.selectedQuality = qSelect.value as VideoQuality;
+    });
+
+    const fpsGroup = settingsGrid.createDiv({ cls: "ytec-field-group" });
+    fpsGroup.createEl("label", { cls: "ytec-label", text: "Frame Rate (FPS)" });
+    const fpsSelect = fpsGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
+    const fpsOpts: { val: VideoFps; label: string }[] = [
+      { val: "auto", label: "Auto / Best (60fps)" },
+      { val: "30",   label: "Cap at 30 fps" },
+    ];
+    fpsOpts.forEach(o => {
+      const opt = fpsSelect.createEl("option", { value: o.val, text: o.label });
+      if (o.val === this.selectedFps) opt.selected = true;
+    });
+    fpsSelect.addEventListener("change", () => {
+      this.selectedFps = fpsSelect.value as VideoFps;
+    });
+
+    // ── CARD 3: Clip Time Range & Duration (1:1 Component Card) ────────
+    const cardRange = cardGrid.createDiv({ cls: "ytec-card" });
+    cardRange.dataset.cardId = "range";
+
+    const headerRange = cardRange.createDiv({ cls: "ytec-card-header" });
+    headerRange.createDiv({ cls: "ytec-card-title", text: "✂️ 3. Clip Duration & Time Range" });
+    headerRange.createDiv({ cls: "ytec-card-badge", text: "Range" });
+
+    const maxDur = this.preview ? this.preview.video_duration : 3600;
+    const rangeHeaderRow = cardRange.createDiv({ cls: "ytec-range-header" });
+    const rangeInfoEl = rangeHeaderRow.createDiv({ cls: "ytec-range-info" });
+
+    const fullDurBtn = rangeHeaderRow.createEl("button", {
+      cls: "ytec-preset-btn ytec-full-dur-btn",
+      text: `⚡ Full Video (${formatTime(maxDur)})`,
+    });
+
+    const sliderGroup = cardRange.createDiv({ cls: "ytec-slider-group" });
+    sliderGroup.setAttribute("style", "margin-top: 8px;");
+
+    sliderGroup.createEl("label", { cls: "ytec-hint", text: "Start Time:" });
+    const startSlider = sliderGroup.createEl("input", {
+      cls: "ytec-range-slider",
+      type: "range",
+      attr: { min: "0", max: String(maxDur), step: "1" },
+    }) as HTMLInputElement;
+    startSlider.value = String(this.editedStart);
+
+    sliderGroup.createEl("label", { cls: "ytec-hint", text: "End Time:" });
+    const endSlider = sliderGroup.createEl("input", {
+      cls: "ytec-range-slider",
+      type: "range",
+      attr: { min: "0", max: String(maxDur), step: "1" },
+    }) as HTMLInputElement;
+    endSlider.value = String(this.editedEnd);
+
+    const updateRangeUI = () => {
+      let st = parseInt(startSlider.value, 10) || 0;
+      let en = parseInt(endSlider.value, 10) || maxDur;
+
+      if (st >= en) st = Math.max(0, en - 1);
+      if (en <= st) en = Math.min(maxDur, st + 1);
+
+      this.editedStart = st;
+      this.editedEnd = en;
+
+      const dur = en - st;
+      rangeInfoEl.textContent = `Range: ${formatTime(st)} ──▶ ${formatTime(en)}  (${dur}s total)`;
+    };
+
+    updateRangeUI();
+
+    startSlider.addEventListener("input", updateRangeUI);
+    endSlider.addEventListener("input", updateRangeUI);
+
+    fullDurBtn.addEventListener("click", () => {
+      startSlider.value = "0";
+      endSlider.value = String(maxDur);
+      updateRangeUI();
+    });
+
+    // ── CARD 4: Embedded Video Preview & Action (1:1 Component Card) ────
+    const cardPreview = cardGrid.createDiv({ cls: "ytec-card" });
+    cardPreview.dataset.cardId = "preview";
+
+    const headerPreview = cardPreview.createDiv({ cls: "ytec-card-header" });
+    headerPreview.createDiv({ cls: "ytec-card-title", text: "📺 4. Embedded Video Preview & Action" });
+    headerPreview.createDiv({ cls: "ytec-card-badge", text: "Preview" });
+
+    if (this.preview) {
+      const p = this.preview;
+      const playerBox = cardPreview.createDiv({ cls: "ytec-player-box" });
+      const embedUrl = `https://www.youtube.com/embed/${p.video_id}?autoplay=0&start=${this.editedStart}`;
+      playerBox.createEl("iframe", {
+        cls: "ytec-video-iframe",
+        attr: {
+          src: embedUrl,
+          title: p.title,
+          frameborder: "0",
+          allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+          allowfullscreen: "true",
+        },
+      });
+
+      const meta = cardPreview.createDiv({ cls: "ytec-meta" });
+      meta.createEl("div", { cls: "ytec-video-title", text: p.title });
+      meta.createEl("div", { cls: "ytec-channel", text: p.channel });
+
+      const badges = cardPreview.createDiv({ cls: "ytec-badges" });
+      badges.setAttribute("style", "margin-top: 6px;");
+      badges.createEl("span", {
+        cls: p.has_transcript
+          ? "ytec-badge ytec-badge-ok"
+          : "ytec-badge ytec-badge-warn",
+        text: p.has_transcript ? "✓ Subtitles Available" : "⚠ No Subtitles",
+      });
+    } else {
+      cardPreview.createDiv({
+        cls: "ytec-hint",
+        text: "Enter a URL and click 'Fetch Video Info' above to load the live video preview player.",
+      });
+    }
+
+    const captureBtn = cardPreview.createEl("button", {
+      cls: "ytec-btn ytec-btn-primary",
+      text: "⚡ Start Capture & Generate Zip →",
+    });
+    captureBtn.setAttribute("style", "margin-top: 12px; width: 100%;");
+
+    const errorEl = contentEl.createDiv({ cls: "ytec-error ytec-hidden" });
     const showError = (msg: string) => {
       errorEl.textContent = msg;
       errorEl.removeClass("ytec-hidden");
     };
 
-    const actions = contentEl.createDiv({ cls: "ytec-actions" });
-    const captureBtn = actions.createEl("button", {
-      cls: "ytec-btn ytec-btn-primary ytec-btn-full",
-      text: "Fetch Preview →",
+    // ── Highlighting logic for 1:1 Component Cards ─────────────────────
+    const allCards = [cardUrl, cardQuality, cardRange, cardPreview];
+
+    const setActiveCard = (targetId: CardId) => {
+      this.activeCardId = targetId;
+      allCards.forEach((c) => {
+        if (c.dataset.cardId === targetId) {
+          c.addClass("is-active");
+          c.removeClass("is-muted");
+        } else {
+          c.removeClass("is-active");
+          c.addClass("is-muted");
+        }
+      });
+    };
+
+    allCards.forEach((c) => {
+      c.addEventListener("click", () => {
+        const id = c.dataset.cardId as CardId;
+        if (id) setActiveCard(id);
+      });
     });
 
-    captureBtn.addEventListener("click", async () => {
+    // Set initial card state
+    setActiveCard(this.activeCardId);
+
+    // Button event handlers
+    fetchBtn.addEventListener("click", async () => {
       errorEl.addClass("ytec-hidden");
       const url = urlInput.value.trim();
       const dur = parseInt(durInput.value, 10);
@@ -171,15 +366,29 @@ export class CaptureModal extends Modal {
 
       this.urlValue = url;
       this.durationValue = dur;
+      this.activeCardId = "preview";
 
       await this.goToPreview();
     });
 
-    urlInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") captureBtn.click();
-    });
+    captureBtn.addEventListener("click", async () => {
+      if (!this.preview) {
+        const url = urlInput.value.trim();
+        if (!url) { showError("Please enter a YouTube URL first."); return; }
+        this.urlValue = url;
+        this.durationValue = parseInt(durInput.value, 10) || 10;
+        await this.goToPreview();
+        if (!this.preview) return;
+      }
 
-    setTimeout(() => urlInput.focus(), 50);
+      this.preview.start = this.editedStart;
+      this.preview.end = this.editedEnd;
+      this.preview.duration = this.editedEnd - this.editedStart;
+      this.preview.quality = this.selectedQuality;
+      this.preview.fps = this.selectedFps;
+
+      await this.doCapture();
+    });
   }
 
   private async goToPreview(): Promise<void> {
@@ -225,7 +434,8 @@ export class CaptureModal extends Modal {
         fps: this.selectedFps,
       };
 
-      this.step = "preview";
+      this.step = "input";
+      this.activeCardId = "preview";
       this.render();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -233,165 +443,6 @@ export class CaptureModal extends Modal {
       this.step = "input";
       this.render();
     }
-  }
-
-  private renderPreview(): void {
-    const p = this.preview!;
-    const { contentEl } = this;
-
-    contentEl.createEl("h2", { cls: "ytec-title ytec-preview-title", text: "Preview & Range Selector" });
-
-    // Embedded Video Player (Allows user to play while configuring or downloading!)
-    const playerBox = contentEl.createDiv({ cls: "ytec-player-box" });
-    const embedUrl = `https://www.youtube.com/embed/${p.video_id}?autoplay=0&start=${this.editedStart}`;
-    playerBox.createEl("iframe", {
-      cls: "ytec-video-iframe",
-      attr: {
-        src: embedUrl,
-        title: p.title,
-        frameborder: "0",
-        allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-        allowfullscreen: "true",
-      },
-    });
-
-    // Video Meta
-    const meta = contentEl.createDiv({ cls: "ytec-meta" });
-    meta.createEl("div", { cls: "ytec-video-title", text: p.title });
-    meta.createEl("div", { cls: "ytec-channel", text: p.channel });
-
-    // ── Quality & FPS Selectors Row ───────────────────────────────────────────
-    const settingsBox = contentEl.createDiv({ cls: "ytec-settings-grid" });
-
-    // Quality Selector
-    const qGroup = settingsBox.createDiv({ cls: "ytec-field-group" });
-    qGroup.createEl("label", { cls: "ytec-label", text: "Quality" });
-    const qSelect = qGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
-    const qOpts: { val: VideoQuality; label: string }[] = [
-      { val: "best",  label: "Best Available (1080p+)" },
-      { val: "720p",  label: "720p HD" },
-      { val: "480p",  label: "480p SD" },
-      { val: "360p",  label: "360p Low" },
-      { val: "audio", label: "Audio Only (m4a/mp3)" },
-    ];
-    qOpts.forEach(o => {
-      const opt = qSelect.createEl("option", { value: o.val, text: o.label });
-      if (o.val === this.selectedQuality) opt.selected = true;
-    });
-    qSelect.addEventListener("change", () => {
-      this.selectedQuality = qSelect.value as VideoQuality;
-    });
-
-    // FPS Selector
-    const fpsGroup = settingsBox.createDiv({ cls: "ytec-field-group" });
-    fpsGroup.createEl("label", { cls: "ytec-label", text: "Frame Rate (FPS)" });
-    const fpsSelect = fpsGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
-    const fpsOpts: { val: VideoFps; label: string }[] = [
-      { val: "auto", label: "Auto / Best (60fps)" },
-      { val: "30",   label: "Cap at 30 fps" },
-    ];
-    fpsOpts.forEach(o => {
-      const opt = fpsSelect.createEl("option", { value: o.val, text: o.label });
-      if (o.val === this.selectedFps) opt.selected = true;
-    });
-    fpsSelect.addEventListener("change", () => {
-      this.selectedFps = fpsSelect.value as VideoFps;
-    });
-
-    // ── Interactive Range Selector & Full Duration Button ─────────────────────
-    const rangeBox = contentEl.createDiv({ cls: "ytec-range-box" });
-
-    const rangeHeader = rangeBox.createDiv({ cls: "ytec-range-header" });
-    rangeHeader.createEl("div", { cls: "ytec-label", text: "Duration & Range Selection" });
-
-    // Full Duration Button
-    const fullDurBtn = rangeHeader.createEl("button", {
-      cls: "ytec-preset-btn ytec-full-dur-btn",
-      text: `⚡ Full Video (${formatTime(p.video_duration)})`,
-    });
-
-    const rangeInfoEl = rangeBox.createDiv({ cls: "ytec-range-info" });
-
-    // Range Sliders
-    const sliderGroup = rangeBox.createDiv({ cls: "ytec-slider-group" });
-
-    // Start Slider
-    sliderGroup.createEl("label", { cls: "ytec-hint", text: "Start Time:" });
-    const startSlider = sliderGroup.createEl("input", {
-      cls: "ytec-range-slider",
-      type: "range",
-      attr: { min: "0", max: String(p.video_duration), step: "1" },
-    }) as HTMLInputElement;
-    startSlider.value = String(this.editedStart);
-
-    // End Slider
-    sliderGroup.createEl("label", { cls: "ytec-hint", text: "End Time:" });
-    const endSlider = sliderGroup.createEl("input", {
-      cls: "ytec-range-slider",
-      type: "range",
-      attr: { min: "0", max: String(p.video_duration), step: "1" },
-    }) as HTMLInputElement;
-    endSlider.value = String(this.editedEnd);
-
-    const updateRangeUI = () => {
-      let st = parseInt(startSlider.value, 10) || 0;
-      let en = parseInt(endSlider.value, 10) || p.video_duration;
-
-      if (st >= en) st = Math.max(0, en - 1);
-      if (en <= st) en = Math.min(p.video_duration, st + 1);
-
-      this.editedStart = st;
-      this.editedEnd = en;
-
-      const dur = en - st;
-      rangeInfoEl.textContent = `Clip Range: ${formatTime(st)} ──▶ ${formatTime(en)}  (${dur}s total)`;
-    };
-
-    updateRangeUI();
-
-    startSlider.addEventListener("input", updateRangeUI);
-    endSlider.addEventListener("input", updateRangeUI);
-
-    fullDurBtn.addEventListener("click", () => {
-      startSlider.value = "0";
-      endSlider.value = String(p.video_duration);
-      updateRangeUI();
-    });
-
-    // Badges
-    const badges = contentEl.createDiv({ cls: "ytec-badges" });
-    badges.createEl("span", {
-      cls: p.has_transcript
-        ? "ytec-badge ytec-badge-ok"
-        : "ytec-badge ytec-badge-warn",
-      text: p.has_transcript ? "✓ Subtitles Available" : "⚠ No Subtitles",
-    });
-
-    // Actions
-    const actions = contentEl.createDiv({ cls: "ytec-actions ytec-actions-row" });
-
-    const backBtn = actions.createEl("button", {
-      cls: "ytec-btn ytec-btn-ghost",
-      text: "← Back",
-    });
-    backBtn.addEventListener("click", () => {
-      this.step = "input";
-      this.render();
-    });
-
-    const confirmBtn = actions.createEl("button", {
-      cls: "ytec-btn ytec-btn-primary",
-      text: "Start Capture →",
-    });
-    confirmBtn.addEventListener("click", async () => {
-      this.preview!.start = this.editedStart;
-      this.preview!.end = this.editedEnd;
-      this.preview!.duration = this.editedEnd - this.editedStart;
-      this.preview!.quality = this.selectedQuality;
-      this.preview!.fps = this.selectedFps;
-
-      await this.doCapture();
-    });
   }
 
   private async doCapture(): Promise<void> {
@@ -567,7 +618,7 @@ export class CaptureModal extends Modal {
       } else {
         new Notice(`Capture failed: ${msg}`, 12_000);
       }
-      this.step = "preview";
+      this.step = "input";
       this.render();
     } finally {
       try {
@@ -710,6 +761,7 @@ export class CaptureModal extends Modal {
       this.result = null;
       this.preview = null;
       this.step = "input";
+      this.activeCardId = "url";
       this.render();
     });
 
