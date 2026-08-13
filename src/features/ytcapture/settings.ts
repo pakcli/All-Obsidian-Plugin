@@ -5,7 +5,7 @@ import { App, Setting } from "obsidian";
 import type PakCLIPlugin from "../../main";
 import { checkYTCaptureDeps } from "./utils/healthCheck";
 import { SetupModal } from "./ui/SetupModal";
-import { resolveBinary, findWinGetBinary } from "./utils/process";
+import { findWinGetBinary } from "./utils/process";
 import { downloadYtDlpDirect } from "./utils/downloader";
 
 function statusIcon(ok: boolean): string {

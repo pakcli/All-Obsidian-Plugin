@@ -48,10 +48,10 @@ export class YTEvidenceSettingTab extends PluginSettingTab {
 
     const setupSection = containerEl.createDiv({ cls: "ytec-settings-section" });
 
-    setupSection.createEl("h2", {
-      cls: "ytec-settings-heading",
-      text: "⚙️  Setup & Dependencies",
-    });
+    new Setting(setupSection)
+      .setName("⚙️ Setup & Dependencies")
+      .setHeading();
+
     setupSection.createEl("p", {
       cls: "ytec-settings-desc",
       text: "yt-dlp and ffmpeg must be installed on your system for the plugin to work.",
@@ -121,10 +121,10 @@ export class YTEvidenceSettingTab extends PluginSettingTab {
     // ══════════════════════════════════════════════════════════════════════════
 
     const pathsSection = containerEl.createDiv({ cls: "ytec-settings-section" });
-    pathsSection.createEl("h2", {
-      cls: "ytec-settings-heading",
-      text: "🔧  Tool Paths",
-    });
+    new Setting(pathsSection)
+      .setName("🔧 Tool Paths")
+      .setHeading();
+
     pathsSection.createEl("p", {
       cls: "ytec-settings-desc",
       text: 'Leave as "yt-dlp" / "ffmpeg" if they are on your system PATH. Set a full path (e.g. C:\\Tools\\yt-dlp.exe) if not.',
@@ -161,10 +161,9 @@ export class YTEvidenceSettingTab extends PluginSettingTab {
     // ══════════════════════════════════════════════════════════════════════════
 
     const captureSection = containerEl.createDiv({ cls: "ytec-settings-section" });
-    captureSection.createEl("h2", {
-      cls: "ytec-settings-heading",
-      text: "🎬  Capture Settings",
-    });
+    new Setting(captureSection)
+      .setName("🎬 Capture Settings")
+      .setHeading();
 
     new Setting(captureSection)
       .setName("Output folder")

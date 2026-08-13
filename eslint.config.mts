@@ -29,10 +29,10 @@ export default tseslint.config(
 		rules: {
 			"no-undef": "off",
 			"obsidianmd/ui/sentence-case": "off",
-			"obsidianmd/no-static-styles-assignment": "off",
+			"obsidianmd/no-static-styles-assignment": "error",
 			"obsidianmd/no-tfile-tfolder-cast": "off",
 			"obsidianmd/hardcoded-config-path": "off",
-			"obsidianmd/settings-tab/no-manual-html-headings": "off",
+			"obsidianmd/settings-tab/no-manual-html-headings": "error",
 			"@typescript-eslint/no-base-to-string": "off",
 			"@typescript-eslint/no-deprecated": "off",
 			"@typescript-eslint/no-misused-promises": "off",

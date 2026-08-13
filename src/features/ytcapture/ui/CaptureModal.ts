@@ -28,7 +28,7 @@ import {
   buildNotesMarkdown,
 } from "../utils/fileHelpers";
 import { buildZip } from "../utils/zipBuilder";
-import { getIncrementalCaptureHistory, CaptureHistoryItem } from "../utils/historyCache";
+import { getIncrementalCaptureHistory } from "../utils/historyCache";
 import { parseYtDlpProgress } from "../utils/progressParser";
 import { YTCaptureBackgroundManager } from "../utils/backgroundManager";
 
@@ -832,7 +832,7 @@ export class CaptureModal extends Modal {
     // Visual Progress Bar Container
     const progressTrack = wrap.createDiv({ cls: "ytec-progress-track" });
     this.progressBarEl = progressTrack.createDiv({ cls: "ytec-progress-fill" });
-    this.progressBarEl.style.width = "0%";
+    this.progressBarEl.setCssStyles({ width: "0%" });
 
     // Stats Info Label
     this.progressStatsEl = wrap.createDiv({
@@ -869,7 +869,7 @@ export class CaptureModal extends Modal {
 
   private updateProgressBar(info: ProgressInfo): void {
     if (this.progressBarEl) {
-      this.progressBarEl.style.width = `${info.percent}%`;
+      this.progressBarEl.setCssStyles({ width: `${info.percent}%` });
     }
     if (this.progressStatsEl) {
       const stats = [

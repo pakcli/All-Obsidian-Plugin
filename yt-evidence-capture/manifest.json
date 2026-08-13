@@ -2,7 +2,7 @@
   "id": "yt-evidence-capture",
   "name": "YT Evidence Capture",
   "version": "1.0.0",
-  "minAppVersion": "1.4.0",
+  "minAppVersion": "1.8.0",
   "description": "Capture YouTube video clips as evidence — downloads a short clip, thumbnail, and transcript into a .zip archive with structured metadata.",
   "author": "pakcli",
   "authorUrl": "",

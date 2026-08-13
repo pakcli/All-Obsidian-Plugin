@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App } from "obsidian";
 import type PakCLIPlugin from "../../../main";
 
 export interface CaptureHistoryItem {

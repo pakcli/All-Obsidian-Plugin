@@ -1,14 +1,15 @@
 {
     "name":  "pakcli-suite",
-    "version":  "1.1.5",
+    "version":  "1.1.6",
     "description":  "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, Tablite CSV Editor \u0026 SQLSeal, and Leaflet bases.",
     "main":  "dist/main.js",
     "type":  "module",
     "scripts":  {
                     "dev":  "node --no-deprecation esbuild.config.mjs",
                     "build":  "tsc -noEmit -skipLibCheck \u0026\u0026 node --no-deprecation esbuild.config.mjs production",
+                    "check":  "node scripts/release-check.mjs",
                     "version":  "node version-bump.mjs \u0026\u0026 git add manifest.json versions.json",
-                    "publish":  "powershell -ExecutionPolicy Bypass -File ./start_publish.ps1",
+                    "publish":  "npm run check \u0026\u0026 powershell -ExecutionPolicy Bypass -File ./start_publish.ps1",
                     "lint":  "eslint ."
                 },
     "keywords":  [

@@ -201,20 +201,10 @@ export class CodeblockScaler {
 					renderAsciiSvg(text, pre as HTMLElement);
 				}
 			} else if (behavior === 'wrap') {
-				pre.setCssProps({
-					'white-space': 'pre-wrap',
-					'word-break': 'break-all',
-					'overflow-x': 'hidden'
-				});
+				pre.addClass('pakcli-codeblock-wrap');
 			} else {
 				// Flowclip: Each pre is INDIVIDUAL slider!
-				pre.setCssProps({
-					'white-space': 'pre',
-					'word-break': 'normal',
-					'overflow-x': 'auto',
-					'display': 'block',
-					'max-width': '100%'
-				});
+				pre.addClass('pakcli-codeblock-flowclip');
 			}
 		});
 
@@ -244,12 +234,7 @@ export class CodeblockScaler {
 
 			if (behavior === 'wrap') {
 				currentBlockLines.forEach((line) => {
-					line.setCssProps({
-						'white-space': 'pre-wrap',
-						'word-break': 'break-all',
-						'overflow-wrap': 'anywhere',
-						'overflow-x': 'hidden'
-					});
+					line.addClass('pakcli-codeblock-wrap');
 				});
 			} else {
 				// FLOWCLIP: 1 CODEBLOCK = 1 INDIVIDUAL SLIDER!
@@ -260,15 +245,6 @@ export class CodeblockScaler {
 					slider = parent.createEl('div', {
 						cls: 'pakcli-codeblock-slider',
 					});
-					slider.setCssProps({
-						'display': 'block',
-						'max-width': '100%',
-						'overflow-x': 'auto',
-						'overflow-y': 'hidden',
-						'margin': '4px 0',
-						'padding': '0',
-						'box-sizing': 'border-box'
-					});
 					parent.insertBefore(slider, firstLine);
 					currentBlockLines.forEach((line) => {
 						slider.appendChild(line);
@@ -276,13 +252,7 @@ export class CodeblockScaler {
 				}
 
 				currentBlockLines.forEach((line) => {
-					line.setCssProps({
-						'white-space': 'pre',
-						'word-break': 'normal',
-						'word-wrap': 'normal',
-						'overflow-x': 'visible',
-						'overflow-y': 'visible'
-					});
+					line.addClass('pakcli-codeblock-line-flowclip');
 				});
 			}
 
