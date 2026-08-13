@@ -5,7 +5,7 @@
 import { App, Modal, requestUrl } from "obsidian";
 import type PakCLIPlugin from "../../../main";
 import { runCommand, ensureWinGetInPath } from "../utils/process";
-import { ensureYtDlpAvailable, downloadYtDlpDirect } from "../utils/downloader";
+import { ensureYtDlpAvailable, downloadYtDlpDirect, ensureFfmpegAvailable, downloadFfmpegDirect } from "../utils/downloader";
 
 type SetupStep = "confirm" | "running" | "done";
 
@@ -167,9 +167,11 @@ export class SetupModal extends Modal {
     this.setStatus("Setting up ffmpeg…");
     this.addLog("Checking ffmpeg status…");
 
+    let ffmpegOk = false;
     try {
       const v = await runCommand(this.plugin.settings.ffmpegPath, ["-version"]);
       this.addLog(`✓ ffmpeg ready (${v.split("\n")[0].trim()})`);
+      ffmpegOk = true;
     } catch {
       this.addLog("Attempting winget install for ffmpeg…");
       try {
@@ -178,21 +180,19 @@ export class SetupModal extends Modal {
           "-e", "--accept-source-agreements", "--accept-package-agreements"
         ], { onStderr: (d) => this.addLog(d.trim()) });
 
-        const v = await runCommand(this.plugin.settings.ffmpegPath, ["-version"]);
-        this.addLog(`✓ ffmpeg installed successfully (${v.split("\n")[0].trim()})`);
+        ffmpegOk = await ensureFfmpegAvailable(this.plugin, (msg) => this.addLog(msg));
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         this.addLog(`⚠ ffmpeg winget note: ${msg}`);
-        // Check if ffmpeg is on system PATH anyway
-        try {
-          const v = await runCommand("ffmpeg", ["-version"]);
-          this.plugin.settings.ffmpegPath = "ffmpeg";
-          await this.plugin.saveSettings();
-          this.addLog(`✓ ffmpeg found on PATH (${v.split("\n")[0].trim()})`);
-        } catch {
-          errors.push(`ffmpeg issue: Could not run ffmpeg. Please install ffmpeg or set path in settings.`);
-        }
       }
+    }
+
+    if (!ffmpegOk) {
+      ffmpegOk = await ensureFfmpegAvailable(this.plugin, (msg) => this.addLog(msg));
+    }
+
+    if (!ffmpegOk) {
+      errors.push(`ffmpeg issue: Could not run or download ffmpeg. Check plugin logs.`);
     }
 
     this.addLog("");

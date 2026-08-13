@@ -473,16 +473,54 @@ export class CaptureModal extends Modal {
         p.quality,
         p.fps,
         (msg) => {
-          const line = msg.trim();
-          if (line) {
+          const lines = msg.split(/[\r\n]+/);
+          for (const rawLine of lines) {
+            const line = rawLine.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").trim();
+            if (!line) continue;
+
             const prog = parseYtDlpProgress(line);
             if (prog) {
               this.updateProgressBar(prog);
+              if (prog.percent >= 100) {
+                this.setStatus("Finalizing clip with ffmpeg (merging / cutting)...");
+              } else {
+                this.setStatus("Downloading clip…");
+              }
               if (this.currentTaskId) {
                 this.bgManager.updateTaskProgress(this.currentTaskId, prog.percent, prog);
               }
-            } else if (line.includes("[download]") || line.includes("[ffmpeg]")) {
-              this.addLog(line.substring(0, 120));
+            } else {
+              if (
+                line.startsWith("[youtube]") ||
+                line.startsWith("[info]") ||
+                line.startsWith("[download]") ||
+                line.startsWith("[ffmpeg]") ||
+                line.startsWith("[Merger]") ||
+                line.startsWith("[download-sections]") ||
+                line.startsWith("[ExtractAudio]") ||
+                line.startsWith("[VideoConvertor]") ||
+                line.startsWith("[fixup:")
+              ) {
+                this.addLog(line.substring(0, 120));
+                if (line.includes("[youtube]") || line.includes("[info]")) {
+                  if (!this.progressStatsEl?.textContent?.includes("%") || this.progressStatsEl.textContent.startsWith("0%")) {
+                    this.setStatus("Connecting to YouTube & initializing format...");
+                    if (this.progressStatsEl) {
+                      this.progressStatsEl.textContent = "0% (Connecting & extracting streams...)";
+                    }
+                  }
+                } else if (
+                  line.includes("[Merger]") ||
+                  line.includes("[ffmpeg]") ||
+                  line.includes("[download-sections]") ||
+                  line.includes("[fixup:")
+                ) {
+                  this.setStatus("Finalizing clip with ffmpeg (merging / cutting keyframes)...");
+                  if (this.progressStatsEl) {
+                    this.progressStatsEl.textContent = "100% | Finalizing clip with ffmpeg...";
+                  }
+                }
+              }
             }
           }
         }
@@ -546,6 +584,16 @@ export class CaptureModal extends Modal {
           ? formatTranscriptForMarkdown(transcriptEntries, true)
           : "_No transcript available._";
 
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const safeTitle = sanitizeFilename(p.title);
+      const baseName = `${safeTitle}_${dateStr}`;
+      const outputFolder = this.plugin.settings.ytCaptureOutputFolder || "YT Captures";
+
+      const mp4Name = `${baseName}.mp4`;
+      const thumbName = `${baseName}_thumb.jpg`;
+      const noteName = `${baseName}.md`;
+      const zipName = `${baseName}.zip`;
+
       const notesContent = buildNotesMarkdown({
         title: p.title,
         url: targetUrl,
@@ -563,6 +611,10 @@ export class CaptureModal extends Modal {
         clipTranscript: clipTranscriptText,
         description: p.description,
         fullTranscript: fullTranscriptText,
+        mediaEmbeds: {
+          mp4Filename: mp4Name,
+          thumbFilename: thumbName,
+        },
       });
 
       this.setStatus("Creating zip archive…");
@@ -574,11 +626,6 @@ export class CaptureModal extends Modal {
       this.addLog("✓ Zip archive created");
 
       this.setStatus("Saving to vault…");
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const safeTitle = sanitizeFilename(p.title);
-      const filename = `${safeTitle}_${dateStr}.zip`;
-      const outputFolder = this.plugin.settings.ytCaptureOutputFolder || "YT Captures";
-      const vaultFilePath = `${outputFolder}/${filename}`;
 
       try {
         await this.app.vault.createFolder(outputFolder);
@@ -586,26 +633,66 @@ export class CaptureModal extends Modal {
         // Folder exists
       }
 
-      const existing = this.app.vault.getAbstractFileByPath(vaultFilePath);
+      // 1. Save .mp4 video file directly to vault
+      const mp4VaultPath = `${outputFolder}/${mp4Name}`;
+      const clipBuffer = fs.readFileSync(actualClipPath);
+      const clipArrayBuffer = clipBuffer.buffer.slice(
+        clipBuffer.byteOffset,
+        clipBuffer.byteOffset + clipBuffer.byteLength
+      ) as ArrayBuffer;
+      const existingMp4 = this.app.vault.getAbstractFileByPath(mp4VaultPath);
+      if (existingMp4 instanceof TFile) {
+        await this.app.vault.modifyBinary(existingMp4, clipArrayBuffer);
+      } else {
+        await this.app.vault.createBinary(mp4VaultPath, clipArrayBuffer);
+      }
+      this.addLog(`✓ Saved mp4: ${mp4VaultPath}`);
+
+      // 2. Save thumbnail image to vault
+      const thumbVaultPath = `${outputFolder}/${thumbName}`;
+      const thumbArrayBuf = thumbBuffer.buffer.slice(
+        thumbBuffer.byteOffset,
+        thumbBuffer.byteOffset + thumbBuffer.byteLength
+      ) as ArrayBuffer;
+      const existingThumb = this.app.vault.getAbstractFileByPath(thumbVaultPath);
+      if (existingThumb instanceof TFile) {
+        await this.app.vault.modifyBinary(existingThumb, thumbArrayBuf);
+      } else {
+        await this.app.vault.createBinary(thumbVaultPath, thumbArrayBuf);
+      }
+      this.addLog(`✓ Saved thumbnail: ${thumbVaultPath}`);
+
+      // 3. Save Markdown note with embeds to vault
+      const noteVaultPath = `${outputFolder}/${noteName}`;
+      const existingNote = this.app.vault.getAbstractFileByPath(noteVaultPath);
+      if (existingNote instanceof TFile) {
+        await this.app.vault.modify(existingNote, notesContent);
+      } else {
+        await this.app.vault.create(noteVaultPath, notesContent);
+      }
+      this.addLog(`✓ Saved note: ${noteVaultPath}`);
+
+      // 4. Save Zip archive to vault
+      const zipVaultPath = `${outputFolder}/${zipName}`;
       const zipArrayBuffer = zipBuffer.buffer.slice(
         zipBuffer.byteOffset,
         zipBuffer.byteOffset + zipBuffer.byteLength
       ) as ArrayBuffer;
-      if (existing instanceof TFile) {
-        await this.app.vault.modifyBinary(existing, zipArrayBuffer);
+      const existingZip = this.app.vault.getAbstractFileByPath(zipVaultPath);
+      if (existingZip instanceof TFile) {
+        await this.app.vault.modifyBinary(existingZip, zipArrayBuffer);
       } else {
-        await this.app.vault.createBinary(vaultFilePath, zipArrayBuffer);
+        await this.app.vault.createBinary(zipVaultPath, zipArrayBuffer);
       }
-
-      this.addLog(`✓ Saved: ${vaultFilePath}`);
+      this.addLog(`✓ Saved zip: ${zipVaultPath}`);
 
       const adapter = this.app.vault.adapter as FileSystemAdapter;
       const fsDirPath = path.join(adapter.getBasePath(), outputFolder);
 
-      this.result = { filename, vaultPath: vaultFilePath, fsDirPath };
+      this.result = { filename: mp4Name, vaultPath: noteVaultPath, fsDirPath };
 
       if (this.currentTaskId) {
-        this.bgManager.completeTask(this.currentTaskId, p.title, vaultFilePath);
+        this.bgManager.completeTask(this.currentTaskId, p.title, noteVaultPath);
       }
 
       this.step = "done";

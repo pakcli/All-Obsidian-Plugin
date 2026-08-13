@@ -9,7 +9,9 @@ import * as path from "path";
 export interface RunOptions {
   cwd?: string;
   maxBuffer?: number;
+  onStdout?: (data: string) => void;
   onStderr?: (data: string) => void;
+  onOutput?: (data: string) => void;
 }
 
 /**
@@ -129,11 +131,17 @@ export function runCommand(
     let stdout = "";
     let stderr = "";
 
-    child.stdout?.on("data", (d: Buffer) => { stdout += d.toString(); });
+    child.stdout?.on("data", (d: Buffer) => {
+      const s = d.toString();
+      stdout += s;
+      opts.onStdout?.(s);
+      opts.onOutput?.(s);
+    });
     child.stderr?.on("data", (d: Buffer) => {
       const s = d.toString();
       stderr += s;
       opts.onStderr?.(s);
+      opts.onOutput?.(s);
     });
 
     child.on("error", (err: Error & { code?: string }) => {
@@ -142,11 +150,17 @@ export function runCommand(
         const shellChild = spawn(resolvedCmd, args, { cwd: opts.cwd, env: process.env, shell: true });
         let sOut = "";
         let sErr = "";
-        shellChild.stdout?.on("data", (d: Buffer) => { sOut += d.toString(); });
+        shellChild.stdout?.on("data", (d: Buffer) => {
+          const s = d.toString();
+          sOut += s;
+          opts.onStdout?.(s);
+          opts.onOutput?.(s);
+        });
         shellChild.stderr?.on("data", (d: Buffer) => {
           const s = d.toString();
           sErr += s;
           opts.onStderr?.(s);
+          opts.onOutput?.(s);
         });
         shellChild.on("error", (e: Error) => reject(new Error(`Could not start "${resolvedCmd}": ${e.message}`)));
         shellChild.on("close", (code) => {

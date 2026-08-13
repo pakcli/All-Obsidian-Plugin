@@ -5,7 +5,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { requestUrl } from "obsidian";
 import type { YTCaptureSettings, YtDlpInfo, VideoQuality, VideoFps } from "../types";
-import { runCommand } from "./process";
+import { runCommand, resolveBinary } from "./process";
 
 export async function fetchVideoInfo(
   url: string,
@@ -15,6 +15,7 @@ export async function fetchVideoInfo(
     "--dump-json",
     "--skip-download",
     "--no-playlist",
+    "--no-colors",
     url,
   ]);
 
@@ -48,7 +49,7 @@ export async function downloadClip(
   fps: VideoFps = "auto",
   onProgress?: (msg: string) => void
 ): Promise<void> {
-  let formatStr = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
+  let formatStr = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/18/best[ext=mp4]/best";
 
   if (quality === "audio") {
     formatStr = "bestaudio[ext=m4a]/bestaudio/best";
@@ -63,10 +64,13 @@ export async function downloadClip(
     if (fps === "60") maxFps = "[fps<=60]";
     else if (fps === "30") maxFps = "[fps<=30]";
 
-    formatStr = `bestvideo${maxH}${maxFps}[ext=mp4]+bestaudio[ext=m4a]/best${maxH}${maxFps}[ext=mp4]/best`;
+    formatStr = `bestvideo${maxH}${maxFps}[ext=mp4]+bestaudio[ext=m4a]/18/best${maxH}${maxFps}[ext=mp4]/best`;
   }
 
   const args: string[] = [
+    "--newline",
+    "--extractor-args",
+    "youtube:player_client=mweb,android,web",
     "--download-sections",
     `*${start}-${end}`,
     "--force-keyframes-at-cuts",
@@ -75,14 +79,18 @@ export async function downloadClip(
     "--merge-output-format",
     "mp4",
     "--no-playlist",
+    "--no-colors",
     "-o",
     outputPath,
     url,
   ];
-  if (settings.ffmpegPath && settings.ffmpegPath !== "ffmpeg") {
-    args.unshift("--ffmpeg-location", settings.ffmpegPath);
+
+  const ffmpegCmd = resolveBinary(settings.ffmpegPath || "ffmpeg");
+  if (ffmpegCmd) {
+    args.unshift("--ffmpeg-location", ffmpegCmd);
   }
-  await runCommand(settings.ytDlpPath, args, { onStderr: onProgress });
+
+  await runCommand(settings.ytDlpPath, args, { onOutput: onProgress });
 }
 
 export async function downloadSubtitles(
@@ -90,12 +98,16 @@ export async function downloadSubtitles(
   outputDir: string,
   settings: YTCaptureSettings
 ): Promise<void> {
+  const ffmpegCmd = resolveBinary(settings.ffmpegPath || "ffmpeg");
+  const ffmpegArgs = ffmpegCmd ? ["--ffmpeg-location", ffmpegCmd] : [];
+
   await runCommand(
     settings.ytDlpPath,
     [
+      ...ffmpegArgs,
       "--skip-download", "--write-subs", "--write-auto-subs",
       "--sub-langs", "en.*,en", "--sub-format", "json3",
-      "--no-playlist", "-o", path.join(outputDir, "%(id)s.%(ext)s"),
+      "--no-playlist", "--no-colors", "-o", path.join(outputDir, "%(id)s.%(ext)s"),
       url,
     ]
   ).catch(() => {/* silently ignore */});
@@ -105,9 +117,10 @@ export async function downloadSubtitles(
     await runCommand(
       settings.ytDlpPath,
       [
+        ...ffmpegArgs,
         "--skip-download", "--write-subs", "--write-auto-subs",
         "--sub-langs", "all", "--sub-format", "json3",
-        "--no-playlist", "-o", path.join(outputDir, "%(id)s.%(ext)s"),
+        "--no-playlist", "--no-colors", "-o", path.join(outputDir, "%(id)s.%(ext)s"),
         url,
       ]
     ).catch(() => {/* ignore */});

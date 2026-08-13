@@ -7,13 +7,14 @@
 import type { ProgressInfo } from "../types";
 
 export function parseYtDlpProgress(line: string): ProgressInfo | null {
-  const clean = line.trim();
+  // Strip ANSI color escape codes and trim
+  const clean = line.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").trim();
   if (!clean.includes("[download]") && !clean.includes("%")) {
     return null;
   }
 
   // Matches: 45.2% of 12.35MiB at 2.15MiB/s ETA 00:05
-  // or: 45.2% of ~12.35MiB at 2.15MiB/s ETA 00:05
+  // or: 45.2% of ~ 12.35MiB at 2.15MiB/s ETA 00:05
   const percentMatch = clean.match(/([\d.]+)%/);
   if (!percentMatch) return null;
 
@@ -21,15 +22,15 @@ export function parseYtDlpProgress(line: string): ProgressInfo | null {
   if (isNaN(percent)) return null;
 
   let total = "";
-  const ofMatch = clean.match(/of\s+~?([\d.]+\s*\w+)/i);
+  const ofMatch = clean.match(/of\s+~?\s*([\d.]+\s*\w+)/i);
   if (ofMatch) total = ofMatch[1];
 
   let speed = "";
-  const speedMatch = clean.match(/at\s+([\d.]+\s*\w+\/s)/i);
+  const speedMatch = clean.match(/at\s+([\d.]+\s*\w+\/s|Unknown\s*speed)/i);
   if (speedMatch) speed = speedMatch[1];
 
   let eta = "";
-  const etaMatch = clean.match(/ETA\s+([\d:]+)/i);
+  const etaMatch = clean.match(/ETA\s+([\d:]+|Unknown)/i);
   if (etaMatch) eta = etaMatch[1];
 
   return {

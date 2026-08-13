@@ -116,3 +116,77 @@ export async function ensureYtDlpAvailable(
     return false;
   }
 }
+
+/**
+ * Download ffmpeg binary directly into plugin directory using PowerShell
+ */
+export async function downloadFfmpegDirect(
+  plugin: PakCLIPlugin,
+  onProgress?: DownloadProgress
+): Promise<string> {
+  const binDir = getPluginBinDir(plugin);
+  const targetExe = path.join(binDir, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+
+  onProgress?.("Downloading ffmpeg binary via PowerShell…");
+
+  if (process.platform === "win32") {
+    const escapedBinDir = binDir.replace(/\\/g, "\\\\");
+    const script = `$tempZip = "$env:TEMP\\ffmpeg_temp.zip"; Invoke-WebRequest -Uri "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip" -OutFile $tempZip -UseBasicParsing; Expand-Archive -Path $tempZip -DestinationPath "${escapedBinDir}" -Force; Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue`;
+
+    await runCommand("powershell", ["-NoProfile", "-Command", script], {
+      onStderr: (d) => onProgress?.(d.trim()),
+    });
+  } else {
+    throw new Error("Direct ffmpeg download is currently supported on Windows.");
+  }
+
+  if (!fs.existsSync(targetExe)) {
+    throw new Error("ffmpeg binary was not found after extraction.");
+  }
+
+  onProgress?.(`✓ Saved ffmpeg to: ${targetExe}`);
+
+  plugin.settings.ffmpegPath = targetExe;
+  await plugin.saveSettings();
+
+  return targetExe;
+}
+
+/**
+ * Ensure ffmpeg is available — tries PATH/winget first, falls back to direct download
+ */
+export async function ensureFfmpegAvailable(
+  plugin: PakCLIPlugin,
+  onProgress?: DownloadProgress
+): Promise<boolean> {
+  ensureWinGetInPath();
+
+  try {
+    const v = await runCommand(plugin.settings.ffmpegPath, ["-version"]);
+    onProgress?.(`✓ ffmpeg is ready (${v.split("\n")[0].trim()})`);
+    return true;
+  } catch {
+    // Not working yet
+  }
+
+  try {
+    const v = await runCommand("ffmpeg", ["-version"]);
+    plugin.settings.ffmpegPath = "ffmpeg";
+    await plugin.saveSettings();
+    onProgress?.(`✓ ffmpeg is ready on system PATH (${v.split("\n")[0].trim()})`);
+    return true;
+  } catch {
+    // Not in PATH
+  }
+
+  try {
+    const targetExe = await downloadFfmpegDirect(plugin, onProgress);
+    const v = await runCommand(targetExe, ["-version"]);
+    onProgress?.(`✓ Direct downloaded ffmpeg verified (${v.split("\n")[0].trim()})`);
+    return true;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    onProgress?.(`✗ Direct ffmpeg download failed: ${msg}`);
+    return false;
+  }
+}

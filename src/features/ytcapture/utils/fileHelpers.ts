@@ -35,9 +35,16 @@ interface NoteParams {
   clipTranscript: string;
   description: string;
   fullTranscript: string;
+  mediaEmbeds?: {
+    mp4Filename: string;
+    thumbFilename: string;
+  };
 }
 
 export function buildNotesMarkdown(p: NoteParams): string {
+  const mp4Name = p.mediaEmbeds?.mp4Filename || "clip.mp4";
+  const thumbName = p.mediaEmbeds?.thumbFilename || "thumb.jpg";
+
   const frontmatter = [
     "---",
     `title: "${p.title.replace(/"/g, '\\"')}"`,
@@ -51,16 +58,26 @@ export function buildNotesMarkdown(p: NoteParams): string {
     `clip_duration_seconds: ${p.clipDuration}`,
     `view_count: ${p.viewCount}`,
     `tags: [${p.tags.map((t) => `"${t}"`).join(", ")}]`,
-    `clip_file: "clip.mp4"`,
-    `thumbnail_file: "thumb.jpg"`,
+    `clip_file: "${mp4Name}"`,
+    `thumbnail_file: "${thumbName}"`,
     "---",
   ].join("\n");
+
+  const embeds = p.mediaEmbeds
+    ? [
+        `![[${mp4Name}]]`,
+        "",
+        `![[${thumbName}]]`,
+        "",
+      ]
+    : [];
 
   return [
     frontmatter,
     "",
     `# ${p.title}`,
     "",
+    ...embeds,
     `## Clip transcript (${formatTime(p.clipStart)}–${formatTime(p.clipEnd)})`,
     "",
     p.clipTranscript,
