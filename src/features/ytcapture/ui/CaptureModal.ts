@@ -132,8 +132,7 @@ export class CaptureModal extends Modal {
       text: "Include ?t= for start timestamp. Edits take effect immediately.",
     });
 
-    const durGroup = cardUrl.createDiv({ cls: "ytec-field-group" });
-    durGroup.setCssProps({ "margin-top": "10px" });
+    const durGroup = cardUrl.createDiv({ cls: "ytec-field-group ytec-mt-10" });
     durGroup.createEl("label", { cls: "ytec-label", text: "Default Clip Duration (seconds)" });
     const durRow = durGroup.createDiv({ cls: "ytec-dur-row" });
     const durInput = durRow.createEl("input", {
@@ -158,10 +157,9 @@ export class CaptureModal extends Modal {
     }
 
     const fetchBtn = cardUrl.createEl("button", {
-      cls: "ytec-btn ytec-btn-primary",
+      cls: "ytec-btn ytec-btn-primary ytec-w-full ytec-mt-10",
       text: "Fetch Video Info →",
     });
-    fetchBtn.setCssProps({ "margin-top": "10px", "width": "100%" });
 
     // ── CARD 2: Quality & Format (1:1 Component Card) ──────────────────
     const cardQuality = cardGrid.createDiv({ cls: "ytec-card" });
@@ -206,8 +204,7 @@ export class CaptureModal extends Modal {
       this.selectedFps = fpsSelect.value as VideoFps;
     });
 
-    const presetGroup = settingsGrid.createDiv({ cls: "ytec-field-group" });
-    presetGroup.setCssProps({ "grid-column": "span 2", "margin-top": "6px" });
+    const presetGroup = settingsGrid.createDiv({ cls: "ytec-field-group ytec-col-span-2 ytec-mt-6" });
     presetGroup.createEl("label", { cls: "ytec-label", text: "Metadata Preset (Latest Used at Top)" });
     const presetSelect = presetGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
 
@@ -246,8 +243,7 @@ export class CaptureModal extends Modal {
       text: `⚡ Full Video (${formatTime(maxDur)})`,
     });
 
-    const sliderGroup = cardRange.createDiv({ cls: "ytec-slider-group" });
-    sliderGroup.setCssProps({ "margin-top": "8px" });
+    const sliderGroup = cardRange.createDiv({ cls: "ytec-slider-group ytec-mt-8" });
 
     sliderGroup.createEl("label", { cls: "ytec-hint", text: "Start Time:" });
     const startSlider = sliderGroup.createEl("input", {
@@ -317,8 +313,7 @@ export class CaptureModal extends Modal {
       meta.createEl("div", { cls: "ytec-video-title", text: p.title });
       meta.createEl("div", { cls: "ytec-channel", text: p.channel });
 
-      const badges = cardPreview.createDiv({ cls: "ytec-badges" });
-      badges.setCssProps({ "margin-top": "6px" });
+      const badges = cardPreview.createDiv({ cls: "ytec-badges ytec-mt-6" });
       badges.createEl("span", {
         cls: p.has_transcript
           ? "ytec-badge ytec-badge-ok"
@@ -333,10 +328,9 @@ export class CaptureModal extends Modal {
     }
 
     const captureBtn = cardPreview.createEl("button", {
-      cls: "ytec-btn ytec-btn-primary",
+      cls: "ytec-btn ytec-btn-primary ytec-w-full ytec-mt-12",
       text: "⚡ Start Capture & Generate Zip →",
     });
-    captureBtn.setCssProps({ "margin-top": "12px", "width": "100%" });
 
     const errorEl = contentEl.createDiv({ cls: "ytec-error ytec-hidden" });
     const showError = (msg: string) => {
@@ -345,14 +339,12 @@ export class CaptureModal extends Modal {
     };
 
     // ── CARD 5: History & Past Captures (Incremental JSON Cache) ─────
-    const cardHistory = contentEl.createDiv({ cls: "ytec-card ytec-muted" });
-    cardHistory.setCssProps({ "margin-top": "16px" });
+    const cardHistory = contentEl.createDiv({ cls: "ytec-card ytec-muted ytec-mt-16" });
     const headerHistory = cardHistory.createDiv({ cls: "ytec-card-header" });
     headerHistory.createDiv({ cls: "ytec-card-title", text: "📜 Past Captures History" });
     const historyBadge = headerHistory.createDiv({ cls: "ytec-card-badge", text: "Incremental Cache" });
 
     const historyContainer = cardHistory.createDiv({ cls: "ytec-history-container" });
-    historyContainer.setCssProps({ "max-height": "180px", "overflow-y": "auto", "margin-top": "8px" });
     historyContainer.createDiv({ cls: "ytec-hint", text: "Scanning history cache…" });
 
     getIncrementalCaptureHistory(this.app, this.plugin).then((historyItems) => {
@@ -364,26 +356,13 @@ export class CaptureModal extends Modal {
         return;
       }
 
-      const listEl = historyContainer.createEl("div");
-      listEl.setCssProps({ "display": "flex", "flex-direction": "column", "gap": "6px" });
+      const listEl = historyContainer.createEl("div", { cls: "ytec-history-list" });
       historyItems.slice(0, 10).forEach((item) => {
-        const row = listEl.createDiv();
-        row.setCssProps({
-          "display": "flex",
-          "align-items": "center",
-          "justify-content": "space-between",
-          "padding": "6px 10px",
-          "background": "rgba(255,255,255,0.04)",
-          "border-radius": "6px",
-          "border": "1px solid rgba(255,255,255,0.08)",
-        });
+        const row = listEl.createDiv({ cls: "ytec-history-row" });
 
-        const infoCol = row.createDiv();
-        infoCol.setCssProps({ "overflow": "hidden", "text-overflow": "ellipsis", "white-space": "nowrap", "flex": "1", "margin-right": "8px" });
-        const strongTitle = infoCol.createEl("strong", { text: item.title });
-        strongTitle.setCssProps({ "display": "block", "font-size": "0.9em", "overflow": "hidden", "text-overflow": "ellipsis" });
-        const spanTime = infoCol.createEl("span", { text: `${item.channel ? item.channel + " • " : ""}${item.timeRange}`, cls: "ytec-hint" });
-        spanTime.setCssProps({ "font-size": "0.8em" });
+        const infoCol = row.createDiv({ cls: "ytec-history-info-col" });
+        infoCol.createEl("strong", { text: item.title, cls: "ytec-history-title" });
+        infoCol.createEl("span", { text: `${item.channel ? item.channel + " • " : ""}${item.timeRange}`, cls: "ytec-hint ytec-history-time" });
 
         const openBtn = row.createEl("button", { cls: "ytec-preset-btn", text: "Open Note" });
         openBtn.addEventListener("click", (e) => {

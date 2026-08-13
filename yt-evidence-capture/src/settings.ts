@@ -162,7 +162,7 @@ export class YTEvidenceSettingTab extends PluginSettingTab {
 
     const captureSection = containerEl.createDiv({ cls: "ytec-settings-section" });
     new Setting(captureSection)
-      .setName("🎬 Capture Settings")
+      .setName("🎬 Capture Options")
       .setHeading();
 
     new Setting(captureSection)

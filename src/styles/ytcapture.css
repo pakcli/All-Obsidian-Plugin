@@ -539,3 +539,54 @@
   font-size: 0.76rem;
   color: var(--text-faint);
 }
+
+/* ── Utility & History Layout Classes ────────────────────────────────── */
+.ytec-mt-6 { margin-top: 6px; }
+.ytec-mt-8 { margin-top: 8px; }
+.ytec-mt-10 { margin-top: 10px; }
+.ytec-mt-12 { margin-top: 12px; }
+.ytec-mt-16 { margin-top: 16px; }
+.ytec-w-full { width: 100%; }
+.ytec-col-span-2 { grid-column: span 2; }
+
+.ytec-history-container {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.ytec-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ytec-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ytec-history-info-col {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.ytec-history-title {
+  display: block;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ytec-history-time {
+  font-size: 0.8em;
+}
+

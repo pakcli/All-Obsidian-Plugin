@@ -147,8 +147,9 @@ export class CodeblockScaler {
 
 	getBehaviorForLanguage(lang: string): 'scalefit' | 'flowclip' | 'wrap' {
 		const cleanLang = (lang || '').trim().toLowerCase();
+		const settings = this.plugin?.settings;
 
-		const rules = this.plugin.settings.codeblockLanguageRules || [];
+		const rules = settings?.codeblockLanguageRules || [];
 		for (const rule of rules) {
 			const rLang = rule.language.trim().toLowerCase();
 			if (rLang && rLang === cleanLang) {
@@ -160,12 +161,13 @@ export class CodeblockScaler {
 			return 'scalefit';
 		}
 
-		return this.plugin.settings.codeblockWrapMode || 'flowclip';
+		return settings?.codeblockWrapMode || 'flowclip';
 	}
 
 	getBehaviorForElement(preEl: HTMLElement, codeEl: HTMLElement): 'scalefit' | 'flowclip' | 'wrap' {
 		const classList = Array.from(codeEl.classList).concat(Array.from(preEl.classList));
-		const rules = this.plugin.settings.codeblockLanguageRules || [];
+		const settings = this.plugin?.settings;
+		const rules = settings?.codeblockLanguageRules || [];
 
 		for (const rule of rules) {
 			const target = rule.language.trim().toLowerCase();
@@ -185,7 +187,7 @@ export class CodeblockScaler {
 			return 'scalefit';
 		}
 
-		return this.plugin.settings.codeblockWrapMode || 'flowclip';
+		return settings?.codeblockWrapMode || 'flowclip';
 	}
 
 	processContainer(container: HTMLElement): void {
@@ -201,10 +203,10 @@ export class CodeblockScaler {
 					renderAsciiSvg(text, pre as HTMLElement);
 				}
 			} else if (behavior === 'wrap') {
-				pre.addClass('pakcli-codeblock-wrap');
+				pre.classList.add('pakcli-codeblock-wrap');
 			} else {
 				// Flowclip: Each pre is INDIVIDUAL slider!
-				pre.addClass('pakcli-codeblock-flowclip');
+				pre.classList.add('pakcli-codeblock-flowclip');
 			}
 		});
 
@@ -234,7 +236,7 @@ export class CodeblockScaler {
 
 			if (behavior === 'wrap') {
 				currentBlockLines.forEach((line) => {
-					line.addClass('pakcli-codeblock-wrap');
+					line.classList.add('pakcli-codeblock-wrap');
 				});
 			} else {
 				// FLOWCLIP: 1 CODEBLOCK = 1 INDIVIDUAL SLIDER!
@@ -252,7 +254,7 @@ export class CodeblockScaler {
 				}
 
 				currentBlockLines.forEach((line) => {
-					line.addClass('pakcli-codeblock-line-flowclip');
+					line.classList.add('pakcli-codeblock-line-flowclip');
 				});
 			}
 
