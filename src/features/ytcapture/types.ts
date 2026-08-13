@@ -3,6 +3,68 @@
 export type VideoQuality = "best" | "1080p" | "720p" | "480p" | "360p" | "audio";
 export type VideoFps = "auto" | "60" | "30";
 
+export interface YTPreset {
+  id: string;
+  name: string;
+  lastUsedAt: number;
+  frontmatterKeys?: {
+    titleKey?: string;
+    urlKey?: string;
+    channelKey?: string;
+    uploadDateKey?: string;
+    thumbnailKey?: string;
+    timeRangeKey?: string;
+    descriptionKey?: string;
+  };
+}
+
+export const DEFAULT_PRESETS: YTPreset[] = [
+  {
+    id: "yt_evidence_standard",
+    name: "YT Evidence (yt_title, yt_url, yt_channel, yt_upload_date, yt_thumbnail, capture_time_range, yt_description)",
+    lastUsedAt: Date.now(),
+    frontmatterKeys: {
+      titleKey: "yt_title",
+      urlKey: "yt_url",
+      channelKey: "yt_channel",
+      uploadDateKey: "yt_upload_date",
+      thumbnailKey: "yt_thumbnail",
+      timeRangeKey: "capture_time_range",
+      descriptionKey: "yt_description",
+    },
+  },
+  {
+    id: "yt_minimal",
+    name: "Minimal (title, url, channel, time_range, description)",
+    lastUsedAt: Date.now() - 1000,
+    frontmatterKeys: {
+      titleKey: "title",
+      urlKey: "url",
+      channelKey: "channel",
+      uploadDateKey: "upload_date",
+      thumbnailKey: "thumbnail",
+      timeRangeKey: "time_range",
+      descriptionKey: "description",
+    },
+  },
+  {
+    id: "yt_raw_meta",
+    name: "Full Raw Metadata (yt_title, yt_url, etc.)",
+    lastUsedAt: Date.now() - 2000,
+    frontmatterKeys: {
+      titleKey: "yt_title",
+      urlKey: "yt_url",
+      channelKey: "yt_channel",
+      uploadDateKey: "yt_upload_date",
+      thumbnailKey: "yt_thumbnail",
+      timeRangeKey: "capture_time_range",
+      descriptionKey: "yt_description",
+    },
+  },
+];
+
+import type { YTHistoryCache } from "./utils/historyCache";
+
 export interface YTCaptureSettings {
   ytDlpPath: string;
   ffmpegPath: string;
@@ -10,6 +72,10 @@ export interface YTCaptureSettings {
   ytCaptureDefaultDuration: number;
   ytCaptureQuality?: VideoQuality;
   ytCaptureFps?: VideoFps;
+  ytCaptureCreateZip?: boolean;
+  presets?: YTPreset[];
+  activePresetId?: string;
+  ytHistoryCache?: YTHistoryCache;
 }
 
 export const DEFAULT_YTCAPTURE_SETTINGS: YTCaptureSettings = {
@@ -19,6 +85,9 @@ export const DEFAULT_YTCAPTURE_SETTINGS: YTCaptureSettings = {
   ytCaptureDefaultDuration: 10,
   ytCaptureQuality: "best",
   ytCaptureFps: "auto",
+  ytCaptureCreateZip: false,
+  presets: DEFAULT_PRESETS,
+  activePresetId: "yt_evidence_standard",
 };
 
 // ── yt-dlp raw metadata shape ─────────────────────────────────────────────────

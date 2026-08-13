@@ -29,6 +29,8 @@ export function parseYouTubeUrl(input: string): ParsedYouTubeUrl | null {
   } else if (host === "youtube.com" || host === "m.youtube.com") {
     if (url.pathname.startsWith("/shorts/")) {
       videoId = url.pathname.split("/")[2] ?? "";
+    } else if (url.pathname.startsWith("/live/")) {
+      videoId = url.pathname.split("/")[2] ?? "";
     } else if (
       url.pathname.startsWith("/embed/") ||
       url.pathname.startsWith("/v/")
@@ -41,11 +43,19 @@ export function parseYouTubeUrl(input: string): ParsedYouTubeUrl | null {
 
   if (!videoId || videoId.length < 4) return null;
 
-  // Timestamp: ?t=94 or ?t=94s or ?start=94
+  // Timestamp: ?t=4731 or ?t=1h18m51s or ?t=94s or ?start=94
   const tParam = url.searchParams.get("t") ?? url.searchParams.get("start");
   if (tParam) {
-    const numeric = tParam.replace(/[^0-9]/g, "");
-    startSeconds = parseInt(numeric, 10) || 0;
+    const hmsMatch = tParam.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/i);
+    if (hmsMatch && (hmsMatch[1] || hmsMatch[2] || (hmsMatch[3] && (tParam.includes("h") || tParam.includes("m") || tParam.includes("s"))))) {
+      const hours = parseInt(hmsMatch[1] || "0", 10);
+      const minutes = parseInt(hmsMatch[2] || "0", 10);
+      const seconds = parseInt(hmsMatch[3] || "0", 10);
+      startSeconds = hours * 3600 + minutes * 60 + seconds;
+    } else {
+      const numeric = parseInt(tParam.replace(/[^0-9]/g, ""), 10);
+      startSeconds = isNaN(numeric) ? 0 : numeric;
+    }
   }
 
   return {

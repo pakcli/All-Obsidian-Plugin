@@ -260,7 +260,7 @@ export default class PakCLIPlugin extends Plugin {
 		// =========================================================================
 		// 6. Initialize YT Extension
 		// =========================================================================
-		this.addRibbonIcon('film', 'YT Extension', () => {
+		this.addRibbonIcon('film', 'yt extension menu', () => {
 			new YTCaptureModal(this.app, this).open();
 		});
 

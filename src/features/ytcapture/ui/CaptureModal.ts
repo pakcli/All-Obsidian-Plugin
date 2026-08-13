@@ -28,6 +28,7 @@ import {
   buildNotesMarkdown,
 } from "../utils/fileHelpers";
 import { buildZip } from "../utils/zipBuilder";
+import { getIncrementalCaptureHistory, CaptureHistoryItem } from "../utils/historyCache";
 import { parseYtDlpProgress } from "../utils/progressParser";
 import { YTCaptureBackgroundManager } from "../utils/backgroundManager";
 
@@ -132,7 +133,7 @@ export class CaptureModal extends Modal {
     });
 
     const durGroup = cardUrl.createDiv({ cls: "ytec-field-group" });
-    durGroup.setAttribute("style", "margin-top: 10px;");
+    durGroup.setCssProps({ "margin-top": "10px" });
     durGroup.createEl("label", { cls: "ytec-label", text: "Default Clip Duration (seconds)" });
     const durRow = durGroup.createDiv({ cls: "ytec-dur-row" });
     const durInput = durRow.createEl("input", {
@@ -160,7 +161,7 @@ export class CaptureModal extends Modal {
       cls: "ytec-btn ytec-btn-primary",
       text: "Fetch Video Info →",
     });
-    fetchBtn.setAttribute("style", "margin-top: 10px; width: 100%;");
+    fetchBtn.setCssProps({ "margin-top": "10px", "width": "100%" });
 
     // ── CARD 2: Quality & Format (1:1 Component Card) ──────────────────
     const cardQuality = cardGrid.createDiv({ cls: "ytec-card" });
@@ -205,6 +206,29 @@ export class CaptureModal extends Modal {
       this.selectedFps = fpsSelect.value as VideoFps;
     });
 
+    const presetGroup = settingsGrid.createDiv({ cls: "ytec-field-group" });
+    presetGroup.setCssProps({ "grid-column": "span 2", "margin-top": "6px" });
+    presetGroup.createEl("label", { cls: "ytec-label", text: "Metadata Preset (Latest Used at Top)" });
+    const presetSelect = presetGroup.createEl("select", { cls: "ytec-input" }) as HTMLSelectElement;
+
+    const currentPresets = [...(this.plugin.settings.presets || [])].sort(
+      (a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0)
+    );
+    currentPresets.forEach((pr) => {
+      const opt = presetSelect.createEl("option", { value: pr.id, text: pr.name });
+      if (pr.id === (this.plugin.settings.activePresetId || currentPresets[0]?.id)) opt.selected = true;
+    });
+
+    presetSelect.addEventListener("change", async () => {
+      const selectedId = presetSelect.value;
+      this.plugin.settings.activePresetId = selectedId;
+      const target = (this.plugin.settings.presets || []).find((pr) => pr.id === selectedId);
+      if (target) {
+        target.lastUsedAt = Date.now();
+      }
+      await this.plugin.saveSettings();
+    });
+
     // ── CARD 3: Clip Time Range & Duration (1:1 Component Card) ────────
     const cardRange = cardGrid.createDiv({ cls: "ytec-card" });
     cardRange.dataset.cardId = "range";
@@ -223,7 +247,7 @@ export class CaptureModal extends Modal {
     });
 
     const sliderGroup = cardRange.createDiv({ cls: "ytec-slider-group" });
-    sliderGroup.setAttribute("style", "margin-top: 8px;");
+    sliderGroup.setCssProps({ "margin-top": "8px" });
 
     sliderGroup.createEl("label", { cls: "ytec-hint", text: "Start Time:" });
     const startSlider = sliderGroup.createEl("input", {
@@ -294,7 +318,7 @@ export class CaptureModal extends Modal {
       meta.createEl("div", { cls: "ytec-channel", text: p.channel });
 
       const badges = cardPreview.createDiv({ cls: "ytec-badges" });
-      badges.setAttribute("style", "margin-top: 6px;");
+      badges.setCssProps({ "margin-top": "6px" });
       badges.createEl("span", {
         cls: p.has_transcript
           ? "ytec-badge ytec-badge-ok"
@@ -312,7 +336,7 @@ export class CaptureModal extends Modal {
       cls: "ytec-btn ytec-btn-primary",
       text: "⚡ Start Capture & Generate Zip →",
     });
-    captureBtn.setAttribute("style", "margin-top: 12px; width: 100%;");
+    captureBtn.setCssProps({ "margin-top": "12px", "width": "100%" });
 
     const errorEl = contentEl.createDiv({ cls: "ytec-error ytec-hidden" });
     const showError = (msg: string) => {
@@ -320,8 +344,58 @@ export class CaptureModal extends Modal {
       errorEl.removeClass("ytec-hidden");
     };
 
+    // ── CARD 5: History & Past Captures (Incremental JSON Cache) ─────
+    const cardHistory = contentEl.createDiv({ cls: "ytec-card ytec-muted" });
+    cardHistory.setCssProps({ "margin-top": "16px" });
+    const headerHistory = cardHistory.createDiv({ cls: "ytec-card-header" });
+    headerHistory.createDiv({ cls: "ytec-card-title", text: "📜 Past Captures History" });
+    const historyBadge = headerHistory.createDiv({ cls: "ytec-card-badge", text: "Incremental Cache" });
+
+    const historyContainer = cardHistory.createDiv({ cls: "ytec-history-container" });
+    historyContainer.setCssProps({ "max-height": "180px", "overflow-y": "auto", "margin-top": "8px" });
+    historyContainer.createDiv({ cls: "ytec-hint", text: "Scanning history cache…" });
+
+    getIncrementalCaptureHistory(this.app, this.plugin).then((historyItems) => {
+      historyContainer.empty();
+      historyBadge.textContent = `${historyItems.length} Saved`;
+
+      if (historyItems.length === 0) {
+        historyContainer.createDiv({ cls: "ytec-hint", text: "No past captures found in vault." });
+        return;
+      }
+
+      const listEl = historyContainer.createEl("div");
+      listEl.setCssProps({ "display": "flex", "flex-direction": "column", "gap": "6px" });
+      historyItems.slice(0, 10).forEach((item) => {
+        const row = listEl.createDiv();
+        row.setCssProps({
+          "display": "flex",
+          "align-items": "center",
+          "justify-content": "space-between",
+          "padding": "6px 10px",
+          "background": "rgba(255,255,255,0.04)",
+          "border-radius": "6px",
+          "border": "1px solid rgba(255,255,255,0.08)",
+        });
+
+        const infoCol = row.createDiv();
+        infoCol.setCssProps({ "overflow": "hidden", "text-overflow": "ellipsis", "white-space": "nowrap", "flex": "1", "margin-right": "8px" });
+        const strongTitle = infoCol.createEl("strong", { text: item.title });
+        strongTitle.setCssProps({ "display": "block", "font-size": "0.9em", "overflow": "hidden", "text-overflow": "ellipsis" });
+        const spanTime = infoCol.createEl("span", { text: `${item.channel ? item.channel + " • " : ""}${item.timeRange}`, cls: "ytec-hint" });
+        spanTime.setCssProps({ "font-size": "0.8em" });
+
+        const openBtn = row.createEl("button", { cls: "ytec-preset-btn", text: "Open Note" });
+        openBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.app.workspace.openLinkText(item.filePath, "", false);
+          this.close();
+        });
+      });
+    });
+
     // ── Highlighting logic for 1:1 Component Cards ─────────────────────
-    const allCards = [cardUrl, cardQuality, cardRange, cardPreview];
+    const allCards = [cardUrl, cardQuality, cardRange, cardPreview, cardHistory];
 
     const setActiveCard = (targetId: CardId) => {
       this.activeCardId = targetId;
@@ -594,6 +668,14 @@ export class CaptureModal extends Modal {
       const noteName = `${baseName}.md`;
       const zipName = `${baseName}.zip`;
 
+      const activePresetId = this.plugin.settings.activePresetId || "yt_evidence_standard";
+      const presetsList = this.plugin.settings.presets || [];
+      let activePreset = presetsList.find((pr) => pr.id === activePresetId) || presetsList[0];
+      if (activePreset) {
+        activePreset.lastUsedAt = Date.now();
+        await this.plugin.saveSettings();
+      }
+
       const notesContent = buildNotesMarkdown({
         title: p.title,
         url: targetUrl,
@@ -615,15 +697,8 @@ export class CaptureModal extends Modal {
           mp4Filename: mp4Name,
           thumbFilename: thumbName,
         },
+        frontmatterKeys: activePreset?.frontmatterKeys,
       });
-
-      this.setStatus("Creating zip archive…");
-      const zipBuffer = await buildZip({
-        clipPath: actualClipPath,
-        thumbData: thumbBuffer,
-        notesContent,
-      });
-      this.addLog("✓ Zip archive created");
 
       this.setStatus("Saving to vault…");
 
@@ -672,19 +747,29 @@ export class CaptureModal extends Modal {
       }
       this.addLog(`✓ Saved note: ${noteVaultPath}`);
 
-      // 4. Save Zip archive to vault
-      const zipVaultPath = `${outputFolder}/${zipName}`;
-      const zipArrayBuffer = zipBuffer.buffer.slice(
-        zipBuffer.byteOffset,
-        zipBuffer.byteOffset + zipBuffer.byteLength
-      ) as ArrayBuffer;
-      const existingZip = this.app.vault.getAbstractFileByPath(zipVaultPath);
-      if (existingZip instanceof TFile) {
-        await this.app.vault.modifyBinary(existingZip, zipArrayBuffer);
-      } else {
-        await this.app.vault.createBinary(zipVaultPath, zipArrayBuffer);
+      // 4. Save Zip archive to vault (only if enabled in settings)
+      if (this.plugin.settings.ytCaptureCreateZip) {
+        this.setStatus("Creating zip archive…");
+        const zipBuffer = await buildZip({
+          clipPath: actualClipPath,
+          thumbData: thumbBuffer,
+          notesContent,
+        });
+        this.addLog("✓ Zip archive created");
+
+        const zipVaultPath = `${outputFolder}/${zipName}`;
+        const zipArrayBuffer = zipBuffer.buffer.slice(
+          zipBuffer.byteOffset,
+          zipBuffer.byteOffset + zipBuffer.byteLength
+        ) as ArrayBuffer;
+        const existingZip = this.app.vault.getAbstractFileByPath(zipVaultPath);
+        if (existingZip instanceof TFile) {
+          await this.app.vault.modifyBinary(existingZip, zipArrayBuffer);
+        } else {
+          await this.app.vault.createBinary(zipVaultPath, zipArrayBuffer);
+        }
+        this.addLog(`✓ Saved zip: ${zipVaultPath}`);
       }
-      this.addLog(`✓ Saved zip: ${zipVaultPath}`);
 
       const adapter = this.app.vault.adapter as FileSystemAdapter;
       const fsDirPath = path.join(adapter.getBasePath(), outputFolder);

@@ -257,8 +257,9 @@ export class CodeblockScaler {
 				if (parent.classList.contains('pakcli-codeblock-slider')) {
 					slider = parent;
 				} else {
-					slider = document.createElement('div');
-					slider.className = 'pakcli-codeblock-slider';
+					slider = parent.createEl('div', {
+						cls: 'pakcli-codeblock-slider',
+					});
 					slider.setCssProps({
 						'display': 'block',
 						'max-width': '100%',

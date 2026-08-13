@@ -29,11 +29,7 @@ export function renderYTCaptureSettings(
   // ══════════════════════════════════════════════════════════════════════════
 
   const setupSection = containerEl.createDiv({ cls: "ytec-settings-section" });
-
-  setupSection.createEl("h2", {
-    cls: "ytec-settings-heading",
-    text: "⚙️  Setup & Dependencies",
-  });
+  new Setting(setupSection).setName("⚙️ Setup & Dependencies").setHeading();
   setupSection.createEl("p", {
     cls: "ytec-settings-desc",
     text: "yt-dlp and ffmpeg must be installed on your system for YT Extension to work.",
@@ -115,10 +111,7 @@ export function renderYTCaptureSettings(
   // ══════════════════════════════════════════════════════════════════════════
 
   const pathsSection = containerEl.createDiv({ cls: "ytec-settings-section" });
-  pathsSection.createEl("h2", {
-    cls: "ytec-settings-heading",
-    text: "🔧  Tool Paths",
-  });
+  new Setting(pathsSection).setName("🔧 Tool Paths").setHeading();
   pathsSection.createEl("p", {
     cls: "ytec-settings-desc",
     text: 'Leave as "yt-dlp" / "ffmpeg" if they are on your system PATH. Set a full path (e.g. C:\\Tools\\yt-dlp.exe) if not.',
@@ -155,10 +148,7 @@ export function renderYTCaptureSettings(
   // ══════════════════════════════════════════════════════════════════════════
 
   const captureSection = containerEl.createDiv({ cls: "ytec-settings-section" });
-  captureSection.createEl("h2", {
-    cls: "ytec-settings-heading",
-    text: "🎬  Capture Settings",
-  });
+  new Setting(captureSection).setName("🎬 Capture Settings").setHeading();
 
   new Setting(captureSection)
     .setName("Output folder")
@@ -187,15 +177,45 @@ export function renderYTCaptureSettings(
         })
     );
 
+  new Setting(captureSection)
+    .setName("Create .zip archive")
+    .setDesc("When enabled, additionally packages media attachments into a .zip archive. When disabled, attachments (.mp4, .jpg, .md) are saved unzipped directly into your vault.")
+    .addToggle((toggle) =>
+      toggle
+        .setValue(plugin.settings.ytCaptureCreateZip ?? false)
+        .onChange(async (v) => {
+          plugin.settings.ytCaptureCreateZip = v;
+          await plugin.saveSettings();
+        })
+    );
+
+  const presetsList = [...(plugin.settings.presets || [])].sort(
+    (a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0)
+  );
+
+  new Setting(captureSection)
+    .setName("Metadata Presets")
+    .setDesc("Select template preset for note frontmatter. The latest used preset is automatically sorted to the top.")
+    .addDropdown((dropdown) => {
+      presetsList.forEach((p) => dropdown.addOption(p.id, p.name));
+      dropdown.setValue(plugin.settings.activePresetId || presetsList[0]?.id || "yt_evidence_standard");
+      dropdown.onChange(async (selectedId) => {
+        plugin.settings.activePresetId = selectedId;
+        const target = (plugin.settings.presets || []).find((p) => p.id === selectedId);
+        if (target) {
+          target.lastUsedAt = Date.now();
+        }
+        await plugin.saveSettings();
+        renderYTCaptureSettings(app, plugin, containerEl);
+      });
+    });
+
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 4 — Debug & Diagnostics (Inside Obsidian UI)
   // ══════════════════════════════════════════════════════════════════════════
 
   const debugSection = containerEl.createDiv({ cls: "ytec-settings-section" });
-  debugSection.createEl("h2", {
-    cls: "ytec-settings-heading",
-    text: "🔍  Debug & Diagnostics",
-  });
+  new Setting(debugSection).setName("🔍 Debug & Diagnostics").setHeading();
   debugSection.createEl("p", {
     cls: "ytec-settings-desc",
     text: "Detailed system paths and binary resolution info for troubleshooting.",
