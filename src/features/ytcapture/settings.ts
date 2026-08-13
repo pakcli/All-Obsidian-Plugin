@@ -148,7 +148,7 @@ export function renderYTCaptureSettings(
   // ══════════════════════════════════════════════════════════════════════════
 
   const captureSection = containerEl.createDiv({ cls: "ytec-settings-section" });
-  new Setting(captureSection).setName("🎬 Capture Options").setHeading();
+  new Setting(captureSection).setName("🎬 Capture").setHeading();
 
   new Setting(captureSection)
     .setName("Output folder")

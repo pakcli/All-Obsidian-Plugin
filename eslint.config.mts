@@ -24,6 +24,7 @@ export default tseslint.config(
 	...obsidianmd.configs.recommended,
 	{
 		plugins: {
+			'obsidianmd': obsidianmd as any,
 			'@typescript-eslint': tseslint.plugin as any
 		},
 		rules: {

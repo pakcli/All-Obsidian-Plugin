@@ -1,4 +1,4 @@
-import { MarkdownView, Plugin } from 'obsidian';
+import { MarkdownView } from 'obsidian';
 
 export interface CodeblockLanguageRule {
 	id: string;
@@ -88,14 +88,7 @@ export class CodeblockScaler {
 	private isProcessing = false;
 	private debounceTimer: number | null = null;
 
-	constructor(
-		private plugin: Plugin & {
-			settings: {
-				codeblockWrapMode: 'scalefit' | 'flowclip' | 'wrap';
-				codeblockLanguageRules?: CodeblockLanguageRule[];
-			};
-		}
-	) {}
+	constructor(private plugin: any) {}
 
 	init(): void {
 		// 1. Register Post Processor for Reading View
