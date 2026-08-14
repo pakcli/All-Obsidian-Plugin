@@ -1,0 +1,5 @@
+id,txn_id,date,time,merchant,item_name,qty,price_idr,price_usd,price_myr,category,original_image_path,redacted_image_path
+ITM_0001,TXN_BCAZ_0001,2024-10-11,17:30,Indomaret,Aqua 600ml,2,4500,,,beverages,transaction/assets/original/draft_1781229266903_aqua.png,transaction/assets/redacted/draft_1781229266903_aqua_redacted.png
+ITM_0002,TXN_BCAZ_0001,2024-10-11,17:30,Indomaret,Indomie Goreng,3,3500,,,food,transaction/assets/original/draft_1781229266903_aqua.png,transaction/assets/redacted/draft_1781229266903_aqua_redacted.png
+ITM_0003,TXN_BCAZ_0002,2024-10-12,12:45,Starbucks,Caramel Macchiato,1,55000,,,beverages,transaction/assets/original/draft_1781229575671_sbux.png,transaction/assets/redacted/draft_1781229575671_sbux_redacted.png
+ITM_0004,TXN_BCAZ_0002,2024-10-12,12:45,Starbucks,Butter Croissant,1,35000,,,food,transaction/assets/original/draft_1781229575671_sbux.png,transaction/assets/redacted/draft_1781229575671_sbux_redacted.png
