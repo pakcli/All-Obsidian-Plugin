@@ -381,8 +381,8 @@ export class JsonView extends TextFileView {
         }
         
         try {
-            // Use setTimeout to allow UI to update
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Use window.setTimeout to allow UI to update
+            await new Promise(resolve => window.setTimeout(resolve, 100));
             
             this.parsedData = parse(this.content);
             this.isAnalyzed = true;
@@ -423,7 +423,7 @@ export class JsonView extends TextFileView {
                 text: 'Processing JSONPath query...'
             });
             
-            setTimeout(() => {
+            window.setTimeout(() => {
                 loadingDiv.remove();
                 this.tableRenderer.processTablePreview(
                     this.tableContainer!, 

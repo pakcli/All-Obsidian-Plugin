@@ -283,7 +283,7 @@ export class AssetRouter {
 					return true;
 				}
 			}
-			await new Promise(resolve => setTimeout(resolve, 50));
+			await new Promise(resolve => window.setTimeout(resolve, 50));
 		}
 		return false;
 	}

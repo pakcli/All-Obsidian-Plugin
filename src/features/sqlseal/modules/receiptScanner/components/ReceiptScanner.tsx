@@ -440,14 +440,14 @@ export function ReceiptScanner({ app, plugin, onClose }: ReceiptScannerProps) {
   const [cursorPosition, setCursorPosition] = useState<number>(0);
   const [editorScrollTop, setEditorScrollTop] = useState<number>(0);
 
-  // Column width states (persisted in localStorage)
+  // Column width states (persisted via Obsidian App localStorage)
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-    const saved = localStorage.getItem("receipt-scanner-sidebar-width");
-    return saved ? parseInt(saved, 10) : 220;
+    const saved = app?.loadLocalStorage ? app.loadLocalStorage("receipt-scanner-sidebar-width") : (typeof localStorage !== "undefined" ? localStorage.getItem("receipt-scanner-sidebar-width") : null);
+    return saved ? parseInt(String(saved), 10) || 220 : 220;
   });
   const [mediaWidth, setMediaWidth] = useState<number>(() => {
-    const saved = localStorage.getItem("receipt-scanner-media-width");
-    return saved ? parseInt(saved, 10) : 360;
+    const saved = app?.loadLocalStorage ? app.loadLocalStorage("receipt-scanner-media-width") : (typeof localStorage !== "undefined" ? localStorage.getItem("receipt-scanner-media-width") : null);
+    return saved ? parseInt(String(saved), 10) || 360 : 360;
   });
 
   // Mobile navigation active tab state
@@ -495,12 +495,20 @@ export function ReceiptScanner({ app, plugin, onClose }: ReceiptScannerProps) {
 
   // Save column widths when they change
   useEffect(() => {
-    localStorage.setItem("receipt-scanner-sidebar-width", sidebarWidth.toString());
-  }, [sidebarWidth]);
+    if (app?.saveLocalStorage) {
+      app.saveLocalStorage("receipt-scanner-sidebar-width", sidebarWidth.toString());
+    } else if (typeof localStorage !== "undefined") {
+      localStorage.setItem("receipt-scanner-sidebar-width", sidebarWidth.toString());
+    }
+  }, [sidebarWidth, app]);
 
   useEffect(() => {
-    localStorage.setItem("receipt-scanner-media-width", mediaWidth.toString());
-  }, [mediaWidth]);
+    if (app?.saveLocalStorage) {
+      app.saveLocalStorage("receipt-scanner-media-width", mediaWidth.toString());
+    } else if (typeof localStorage !== "undefined") {
+      localStorage.setItem("receipt-scanner-media-width", mediaWidth.toString());
+    }
+  }, [mediaWidth, app]);
 
   // Sidebar drag to resize
   const handleSidebarMouseDown = (e: MouseEvent) => {
@@ -1113,7 +1121,7 @@ export function ReceiptScanner({ app, plugin, onClose }: ReceiptScannerProps) {
     // Fallback to simulator if no API key is provided
     if (!key) {
       new Notice("No API key configured. Running simulator fallback...");
-      setTimeout(() => {
+      window.setTimeout(() => {
         let matchedFilename: string | null = null;
         if (redactedPath) {
           matchedFilename = redactedPath.substring(redactedPath.lastIndexOf("/") + 1);
@@ -1469,7 +1477,7 @@ Make sure you do not output any markdown block formatting (like \`\`\`json), jus
     setSuggestions([]);
 
     // Refocus the textarea and set cursor index to end of suggestion
-    setTimeout(() => {
+    window.setTimeout(() => {
       textarea.focus();
       let newPos = 0;
       for (let i = 0; i < lineIndex; i++) {

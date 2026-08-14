@@ -47,15 +47,15 @@ export function useProgressiveLoad(totalRows: number): ProgressiveLoadState {
   useEffect(() => {
     if (visibleCount >= totalRows) return;
 
-    // Use requestIdleCallback where available, fall back to setTimeout
+    // Use requestIdleCallback where available, fall back to window.setTimeout
     const schedule =
       typeof requestIdleCallback === "function"
         ? requestIdleCallback
-        : (cb: () => void) => setTimeout(cb, 16) as unknown as number;
+        : (cb: () => void) => window.setTimeout(cb, 16) as unknown as number;
     const cancel =
       typeof cancelIdleCallback === "function"
         ? cancelIdleCallback
-        : (id: number) => clearTimeout(id);
+        : (id: number) => window.clearTimeout(id);
 
     const id = schedule(() => {
       setVisibleCount((prev) => Math.min(prev + CHUNK_SIZE, totalRows));

@@ -451,7 +451,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
         inputCategoryPath.addEventListener('focus', updateCategoryColumns);
 
         // Run initial columns loading
-        setTimeout(() => {
+        window.setTimeout(() => {
             updateMerchantColumns();
             updateCategoryColumns();
         }, 50);

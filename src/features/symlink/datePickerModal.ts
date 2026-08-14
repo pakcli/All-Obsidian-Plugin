@@ -30,7 +30,7 @@ export class DatePickerModal extends Modal {
 		});
 
 		// Focus on open
-		setTimeout(() => inputEl.focus(), 50);
+		window.setTimeout(() => inputEl.focus(), 50);
 
 		// Handle keydown events inside the input element
 		inputEl.addEventListener('keydown', (e) => {

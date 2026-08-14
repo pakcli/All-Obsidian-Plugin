@@ -528,7 +528,7 @@ export class CaptureModal extends Modal {
         (msg) => {
           const lines = msg.split(/[\r\n]+/);
           for (const rawLine of lines) {
-            const line = rawLine.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").trim();
+            const line = rawLine.replace(new RegExp('\\u001b\\[[0-?]*[ -/]*[@-~]', 'g'), "").trim();
             if (!line) continue;
 
             const prog = parseYtDlpProgress(line);
@@ -894,9 +894,12 @@ export class CaptureModal extends Modal {
       });
       revealBtn.addEventListener("click", () => {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires -- Dynamic Electron shell import required for desktop file manager integration
-          const electronModule = require("electron") as { shell: { openPath: (p: string) => Promise<string> } };
-          electronModule.shell.openPath(this.result!.fsDirPath);
+          const electronModule = typeof window !== "undefined" && (window as any).require ? (window as any).require("electron") : null;
+          if (electronModule?.shell?.openPath) {
+            electronModule.shell.openPath(this.result!.fsDirPath);
+          } else {
+            new Notice("Could not open file explorer.");
+          }
         } catch {
           new Notice("Could not open file explorer.");
         }

@@ -272,7 +272,7 @@ export default class PakCLIPlugin extends Plugin {
 			},
 		});
 
-		setTimeout(() => runYTCaptureStartupCheck(this.settings), 2000);
+		window.setTimeout(() => runYTCaptureStartupCheck(this.settings), 2000);
 
 		// =========================================================================
 		// 7. Register Settings Tab

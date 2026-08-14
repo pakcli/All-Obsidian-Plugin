@@ -27,7 +27,7 @@ export class StatsRenderer implements ICellRendererComp {
     const stats = this.eGui.createSpan()
     stats.textContent = 'Loading'
 
-    requestAnimationFrame(async () => { this.sync() })
+    window.requestAnimationFrame(async () => { this.sync() })
 
     // Watching for the changes
     this.setupWatchers(context, data!)

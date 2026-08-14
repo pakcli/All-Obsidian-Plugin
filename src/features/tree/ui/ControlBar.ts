@@ -48,7 +48,7 @@ export class ControlBar {
 			const { copyToClipboard } = await import('../utils/clipboard');
 			const ok = await copyToClipboard(plainText);
 			copyBtn.textContent = ok ? "Copied!" : "Fail";
-			setTimeout(() => (copyBtn.textContent = "copy"), 1200);
+			window.setTimeout(() => (copyBtn.textContent = "copy"), 1200);
 		};
 
 		// Create structure button

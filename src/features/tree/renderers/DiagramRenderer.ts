@@ -273,7 +273,7 @@ export class DiagramRenderer extends MarkdownRenderChild {
 			console.log('✅ Codeblock updated successfully!');
 			
 			// Wait a bit before resetting flag to allow Obsidian to process the change
-			setTimeout(() => {
+			window.setTimeout(() => {
 				this.isUpdatingSource = false;
 			}, 100);
 		} catch (error) {
@@ -463,8 +463,8 @@ export class DiagramRenderer extends MarkdownRenderChild {
 		container.appendChild(table);
 		
 		// Enable wikilinks in table after DOM is ready
-		// Use setTimeout to ensure DOM is fully rendered
-		setTimeout(() => {
+		// Use window.setTimeout to ensure DOM is fully rendered
+		window.setTimeout(() => {
 			console.log('[TableModeA] Enabling wikilinks...');
 			const links = table.querySelectorAll('a.internal-link');
 			console.log(`[TableModeA] Found ${links.length} internal links`);
@@ -525,8 +525,8 @@ export class DiagramRenderer extends MarkdownRenderChild {
 		container.appendChild(tableContainer);
 		
 		// Enable wikilinks in table after DOM is ready
-		// Use setTimeout to ensure DOM is fully rendered
-		setTimeout(() => {
+		// Use window.setTimeout to ensure DOM is fully rendered
+		window.setTimeout(() => {
 			console.log('[TableModeB] Enabling wikilinks...');
 			const links = tableContainer.querySelectorAll('a.internal-link');
 			console.log(`[TableModeB] Found ${links.length} internal links`);

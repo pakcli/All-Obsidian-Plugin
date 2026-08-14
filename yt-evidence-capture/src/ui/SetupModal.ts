@@ -4,7 +4,7 @@
  * Steps:
  *   confirm → running (live log) → done/error
  */
-import { App, FileSystemAdapter, Modal, Notice } from "obsidian";
+import { App, FileSystemAdapter, Modal, Notice, requestUrl } from "obsidian";
 import * as path from "path";
 import * as fs from "fs";
 import { runCommand } from "../utils/process";
@@ -118,9 +118,9 @@ export class SetupModal extends Modal {
     this.setStatus("Checking internet…");
     this.addLog("Pinging youtube.com…");
     try {
-      await fetch("https://www.youtube.com/favicon.ico", {
+      await requestUrl({
+        url: "https://www.youtube.com/favicon.ico",
         method: "HEAD",
-        signal: AbortSignal.timeout(5000),
       });
       this.addLog("✓ Internet OK");
     } catch {

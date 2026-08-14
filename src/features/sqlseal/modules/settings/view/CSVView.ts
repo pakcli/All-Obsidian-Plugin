@@ -16,7 +16,7 @@ import { AgColumn, Column } from "ag-grid-community";
 import { CSVViewMenuBar } from "./CSVViewMenuBar";
 import { ViewPluginGeneratorType } from "../../syntaxHighlight/viewPluginGenerator";
 
-const delay = (n: number) => new Promise((resolve) => setTimeout(resolve, n));
+const delay = (n: number) => new Promise((resolve) => window.setTimeout(resolve, n));
 
 export const CSV_VIEW_TYPE = "csv-viewer" as const;
 export const CSV_VIEW_EXTENSIONS = ["csv"];
@@ -302,7 +302,7 @@ export class CSVView extends TextFileView {
 		if (this.refreshSkip > Date.now()) {
 			return;
 		}
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			const result = this.prepareData();
 			this.result = result;
 			this.refreshTypes();

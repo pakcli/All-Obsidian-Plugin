@@ -3,7 +3,7 @@
  * Checks: internet connectivity, yt-dlp, ffmpeg.
  * Shows a Notice for any missing dependency.
  */
-import { Notice } from "obsidian";
+import { Notice, requestUrl } from "obsidian";
 import { runCommand } from "./process";
 import type { YTEvidenceSettings } from "../settings";
 
@@ -34,11 +34,11 @@ export async function checkDependencies(
 
   // ── Internet ────────────────────────────────────────────────────────────────
   try {
-    const resp = await fetch("https://www.youtube.com/favicon.ico", {
+    const resp = await requestUrl({
+      url: "https://www.youtube.com/favicon.ico",
       method: "HEAD",
-      signal: AbortSignal.timeout(5000),
     });
-    status.internet = resp.ok || resp.status < 500;
+    status.internet = resp.status >= 200 && resp.status < 500;
   } catch {
     status.errors.push("No internet connection — YouTube cannot be reached.");
   }

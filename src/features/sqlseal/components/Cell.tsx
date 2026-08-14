@@ -78,7 +78,7 @@ export function Cell({
           value={editValue}
           onInput={(e) => setEditValue((e.target as HTMLInputElement).value)}
           onBlur={() => {
-            setTimeout(() => {
+            window.setTimeout(() => {
               if (inputRef.current) {
                 const latestVal = inputRef.current.value;
                 setEditing(false);

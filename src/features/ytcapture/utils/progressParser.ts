@@ -8,7 +8,7 @@ import type { ProgressInfo } from "../types";
 
 export function parseYtDlpProgress(line: string): ProgressInfo | null {
   // Strip ANSI color escape codes and trim
-  const clean = line.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").trim();
+  const clean = line.replace(new RegExp('\\u001b\\[[0-?]*[ -/]*[@-~]', 'g'), "").trim();
   if (!clean.includes("[download]") && !clean.includes("%")) {
     return null;
   }

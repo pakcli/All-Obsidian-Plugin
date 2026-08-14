@@ -88,7 +88,7 @@ export class FilesFileSyncTable extends AFileSyncTable {
             // @ts-ignore
             await sleep(1000)
         } else {
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => window.setTimeout(r, 1000));
         }
     }
     async onFileDelete(path: string): Promise<void> {

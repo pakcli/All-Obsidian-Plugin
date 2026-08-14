@@ -1,4 +1,4 @@
-// Remove static top-level mermaid import
+import mermaid from 'mermaid'
 import { WaSqliteMemoryDatabase } from '../database/waSqliteMemoryDatabase'
 
 export interface DetailedColumnInfo {
@@ -37,11 +37,7 @@ export class SchemaVisualiser {
         if (typeof (window as any).mermaid !== 'undefined') {
             return (window as any).mermaid
         }
-        try {
-            return require('mermaid')
-        } catch {
-            return null
-        }
+        return mermaid
     }
 
     private initializeMermaid() {
@@ -442,7 +438,7 @@ export class SchemaVisualiser {
                 this.updateZoomDisplay(container, localZoom.value)
                 
                 if (progress < 1) {
-                    requestAnimationFrame(animate)
+                    window.requestAnimationFrame(animate)
                 } else {
                     isAnimating = false
                     // Ensure final values are exact
@@ -454,7 +450,7 @@ export class SchemaVisualiser {
                 }
             }
             
-            requestAnimationFrame(animate)
+            window.requestAnimationFrame(animate)
         }
         
         // Reset button (home) - first

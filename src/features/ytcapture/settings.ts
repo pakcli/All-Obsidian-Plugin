@@ -1,7 +1,7 @@
 /**
  * Settings tab content for YT Extension inside PakCLI Suite.
  */
-import { App, Setting } from "obsidian";
+import { App, Setting, Notice } from "obsidian";
 import type PakCLIPlugin from "../../main";
 import { checkYTCaptureDeps } from "./utils/healthCheck";
 import { SetupModal } from "./ui/SetupModal";
@@ -77,7 +77,7 @@ export function renderYTCaptureSettings(
   });
   installBtn.addEventListener("click", () => {
     new SetupModal(app, plugin, () => {
-      setTimeout(() => runCheck(), 1500);
+      window.setTimeout(() => runCheck(), 1500);
     }).open();
   });
 
@@ -91,12 +91,12 @@ export function renderYTCaptureSettings(
       await downloadYtDlpDirect(plugin);
       await runCheck();
       directDlBtn.textContent = "✓ Downloaded!";
-      setTimeout(() => { directDlBtn.textContent = "⬇ Direct Download yt-dlp"; }, 3000);
+      window.setTimeout(() => { directDlBtn.textContent = "⬇ Direct Download yt-dlp"; }, 3000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       directDlBtn.textContent = "✗ Failed";
-      alert(`Download failed: ${msg}`);
-      setTimeout(() => { directDlBtn.textContent = "⬇ Direct Download yt-dlp"; }, 3000);
+      new Notice(`Download failed: ${msg}`);
+      window.setTimeout(() => { directDlBtn.textContent = "⬇ Direct Download yt-dlp"; }, 3000);
     }
   });
 

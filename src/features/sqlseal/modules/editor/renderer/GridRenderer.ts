@@ -253,8 +253,8 @@ export class GridRendererCommunicator {
         let resizeTimeout: any;
         this.resizeObserver = new ResizeObserver(() => {
             if (this._gridApi) {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
+                window.clearTimeout(resizeTimeout);
+                resizeTimeout = window.setTimeout(() => {
                     if (!this._gridApi.isDestroyed()) {
                         this._gridApi.autoSizeAllColumns();
                     }

@@ -102,7 +102,7 @@ export class MapManager {
 		this.controls?.updateSettings(settings);
 
 		// Delay lets the DOM finish layout before Leaflet remeasures the container.
-		setTimeout(() => this._leafletMap.invalidateSize(), 100);
+		window.setTimeout(() => this._leafletMap.invalidateSize(), 100);
 
 		this.settings = settings;
 	}

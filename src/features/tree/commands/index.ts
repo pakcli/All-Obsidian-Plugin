@@ -64,9 +64,11 @@ export function registerCommands(plugin: PakCLIPlugin) {
 				new Notice("No active note");
 				return;
 			}
-			const text = buildTabTree(file.parent as TFolder, true).join("\n");
-			await copyToClipboard(text);
-			new Notice("Current folder tree copied");
+			if (file.parent instanceof TFolder) {
+				const text = buildTabTree(file.parent, true).join("\n");
+				await copyToClipboard(text);
+				new Notice("Current folder tree copied");
+			}
 		},
 	});
 }
