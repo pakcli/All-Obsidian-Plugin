@@ -19,6 +19,28 @@
 @import "leaflet.css";
 @import "ytcapture.css";
 
+/* ========================================================================= */
+/* Asset Draggable - Native Drag & Drop Styles                                */
+/* ========================================================================= */
+.internal-embed.image-embed img,
+.internal-embed img,
+.markdown-rendered img,
+.cm-embed-block img,
+.internal-embed.pdf-embed,
+.internal-embed.media-embed,
+.internal-embed[src],
+.cm-embed-block .internal-embed {
+    -webkit-user-drag: element !important;
+    user-drag: element !important;
+    cursor: grab;
+}
+
+.internal-embed.image-embed img:active,
+.markdown-rendered img:active,
+.cm-embed-block img:active {
+    cursor: grabbing !important;
+}
+
 .sqlseal-edit-banner {
     display: flex;
     justify-content: space-between;

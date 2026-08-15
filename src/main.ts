@@ -295,7 +295,7 @@ export default class PakCLIPlugin extends Plugin {
 		// =========================================================================
 		// 8. Initialize Asset Draggable
 		// =========================================================================
-		if (this.settings.enableAssetDrag) {
+		if (this.settings.enableAssetDrag !== false) {
 			this.assetDragHandler = new AttachmentDragHandler(this.app, this.vaultRoot);
 			this.assetDragHandler.register(this);
 		}

@@ -1,5 +1,5 @@
 /**
- * resolver.ts - Resolves a dragged DOM element to an absolute filesystem path.
+ * resolver.ts - Resolves a dragged DOM element to a TFile and an absolute filesystem path.
  *
  * Supported element types:
  *  - <img>                     Embedded images in Reading mode & Live Preview
@@ -10,6 +10,11 @@
 import { App, TFile } from 'obsidian';
 import * as path from 'path';
 import * as fs from 'fs';
+
+export interface ResolvedAttachment {
+    file: TFile | null;
+    absPath: string;
+}
 
 /** Decode an Obsidian app:// URL into an absolute OS path. */
 function appUrlToAbsPath(src: string): string | null {
@@ -27,39 +32,52 @@ function appUrlToAbsPath(src: string): string | null {
     return null;
 }
 
-/** Resolve a vault-relative link to an absolute path via Obsidian metadata cache. */
-function resolveVaultLink(rawHref: string, app: App, vaultRoot: string): string | null {
-    if (!rawHref) return null;
-    const withoutAnchor = rawHref.split('#')[0].split('|')[0].trim();
-    if (!withoutAnchor) return null;
-
-    const file: TFile | null = app.metadataCache.getFirstLinkpathDest(withoutAnchor, '');
-    if (file) {
-        const absPath = path.join(vaultRoot, ...file.path.split('/'));
-        if (fs.existsSync(absPath)) return absPath;
-    }
-
-    // Direct path lookup inside vault
-    const directPath = path.join(vaultRoot, ...withoutAnchor.split('/'));
-    if (fs.existsSync(directPath)) return directPath;
-
-    return null;
-}
-
 /**
- * Given the element that was clicked or dragged, return the absolute filesystem path
- * of the attachment it represents, or null if not applicable.
+ * Given an element clicked or dragged, return both the Obsidian TFile (if inside vault)
+ * and the absolute filesystem path on disk.
  */
-export function resolveAttachmentAbsPath(el: HTMLElement, app: App, vaultRoot: string): string | null {
+export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string): ResolvedAttachment | null {
     if (!el) return null;
 
-    // 1. Embedded widget container (.internal-embed[src])
+    const activeFile = app.workspace.getActiveFile();
+    const sourcePath = activeFile ? activeFile.path : '';
+
+    const tryResolveLink = (linkText: string): ResolvedAttachment | null => {
+        if (!linkText) return null;
+        const clean = linkText.split('#')[0].split('|')[0].trim();
+        if (!clean) return null;
+
+        const file = app.metadataCache.getFirstLinkpathDest(clean, sourcePath);
+        if (file instanceof TFile) {
+            const absPath = path.join(vaultRoot, ...file.path.split('/'));
+            if (fs.existsSync(absPath)) {
+                return { file, absPath };
+            }
+        }
+
+        const directAbstract = app.vault.getAbstractFileByPath(clean);
+        if (directAbstract instanceof TFile) {
+            const absPath = path.join(vaultRoot, ...directAbstract.path.split('/'));
+            if (fs.existsSync(absPath)) {
+                return { file: directAbstract, absPath };
+            }
+        }
+
+        const directPath = path.join(vaultRoot, ...clean.split('/'));
+        if (fs.existsSync(directPath)) {
+            return { file: null, absPath: directPath };
+        }
+
+        return null;
+    };
+
+    // 1. Embedded widget container (.internal-embed)
     const embed = el.closest('.internal-embed') as HTMLElement | null;
     if (embed) {
         const src = embed.getAttribute('src') || embed.getAttribute('alt') || '';
         if (src) {
-            const resolved = resolveVaultLink(src, app, vaultRoot);
-            if (resolved) return resolved;
+            const res = tryResolveLink(src);
+            if (res) return res;
         }
     }
 
@@ -68,12 +86,19 @@ export function resolveAttachmentAbsPath(el: HTMLElement, app: App, vaultRoot: s
     if (img) {
         const src = img.getAttribute('src') || '';
         const decoded = appUrlToAbsPath(src);
-        if (decoded) return decoded;
+        if (decoded) {
+            const rel = path.relative(vaultRoot, decoded).replace(/\\/g, '/');
+            const file = app.vault.getAbstractFileByPath(rel);
+            return {
+                file: file instanceof TFile ? file : null,
+                absPath: decoded
+            };
+        }
 
         const alt = img.getAttribute('alt') || '';
         if (alt) {
-            const resolved = resolveVaultLink(alt, app, vaultRoot);
-            if (resolved) return resolved;
+            const res = tryResolveLink(alt);
+            if (res) return res;
         }
     }
 
@@ -84,19 +109,32 @@ export function resolveAttachmentAbsPath(el: HTMLElement, app: App, vaultRoot: s
     if (media) {
         const src = media.currentSrc || media.getAttribute('src') || '';
         const decoded = appUrlToAbsPath(src);
-        if (decoded) return decoded;
+        if (decoded) {
+            const rel = path.relative(vaultRoot, decoded).replace(/\\/g, '/');
+            const file = app.vault.getAbstractFileByPath(rel);
+            return {
+                file: file instanceof TFile ? file : null,
+                absPath: decoded
+            };
+        }
     }
 
-    // 4. <a class="internal-link"> or child of one
+    // 4. <a class="internal-link">
     const anchor = (el.tagName === 'A' ? el : el.closest('a.internal-link')) as HTMLAnchorElement | null;
     if (anchor) {
         const href = anchor.getAttribute('data-href') || anchor.getAttribute('href') || '';
         if (href) {
-            const resolved = resolveVaultLink(href, app, vaultRoot);
-            if (resolved) return resolved;
+            const res = tryResolveLink(href);
+            if (res) return res;
         }
     }
 
     return null;
 }
+
+export function resolveAttachmentAbsPath(el: HTMLElement, app: App, vaultRoot: string): string | null {
+    const res = resolveAttachment(el, app, vaultRoot);
+    return res ? res.absPath : null;
+}
+
 
