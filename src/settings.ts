@@ -10,6 +10,10 @@ import { FolderSuggest } from './features/tree/ui/folder-suggest';
 import { DocmostSettings, DEFAULT_DOCMOST_SETTINGS, DocmostSettingsTab } from './features/docmost/settings';
 import { YTCaptureSettings, DEFAULT_YTCAPTURE_SETTINGS } from './features/ytcapture/types';
 import { renderYTCaptureSettings } from './features/ytcapture/settings';
+import { FolderSyncSettings, DEFAULT_FOLDER_SYNC_SETTINGS } from './features/scriptSync/types';
+import { PendingChangesModal } from './features/scriptSync/ui/PendingChangesModal';
+import { ScanSyncModal } from './features/scriptSync/ui/ScanSyncModal';
+import { VaultFolderSuggest, FolderPickerModal } from './features/scriptSync/ui/FolderPicker';
 
 import type PakCLIPlugin from './main';
 
@@ -23,7 +27,8 @@ export interface PakCLIPluginSettings extends
     SQLSealSettings, 
     BasesLeafletViewSettings,
     DocmostSettings,
-    YTCaptureSettings
+    YTCaptureSettings,
+    FolderSyncSettings
 {
     dateFormat: string;
     codeblockWrapMode: 'flowclip' | 'wrap' | 'scalefit';
@@ -60,6 +65,7 @@ export const DEFAULT_SETTINGS: PakCLIPluginSettings = {
     ...DEFAULT_LEAFLET_SETTINGS,
     ...DEFAULT_DOCMOST_SETTINGS,
     ...DEFAULT_YTCAPTURE_SETTINGS,
+    ...DEFAULT_FOLDER_SYNC_SETTINGS,
     dateFormat: '_{yyyy}{mm}{dd}',
     codeblockWrapMode: 'flowclip',
     codeblockLanguageRules: [
@@ -83,6 +89,7 @@ const ALL_SUITE_TABS: SuiteTabInfo[] = [
     { id: 'leaflet',       label: 'Leaflet Map',       weight: 4 },
     { id: 'docmost',       label: 'Docmost Sync',      weight: 3 },
     { id: 'ytcapture',     label: 'YT Extension',      weight: 3 },
+    { id: 'foldersync',    label: 'Codeblock Sync',    weight: 3 },
     { id: 'router',        label: 'Asset Router',      weight: 3 },
     { id: 'symlink',       label: 'Symlink Manager',   weight: 2 },
     { id: 'codeblock',     label: 'Codeblock Mode',    weight: 1 },
@@ -417,6 +424,129 @@ export class PakCLISettingTab extends PluginSettingTab {
                         .onChange(async (value) => {
                             pluginSettings.enableAssetDrag = value;
                             await saveSettings();
+                        })
+                );
+        } else if (this.activeTab === 'foldersync') {
+            const pluginSettings = this.plugin.settings;
+            const saveSettings = async () => await this.plugin.saveSettings();
+
+            new Setting(contentContainer).setName('Codeblock Sync (Two-Way Script Sync)').setHeading();
+            contentContainer.createEl('p', {
+                text: 'Synchronizes scripts between your note codeblocks (.md first codeblock) and standalone script files (.ps1, .py, .js, .sh) inside your self-vault or in an external folder.',
+                cls: 'setting-item-description'
+            });
+
+            new Setting(contentContainer)
+                .setName('Enable Codeblock Sync')
+                .setDesc('Enable change detection, visual diffs, and execution controls for script codeblocks.')
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(pluginSettings.enabled ?? true)
+                        .onChange(async (value) => {
+                            pluginSettings.enabled = value;
+                            await saveSettings();
+                        })
+                );
+
+            new Setting(contentContainer)
+                .setName('Script Target Folder (Vault-Relative)')
+                .setDesc('Target folder inside your vault where script files live (e.g. "ALL SCRIPT", "scripts", "ALL POWERSHELL").')
+                .addText((text) => {
+                    text
+                        .setPlaceholder('e.g. ALL SCRIPT')
+                        .setValue(pluginSettings.cliRootFolder || '')
+                        .onChange(async (value) => {
+                            pluginSettings.cliRootFolder = value;
+                            await saveSettings();
+                            this.plugin.syncManager?.init();
+                        });
+                    new VaultFolderSuggest(this.app, text.inputEl);
+                })
+                .addButton((btn) => {
+                    btn
+                        .setButtonText('📁 Browse...')
+                        .setTooltip('Pick a folder from your vault')
+                        .onClick(() => {
+                            new FolderPickerModal(this.app, async (selected) => {
+                                pluginSettings.cliRootFolder = selected;
+                                await saveSettings();
+                                this.plugin.syncManager?.init();
+                                this.display();
+                            }).open();
+                        });
+                });
+
+            new Setting(contentContainer)
+                .setName('Notes Source Folder (Vault-Relative)')
+                .setDesc('Folder in your vault where your script notes live (e.g. "Digital Library/CLI & Commands", "ALL DRAFT", or leave blank for whole vault).')
+                .addText((text) => {
+                    text
+                        .setPlaceholder('e.g. Digital Library/CLI & Commands (or leave empty)')
+                        .setValue(pluginSettings.managerRootFolder || '')
+                        .onChange(async (value) => {
+                            pluginSettings.managerRootFolder = value;
+                            await saveSettings();
+                            this.plugin.syncManager?.init();
+                        });
+                    new VaultFolderSuggest(this.app, text.inputEl);
+                })
+                .addButton((btn) => {
+                    btn
+                        .setButtonText('📁 Browse...')
+                        .setTooltip('Pick a folder from your vault')
+                        .onClick(() => {
+                            new FolderPickerModal(this.app, async (selected) => {
+                                pluginSettings.managerRootFolder = selected;
+                                await saveSettings();
+                                this.plugin.syncManager?.init();
+                                this.display();
+                            }).open();
+                        });
+                });
+
+            new Setting(contentContainer)
+                .setName('Auto-Watch Script Directory')
+                .setDesc('Automatically monitor the target script folder for external file edits and additions.')
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(pluginSettings.autoWatchCliFolder ?? true)
+                        .onChange(async (value) => {
+                            pluginSettings.autoWatchCliFolder = value;
+                            await saveSettings();
+                        })
+                );
+
+            new Setting(contentContainer)
+                .setName('Scan & Sync Dashboard')
+                .setDesc('Scan all notes in your notes source folder, compare them against target scripts, and bulk sync with 1 click.')
+                .addButton((btn) =>
+                    btn
+                        .setButtonText('🔍 Open Scan Dashboard')
+                        .setCta()
+                        .onClick(() => {
+                            new ScanSyncModal(
+                                this.app,
+                                this.plugin.syncManager,
+                                () => this.plugin.settings,
+                                () => this.plugin.saveSettings()
+                            ).open();
+                        })
+                );
+
+            const pendingCount = (pluginSettings.pendingChanges || []).length;
+            new Setting(contentContainer)
+                .setName('Pending Sync Queue')
+                .setDesc(`Review deferred ("Remind me later") changes. Currently ${pendingCount} pending items.`)
+                .addButton((btn) =>
+                    btn
+                        .setButtonText(`Review Queue (${pendingCount})`)
+                        .onClick(() => {
+                            new PendingChangesModal(
+                                this.app,
+                                this.plugin.syncManager,
+                                () => this.plugin.settings,
+                                () => this.plugin.saveSettings()
+                            ).open();
                         })
                 );
         } else if (this.activeTab === 'router') {

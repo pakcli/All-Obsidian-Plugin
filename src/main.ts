@@ -1,4 +1,4 @@
-import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFolder, MarkdownView } from 'obsidian';
+import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFile, TFolder, MarkdownView } from 'obsidian';
 import { BadgeRenderer } from './features/symlink/badges';
 import { SymlinkModal } from './features/symlink/modal';
 import { DatePickerModal } from './features/symlink/datePickerModal';
@@ -32,6 +32,13 @@ import { runYTCaptureStartupCheck } from './features/ytcapture/utils/healthCheck
 // Asset Draggable
 import { AttachmentDragHandler } from './features/attachmentDrag/AttachmentDragHandler';
 
+// Folder Sync Manager & Two-Section Codeblock
+import { SyncManager } from './features/scriptSync/SyncManager';
+import { SyncCodeblockRenderer } from './features/scriptSync/ui/SyncCodeblockRenderer';
+import { PendingChangesModal } from './features/scriptSync/ui/PendingChangesModal';
+import { ScanSyncModal } from './features/scriptSync/ui/ScanSyncModal';
+import { extractFirstCodeBlock } from './features/scriptSync/markdownParser';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
     
@@ -51,6 +58,9 @@ export default class PakCLIPlugin extends Plugin {
 
 	// Asset Draggable
 	private assetDragHandler: AttachmentDragHandler | null = null;
+
+	// Folder Sync Manager
+	syncManager!: SyncManager;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -300,6 +310,106 @@ export default class PakCLIPlugin extends Plugin {
 			this.assetDragHandler.register(this);
 		}
 
+		// =========================================================================
+		// 9. Initialize Folder Sync Manager
+		// =========================================================================
+		this.syncManager = new SyncManager(
+			this.app,
+			this,
+			() => this.settings,
+			() => this.saveSettings()
+		);
+		this.syncManager.init();
+
+		// Left Ribbon Icon: Quick Scan & Dashboard
+		this.addRibbonIcon('terminal', 'Codeblock Sync: Scan & Sync Dashboard', () => {
+			new ScanSyncModal(
+				this.app,
+				this.syncManager,
+				() => this.settings,
+				() => this.saveSettings()
+			).open();
+		});
+
+		this.addCommand({
+			id: 'codeblock-sync-scan-modal',
+			name: 'Codeblock Sync: Scan Vault Notes & Open Dashboard',
+			callback: () => {
+				new ScanSyncModal(
+					this.app,
+					this.syncManager,
+					() => this.settings,
+					() => this.saveSettings()
+				).open();
+			}
+		});
+
+		this.addCommand({
+			id: 'codeblock-sync-all-instant',
+			name: 'Codeblock Sync: Instant Sync All Notes to Scripts',
+			callback: async () => {
+				new Notice('Codeblock Sync: Scanning and syncing all notes...');
+				const allFiles = this.app.vault.getMarkdownFiles();
+				const settings = this.settings;
+				const managerRoot = settings.managerRootFolder.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+				let count = 0;
+
+				for (const file of allFiles) {
+					const normPath = file.path.replace(/\\/g, '/');
+					if (managerRoot && !normPath.startsWith(managerRoot)) continue;
+
+					try {
+						const content = await this.app.vault.read(file);
+						const extracted = extractFirstCodeBlock(content);
+						if (extracted && extracted.code.trim()) {
+							const ok = await this.syncManager.executeSync(file, 'manager_to_cli', extracted.code, extracted.language);
+							if (ok) count++;
+						}
+					} catch {}
+				}
+				new Notice(`✓ Codeblock Sync: Synced ${count} script files.`);
+			}
+		});
+
+		this.addCommand({
+			id: 'codeblock-sync-open-pending',
+			name: 'Codeblock Sync: Open Pending Changes',
+			callback: () => {
+				new PendingChangesModal(
+					this.app,
+					this.syncManager,
+					() => this.settings,
+					() => this.saveSettings()
+				).open();
+			}
+		});
+
+		this.addCommand({
+			id: 'codeblock-sync-sync-active',
+			name: 'Codeblock Sync: Sync active note script to file',
+			callback: async () => {
+				const activeFile = this.app.workspace.getActiveFile();
+				if (activeFile) {
+					await this.syncManager.executeSync(activeFile, 'manager_to_cli');
+				} else {
+					new Notice('No active note to sync.');
+				}
+			}
+		});
+
+		this.addCommand({
+			id: 'codeblock-sync-pull-active',
+			name: 'Codeblock Sync: Pull active note script from file',
+			callback: async () => {
+				const activeFile = this.app.workspace.getActiveFile();
+				if (activeFile) {
+					await this.syncManager.executeSync(activeFile, 'cli_to_manager');
+				} else {
+					new Notice('No active note to pull.');
+				}
+			}
+		});
+
 		new Notice('PakCLI Editor\'s Choice Loaded');
 	}
 
@@ -308,6 +418,7 @@ export default class PakCLIPlugin extends Plugin {
 		this.badges = null;
 
 		this.assetDragHandler = null;
+		this.syncManager?.destroy();
 
 		document.body.classList.remove('codeblock-flowclip', 'codeblock-wrap', 'codeblock-scalefit');
 
@@ -328,6 +439,32 @@ export default class PakCLIPlugin extends Plugin {
 	}
 
 	registerCodeblockProcessors(): void {
+		// 1. Two-Section Script Sync Processors (powershell, gitbash, bash, cmd, python, etc.)
+		const scriptLangs = [
+			'powershell', 'ps1', 'pwsh',
+			'cmd', 'bat', 'batch', 'dos',
+			'bash', 'sh', 'gitbash', 'zsh', 'shell',
+			'python', 'py',
+			'javascript', 'js',
+			'typescript', 'ts',
+			'sql',
+			'sync-script', 'script'
+		];
+
+		scriptLangs.forEach((lang) => {
+			try {
+				this.registerMarkdownCodeBlockProcessor(lang, (source, el, ctx) => {
+					const file = ctx.sourcePath ? this.app.vault.getAbstractFileByPath(ctx.sourcePath) : null;
+					const noteFile = file instanceof TFile ? file : null;
+					const renderer = new SyncCodeblockRenderer(el, source, lang, this.syncManager, this, noteFile);
+					ctx.addChild(renderer);
+				});
+			} catch {
+				// Ignore if already registered
+			}
+		});
+
+		// 2. ASCII & Custom Scaler Codeblocks
 		const defaultLangs = ['asci', 'ascii', 'scalefit', 'flowclip'];
 		const customRules = this.settings.codeblockLanguageRules || [];
 		const langsToRegister = new Set([
@@ -336,6 +473,8 @@ export default class PakCLIPlugin extends Plugin {
 		]);
 
 		langsToRegister.forEach((lang) => {
+			if (scriptLangs.includes(lang)) return; // Don't override script sync
+
 			try {
 				this.registerMarkdownCodeBlockProcessor(lang, (source, el) => {
 					const scaler = this.codeblockScaler;

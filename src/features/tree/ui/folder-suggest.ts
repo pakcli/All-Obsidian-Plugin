@@ -9,10 +9,25 @@ export class FolderSuggest extends AbstractInputSuggest<string> {
 	}
 
 	getSuggestions(inputStr: string): string[] {
-		const folders = this.app.vault.getAllFolders(false);
-		const folderPaths: string[] = folders.map((folder: TFolder) => folder.path);
+		let folderPaths: string[] = [];
+		try {
+			if (typeof (this.app.vault as any).getAllFolders === 'function') {
+				const folders = (this.app.vault as any).getAllFolders(false);
+				folderPaths = folders.map((folder: TFolder) => folder.path);
+			} else {
+				const files = this.app.vault.getAllLoadedFiles();
+				folderPaths = files.filter(f => f instanceof TFolder).map(f => f.path);
+			}
+		} catch {
+			try {
+				const files = this.app.vault.getAllLoadedFiles();
+				folderPaths = files.filter(f => f instanceof TFolder).map(f => f.path);
+			} catch {
+				folderPaths = [];
+			}
+		}
 
-		const inputLower = inputStr.toLowerCase();
+		const inputLower = (inputStr || '').toLowerCase();
 		const matchingPaths = folderPaths.filter(path =>
 			path.toLowerCase().includes(inputLower)
 		);
