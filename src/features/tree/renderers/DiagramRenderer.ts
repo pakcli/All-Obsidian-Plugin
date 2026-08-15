@@ -62,10 +62,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 		const treeContent = treeContentLines.join('\n').trim();
 		this.sourceHash = this.hashCode(treeContent);
 		
-		console.log(`[Constructor] Created instance with hash=${this.sourceHash}`);
-		console.log(`[Constructor] Tree content length=${treeContent.length}`);
-		console.log(`[Constructor] Current panel state=${this.settingsPanelOpen}`);
-		
 		// Initialize from config
 		this.levelNumberOffset = this.config.offsetLevelNumbered;
 		
@@ -128,18 +124,13 @@ export class DiagramRenderer extends MarkdownRenderChild {
 			// Get the active file from the workspace
 			const activeFile = this.plugin.app.workspace.getActiveFile();
 			if (!activeFile) {
-				console.log('No active file');
 				this.isUpdatingSource = false;
 				return;
 			}
 			
-			console.log('Active file:', activeFile.path);
-			
 			// Read the file content
 			const content = await this.plugin.app.vault.read(activeFile);
 			const lines = content.split('\n');
-			
-			console.log('Total lines:', lines.length);
 			
 			// Extract tree content from this.source (without flags) for matching
 			const sourceLines = this.source.split('\n');
@@ -196,7 +187,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 					if (blockTreeText === sourceTreeText) {
 						codeblockStart = currentBlockStart;
 						codeblockEnd = i;
-						console.log('Found matching codeblock at lines:', codeblockStart, '-', codeblockEnd);
 						break;
 					}
 					
@@ -205,14 +195,12 @@ export class DiagramRenderer extends MarkdownRenderChild {
 			}
 			
 			if (codeblockStart === -1 || codeblockEnd === -1) {
-				console.log('Could not find matching codeblock');
 				this.isUpdatingSource = false;
 				return;
 			}
 			
 			// Extract current codeblock content
 			const codeblockLines = lines.slice(codeblockStart, codeblockEnd + 1);
-			console.log('Codeblock lines:', codeblockLines.length);
 			
 			// Find where tree content starts (after existing flags)
 			const treeContentLines: string[] = [];
@@ -223,7 +211,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 				
 				// Skip existing flag lines
 				if (trimmed.startsWith('-') && trimmed.includes(':')) {
-					console.log('Skipping flag line:', trimmed);
 					continue;
 				}
 				
@@ -236,8 +223,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 				treeContentLines.push(line);
 			}
 			
-			console.log('Tree content lines:', treeContentLines.length);
-			
 			// Build new flags (each on its own line)
 			const newFlags = [
 				'-interactive:' + this.config.interactive,
@@ -246,8 +231,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 				'-offsetlevelnumbered:' + this.levelNumberOffset,
 				'-currentview:' + this.config.currentView
 			];
-			
-			console.log('New flags:', newFlags);
 			
 			// Reconstruct codeblock with flags at the top
 			const newCodeblock = [
@@ -266,11 +249,7 @@ export class DiagramRenderer extends MarkdownRenderChild {
 			];
 			
 			const newContent = newLines.join('\n');
-			
-			console.log('About to modify file...');
 			await this.plugin.app.vault.modify(activeFile, newContent);
-			
-			console.log('✅ Codeblock updated successfully!');
 			
 			// Wait a bit before resetting flag to allow Obsidian to process the change
 			window.setTimeout(() => {

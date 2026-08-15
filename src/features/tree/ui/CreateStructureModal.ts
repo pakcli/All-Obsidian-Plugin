@@ -183,6 +183,6 @@ export class CreateStructureModal extends Modal {
 	private sanitizeName(name: string): string {
 		// Clean name from wikilink brackets and illegal filename characters in Obsidian
 		// Illegal characters: * " \ / < > : | ?
-		return name.replace(/[\[\]]/g, "").replace(/[*"\\\/<>:|?]/g, "").trim();
+		return name.replace(/[[\]]/g, "").replace(/[*"\\/<>:|?]/g, "").trim();
 	}
 }

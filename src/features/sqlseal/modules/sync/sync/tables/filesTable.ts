@@ -1,6 +1,5 @@
 import { App, Plugin, TFile } from "obsidian";
 import { AFileSyncTable } from "./abstractFileSyncTable";
-import { difference } from "lodash";
 import { sanitise } from "../../../../utils/sanitiseColumn";
 import { SqlocalDatabaseProxy } from "../../../database/sqlocal/sqlocalDatabaseProxy";
 import Papa from "papaparse";
@@ -96,7 +95,8 @@ export class FilesFileSyncTable extends AFileSyncTable {
     }
 
     async updateColumnsIfNeeded(newSetOfColumns: string[]) {
-        const newColumns = difference(newSetOfColumns, this.columns)
+        const colSet = new Set(this.columns);
+        const newColumns = newSetOfColumns.filter(c => !colSet.has(c));
         if (newColumns.length) {
             await this.db.addColumns(FILES_TABLE_NAME, newColumns)
             this.columns = (await this.db.getColumns(FILES_TABLE_NAME)) ?? []

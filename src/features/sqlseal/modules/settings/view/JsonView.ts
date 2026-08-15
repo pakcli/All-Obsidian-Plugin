@@ -1,7 +1,6 @@
-import { WorkspaceLeaf, TextFileView, Menu, IconName, Notice, ButtonComponent } from 'obsidian';
+import { WorkspaceLeaf, TextFileView, IconName, Notice, ButtonComponent } from 'obsidian';
 import { parse, stringify } from 'json5';
 import * as jsonpath from 'jsonpath';
-import { uniq } from 'lodash';
 import { CodeSampleModal } from '../modal/showCodeSample';
 import { ViewPluginGeneratorType } from '../../syntaxHighlight/viewPluginGenerator';
 
@@ -98,9 +97,9 @@ class TableRenderer {
         const displayRows = queryResult.slice(0, maxRows);
         
         const sampleSize = Math.min(displayRows.length, 20);
-        const columns = uniq(displayRows.slice(0, sampleSize).map(row => 
+        const columns = Array.from(new Set(displayRows.slice(0, sampleSize).map(row => 
             typeof row === 'object' && row !== null ? Object.keys(row) : []
-        ).flat());
+        ).flat()));
         
         if (columns.length === 0) {
             container.createEl('div', {

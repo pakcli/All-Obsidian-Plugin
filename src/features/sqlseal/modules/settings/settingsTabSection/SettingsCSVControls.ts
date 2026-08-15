@@ -61,8 +61,8 @@ export class SettingsCSVControls extends SettingsControls {
 				toggle
 					.setValue(this.settings.get("enableViewer"))
 					.onChange(async (value) => {
-						this.settings.set("enableViewer", !!value);
-						if (!!value) {
+						this.settings.set("enableViewer", value);
+						if (value) {
 							// Enabled
 							this.register();
 						} else {

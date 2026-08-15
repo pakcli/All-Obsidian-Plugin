@@ -76,7 +76,7 @@ export class DocmostSyncManager {
 
       for (const pageSummary of pages) {
         const webContent = await this.api.getPageMarkdown(pageSummary.id);
-        const safeTitle = pageSummary.title.replace(/[\/\\?%*:|"<>]/g, '_');
+        const safeTitle = pageSummary.title.replace(/[\\/?%*:|"<>]/g, '_');
         
         let targetPath = `${safeTitle}.md`;
         if (targetSubfolder) {

@@ -17,7 +17,7 @@ export function getIconWithDefault(iconId: string | undefined): SVGSVGElement {
 	}
 
 	const defaultIcon = getIcon("circle-small");
-	if (!(defaultIcon instanceof SVGSVGElement)) throw new Error("Faulty default icon set");
+	if (!defaultIcon || (defaultIcon.instanceOf ? !defaultIcon.instanceOf(SVGSVGElement) : defaultIcon.tagName?.toLowerCase() !== "svg")) throw new Error("Faulty default icon set");
 
 	defaultIcon.setAttribute("fill", "currentColor");
 	return defaultIcon;

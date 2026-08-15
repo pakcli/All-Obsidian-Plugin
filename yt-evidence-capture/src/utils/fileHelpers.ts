@@ -13,7 +13,7 @@ export function sanitizeFilename(name: string): string {
   return (
     name
       // Remove filesystem-illegal characters (Windows + Unix superset)
-      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+      .replace(new RegExp('[<>:"/\\\\|?*\\u0000-\\u001f]', 'g'), "_")
       // Collapse runs of whitespace/underscores
       .replace(/[\s_]+/g, "_")
       // Strip leading dots/underscores

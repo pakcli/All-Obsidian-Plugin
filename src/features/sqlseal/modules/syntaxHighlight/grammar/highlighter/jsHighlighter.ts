@@ -63,13 +63,13 @@ function highlightJavaScript(source: string): Decorator[] {
                         break;
                     case 'Punctuator':
                         if (['+', '-', '*', '/', '%', '=', '>', '<', '!', '&', '|', '^', '~', '?', ':'].includes(token.value) ||
-                            token.value.length > 1 && /^[+\-*/%=><!\^&|?:]+$/.test(token.value)) {
+                            (token.value.length > 1 && /^[+\-*/%=><!^&|?:]+$/.test(token.value))) {
                             addDecorator('operator', token.range[0], token.range[1]);
                         } else {
                             addDecorator('punctuation', token.range[0], token.range[1]);
                         }
                         break;
-                    case 'String':
+                    case 'String': {
                         // String literals include the quotes
                         addDecorator('string', token.range[0], token.range[1]);
 
@@ -89,6 +89,7 @@ function highlightJavaScript(source: string): Decorator[] {
                         // Look for string interpolation patterns like ${...} if needed
                         // This is mostly relevant for template literals, which are handled separately
                         break;
+                    }
                     case 'Numeric':
                         addDecorator('number', token.range[0], token.range[1]);
                         break;
@@ -99,7 +100,7 @@ function highlightJavaScript(source: string): Decorator[] {
                     case 'Null':
                         addDecorator('keyword', token.range[0], token.range[1]);
                         break;
-                    case 'Template':
+                    case 'Template': {
                         // Handle template literals more carefully - they may contain expressions
                         // The token itself might be just a part of the template (a quasi)
                         addDecorator('string', token.range[0], token.range[1]);
@@ -111,6 +112,7 @@ function highlightJavaScript(source: string): Decorator[] {
                             // But we can add specific handling here if needed
                         }
                         break;
+                    }
                 }
             }
         }

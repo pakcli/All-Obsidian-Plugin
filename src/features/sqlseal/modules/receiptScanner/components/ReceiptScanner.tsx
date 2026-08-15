@@ -239,7 +239,8 @@ function ReceiptRedactionEditor({ app, imagePath, initialShapes, onSave, onCance
   };
 
   const clearAllShapes = () => {
-    if (confirm("Are you sure you want to clear all redactions for this image?")) {
+    const confirmed = typeof window !== "undefined" && (window as any).confirm ? (window as any).confirm("Are you sure you want to clear all redactions for this image?") : true;
+    if (confirmed) {
       setShapes([]);
     }
   };
@@ -385,6 +386,33 @@ function ReceiptRedactionEditor({ app, imagePath, initialShapes, onSave, onCance
   );
 }
 
+const getStorageItem = (appInstance: any, key: string): string | null => {
+  try {
+    if (appInstance && typeof appInstance.loadLocalStorage === "function") {
+      return appInstance.loadLocalStorage(key);
+    }
+    const win = typeof window !== "undefined" ? (window as any) : null;
+    return win?.localStorage ? win.localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setStorageItem = (appInstance: any, key: string, val: string): void => {
+  try {
+    if (appInstance && typeof appInstance.saveLocalStorage === "function") {
+      appInstance.saveLocalStorage(key, val);
+      return;
+    }
+    const win = typeof window !== "undefined" ? (window as any) : null;
+    if (win?.localStorage) {
+      win.localStorage.setItem(key, val);
+    }
+  } catch {
+    // ignore storage errors
+  }
+};
+
 interface ReceiptScannerProps {
   app: App;
   plugin: TablitePlugin;
@@ -442,11 +470,11 @@ export function ReceiptScanner({ app, plugin, onClose }: ReceiptScannerProps) {
 
   // Column width states (persisted via Obsidian App localStorage)
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-    const saved = app?.loadLocalStorage ? app.loadLocalStorage("receipt-scanner-sidebar-width") : (typeof localStorage !== "undefined" ? localStorage.getItem("receipt-scanner-sidebar-width") : null);
+    const saved = getStorageItem(app, "receipt-scanner-sidebar-width");
     return saved ? parseInt(String(saved), 10) || 220 : 220;
   });
   const [mediaWidth, setMediaWidth] = useState<number>(() => {
-    const saved = app?.loadLocalStorage ? app.loadLocalStorage("receipt-scanner-media-width") : (typeof localStorage !== "undefined" ? localStorage.getItem("receipt-scanner-media-width") : null);
+    const saved = getStorageItem(app, "receipt-scanner-media-width");
     return saved ? parseInt(String(saved), 10) || 360 : 360;
   });
 
@@ -495,19 +523,11 @@ export function ReceiptScanner({ app, plugin, onClose }: ReceiptScannerProps) {
 
   // Save column widths when they change
   useEffect(() => {
-    if (app?.saveLocalStorage) {
-      app.saveLocalStorage("receipt-scanner-sidebar-width", sidebarWidth.toString());
-    } else if (typeof localStorage !== "undefined") {
-      localStorage.setItem("receipt-scanner-sidebar-width", sidebarWidth.toString());
-    }
+    setStorageItem(app, "receipt-scanner-sidebar-width", sidebarWidth.toString());
   }, [sidebarWidth, app]);
 
   useEffect(() => {
-    if (app?.saveLocalStorage) {
-      app.saveLocalStorage("receipt-scanner-media-width", mediaWidth.toString());
-    } else if (typeof localStorage !== "undefined") {
-      localStorage.setItem("receipt-scanner-media-width", mediaWidth.toString());
-    }
+    setStorageItem(app, "receipt-scanner-media-width", mediaWidth.toString());
   }, [mediaWidth, app]);
 
   // Sidebar drag to resize
@@ -856,7 +876,8 @@ export function ReceiptScanner({ app, plugin, onClose }: ReceiptScannerProps) {
 
   const deleteActiveDraft = async () => {
     if (!activeDraft) return;
-    if (!confirm("Are you sure you want to delete this draft and all its temp images?")) return;
+    const confirmed = typeof window !== "undefined" && (window as any).confirm ? (window as any).confirm("Are you sure you want to delete this draft and all its temp images?") : true;
+    if (!confirmed) return;
 
     // Clean up draft files in vault
     for (const imgPath of activeDraft.imagePaths) {

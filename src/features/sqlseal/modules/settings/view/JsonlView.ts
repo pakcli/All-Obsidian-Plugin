@@ -1,5 +1,4 @@
 import { WorkspaceLeaf, TextFileView, IconName, ButtonComponent } from 'obsidian';
-import { uniq } from 'lodash';
 import { CodeSampleModal } from '../modal/showCodeSample';
 import { ViewPluginGeneratorType } from '../../syntaxHighlight/viewPluginGenerator';
 
@@ -99,7 +98,7 @@ export class JsonlView extends TextFileView {
         }
 
         const displayRows = data.slice(0, MAX_ROWS);
-        const columns = uniq(displayRows.slice(0, 20).flatMap(row => Object.keys(row)));
+        const columns = Array.from(new Set(displayRows.slice(0, 20).flatMap(row => Object.keys(row))));
 
         const table = container.createEl('table', { cls: 'sqlseal-preview-table' });
         const thead = table.createEl('thead');

@@ -3,7 +3,6 @@ import SQLiteAsyncESMFactory from 'wa-sqlite/dist/wa-sqlite-async.mjs';
 import * as SQLite from 'wa-sqlite';
 import { IDBBatchAtomicVFS } from 'wa-sqlite/src/examples/IDBBatchAtomicVFS.js';
 import { ColumnDefinition } from "../../../utils/types";
-import { sanitise } from "../../../utils/sanitiseColumn";
 
 /**
  * Retry an async operation with exponential backoff
@@ -47,7 +46,7 @@ async function retryWithBackoff<T>(
                 );
             }
 
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise(resolve => (typeof window !== "undefined" ? window.setTimeout : setTimeout)(resolve, delay));
         }
     }
 
@@ -598,7 +597,6 @@ export class SqlocalWorkerDatabase {
                         }
 
                         // Handle @key format (used in repository queries)
-                        const atPlaceholder = `@${key}`;
                         const atRegex = new RegExp(`@${key}\\b`, 'g');
                         const atMatches = (processedStatement.match(atRegex) || []).length;
                         if (atMatches > 0) {
@@ -630,8 +628,7 @@ export class SqlocalWorkerDatabase {
                             }
 
                             // Fetch all rows
-                            let stepResult;
-                            while ((stepResult = await this.sqlite3.step(prepared.stmt)) === SQLite.SQLITE_ROW) {
+                            while ((await this.sqlite3.step(prepared.stmt)) === SQLite.SQLITE_ROW) {
                                 const row: any = {};
                                 for (let i = 0; i < columnCount; i++) {
                                     const columnName = columns[i];

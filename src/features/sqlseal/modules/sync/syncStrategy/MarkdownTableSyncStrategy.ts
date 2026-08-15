@@ -119,7 +119,7 @@ export class MarkdownTableSyncStrategy extends ISyncStrategy {
                 
                 let currentElement = header.nextElementSibling;
                 while (currentElement && !currentElement.matches('h1, h2, h3, h4, h5, h6')) {
-                    if (currentElement instanceof HTMLTableElement || currentElement.querySelector('table')) {
+                    if (currentElement.matches('table') || currentElement.querySelector('table')) {
                         const tables = currentElement.matches('table')
                             ? [currentElement as HTMLTableElement]
                             : Array.from(currentElement.querySelectorAll('table'));

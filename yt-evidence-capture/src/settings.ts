@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import type YTEvidenceCapturePlugin from "./main";
 import { checkDependencies } from "./utils/healthCheck";
 import { SetupModal } from "./ui/SetupModal";
@@ -106,7 +106,7 @@ export class YTEvidenceSettingTab extends PluginSettingTab {
     installBtn.addEventListener("click", () => {
       new SetupModal(this.app, this.plugin.settings, () => {
         // Re-check status after install finishes
-        setTimeout(() => runCheck(), 1500);
+        window.setTimeout(() => runCheck(), 1500);
       }).open();
     });
 
@@ -185,7 +185,6 @@ export class YTEvidenceSettingTab extends PluginSettingTab {
         s
           .setLimits(5, 300, 5)
           .setValue(this.plugin.settings.defaultDuration)
-          .setDynamicTooltip()
           .onChange(async (v) => {
             this.plugin.settings.defaultDuration = v;
             await this.plugin.saveSettings();

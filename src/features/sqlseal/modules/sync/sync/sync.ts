@@ -1,7 +1,6 @@
 import { App, TAbstractFile, TFile, Vault } from "obsidian";
 import { FilepathHasher } from "../../../utils/hasher";
 import { Omnibus } from "@hypersphere/omnibus";
-import { uniq } from "lodash";
 import { SqlocalDatabaseProxy } from "../../database/sqlocal/sqlocalDatabaseProxy";
 import { TableDefinition, TableDefinitionsRepository } from "../repository/tableDefinitions";
 import { TableAliasesRepository } from "../repository/tableAliases";
@@ -91,7 +90,7 @@ export class Sync {
         await this.configRepo.setConfig('version', SQLSEAL_DATABASE_VERSION)
 
         const fileLogs = await this.tableDefinitionsRepo.getAll()
-        const uniquePaths = uniq(fileLogs.map(l => l.source_file))
+        const uniquePaths = Array.from(new Set(fileLogs.map(l => l.source_file)))
         for (const path of uniquePaths) {
             await this.syncFileByName(path)
         }

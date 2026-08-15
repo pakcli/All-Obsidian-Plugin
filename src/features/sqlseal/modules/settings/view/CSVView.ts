@@ -366,7 +366,6 @@ export class CSVView extends TextFileView {
 		const gridEl = csvEditorDiv.createDiv({ cls: "sql-seal-csv-viewer" });
 
 		const grid = new GridRenderer(this.settings, null, this.app);
-		const csvView = this;
 		const data = this.prepareData();
 		this.result = data;
 		const api = grid.render(
@@ -376,10 +375,11 @@ export class CSVView extends TextFileView {
 					editable: this.settings.get("enableEditing"),
 					headerComponentParams: {
 						enableMenu: this.settings.get("enableEditing"),
-						showColumnMenu: function (e: any) {
-							const menu = new CSVColumnContextMenu(csvView, this.column as AgColumn)
-                    		const pos = e.getBoundingClientRect();
-                            menu.show({ x: pos.x, y: pos.y + 20 })
+						showColumnMenu: (e: any, colParam?: any) => {
+							const col = colParam ?? (e?.target as any)?.column;
+							const menu = new CSVColumnContextMenu(this, col as AgColumn);
+							const pos = e.getBoundingClientRect ? e.getBoundingClientRect() : { x: e.clientX ?? 0, y: (e.clientY ?? 0) + 20 };
+							menu.show({ x: pos.x, y: pos.y + 20 });
 						},
 					},
 				},
@@ -391,11 +391,10 @@ export class CSVView extends TextFileView {
 					if (!e.finished) {
 						return;
 					}
-					const columnName = e.column?.getUserProvidedColDef();
-					if (!columnName) {
-						return;
+					const userColDef = e.column?.getUserProvidedColDef();
+					if (userColDef?.field && e.toIndex !== undefined && e.toIndex !== null) {
+						this.moveColumn(userColDef.field, e.toIndex);
 					}
-					csvView.moveColumn(columnName?.field!, e.toIndex!);
 				},
 				domLayout: "normal",
 				getRowId: (p) => p.data.__index,
@@ -414,10 +413,10 @@ export class CSVView extends TextFileView {
 						item.setTitle("Delete Row");
 						item.onClick(() => {
 							const modal = new DeleteConfirmationModal(
-								csvView.app,
+								this.app,
 								`row`,
 								() => {
-									csvView.deleteRow(e.data.__index);
+									this.deleteRow(e.data.__index);
 								},
 							);
 							modal.open();

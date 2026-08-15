@@ -363,7 +363,7 @@ export class SymlinkModal extends Modal {
 
 	private confirm(message: string): boolean {
 		if (!this.opts.confirmDisconnect) return true;
-		return window.confirm(message);
+		return typeof window !== "undefined" && (window as any).confirm ? (window as any).confirm(message) : true;
 	}
 
 	private showDebug(msg: string): void {

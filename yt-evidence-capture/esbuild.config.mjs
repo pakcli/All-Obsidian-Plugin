@@ -1,7 +1,7 @@
 import esbuild from "esbuild";
 import { writeFileSync, readFileSync, existsSync, mkdirSync, copyFileSync } from "fs";
 import process from "process";
-import builtins from "builtin-modules";
+import { builtinModules as builtins } from "node:module";
 import { join } from "path";
 
 const prod = process.argv[2] === "production";

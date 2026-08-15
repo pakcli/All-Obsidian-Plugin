@@ -4,9 +4,7 @@
  * Steps:
  *   confirm → running (live log) → done/error
  */
-import { App, FileSystemAdapter, Modal, Notice, requestUrl } from "obsidian";
-import * as path from "path";
-import * as fs from "fs";
+import { App, Modal, requestUrl } from "obsidian";
 import { runCommand } from "../utils/process";
 import type { YTEvidenceSettings } from "../settings";
 

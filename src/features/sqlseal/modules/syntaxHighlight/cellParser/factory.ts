@@ -9,7 +9,7 @@ export const getCellParser = (app: App, create = createEl) => {
 	const cellParser = new ModernCellParser();
 	cellParser.register(new LinkParser(app, create));
 	cellParser.register(new ImageParser(app, create));
-	cellParser.register(new CheckboxParser(app, create));
+	cellParser.register(new CheckboxParser(app));
 	return cellParser;
 };
 
@@ -21,7 +21,7 @@ export const cellParserFactory = (
 	const cellParser = new ModernCellParser();
 	cellParser.register(new LinkParser(app, create));
 	cellParser.register(new ImageParser(app, create));
-	cellParser.register(new CheckboxParser(app, create));
+	cellParser.register(new CheckboxParser(app));
 	cellParser.registerDbFunctions(db);
 	return cellParser;
 };

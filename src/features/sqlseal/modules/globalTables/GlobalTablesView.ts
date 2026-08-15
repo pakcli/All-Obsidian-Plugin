@@ -2,14 +2,12 @@ import { IconName, ItemView, Vault, WorkspaceLeaf } from "obsidian";
 import { MenuBar } from "./GlobalTablesView/MenuBar";
 import { FileConfig } from "./FileConfig";
 import { TableConfiguration } from "./modal/NewGlobalTableModal";
-import { GridRenderer } from "../editor/renderer/GridRenderer";
 import { createGrid, GridApi, themeQuartz } from "ag-grid-community";
 import { ConfigCellRenderer } from "./cells/ConfigCell";
 import { StatsRenderer } from "./cells/StatsRenderer";
 import { ActionCellRenderer } from "./cells/ActionCell";
 import { Sync } from "../sync/sync/sync";
 import { ParserTableDefinition } from "../sync/syncStrategy/types";
-import { throttle } from "lodash";
 
 export const GLOBAL_TABLES_VIEW_TYPE = "sqlseal-global-tables";
 
@@ -237,12 +235,24 @@ export class GlobalTablesView extends ItemView {
 			this.api.destroy();
 		}
 	}
+
 	private resizeObserver: ResizeObserver;
 
 	private setupResizeObserver(gridContainer: HTMLElement) {
-		const fn = throttle(() => this.smartResize(), 100)
+		const fn = throttle(() => this.smartResize(), 100);
 		this.resizeObserver = new ResizeObserver(fn);
 
 		this.resizeObserver.observe(gridContainer);
 	}
+}
+
+function throttle<T extends (...args: any[]) => void>(func: T, limit: number): T {
+	let inThrottle = false;
+	return ((...args: any[]) => {
+		if (!inThrottle) {
+			func(...args);
+			inThrottle = true;
+			window.setTimeout(() => { inThrottle = false; }, limit);
+		}
+	}) as T;
 }

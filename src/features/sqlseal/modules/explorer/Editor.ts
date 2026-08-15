@@ -94,7 +94,6 @@ export class Editor {
 		if (this.db) {
 			const vis = new SchemaVisualiser(this.db)
 			vis.show(structure)
-		} else {
 		}
 
 		const events = menuBar.events;

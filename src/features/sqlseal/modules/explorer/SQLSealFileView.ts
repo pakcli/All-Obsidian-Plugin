@@ -195,7 +195,7 @@ export class SQLSealFileView extends TextFileView {
         this.editor.render(this.contentEl);
     }
 
-    onPaneMenu(menu: Menu, source: "more-options" | "tab-header" | string): void {
+    onPaneMenu(menu: Menu, source: string): void {
         if (this.file && (this.file.extension === 'sql' || this.file.extension === 'sqlseal')) {
             menu.addItem(item => {
                 item.setTitle("Save and Run Query")

@@ -61,7 +61,7 @@ export const explorerInit = (
 		// Extensions for SQLSeal file view are registered by SettingsSQLControls
 
 		plugin.addCommand({
-			id: "sqlseal-command-explorer",
+			id: "sqlseal-explorer",
 			name: "Open SQLSeal Explorer",
 			icon: "logo-sqlseal",
 			callback: () => activateView(app, "sqlseal-explorer-view"),

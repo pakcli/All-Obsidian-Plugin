@@ -121,7 +121,7 @@ export default class PakCLIPlugin extends Plugin {
 					activeEl.classList.contains('nav-folder-input') ||
 					activeEl.closest('.nav-file') !== null ||
 					activeEl.closest('.nav-folder') !== null
-				) && (activeEl instanceof HTMLInputElement);
+				) && (activeEl.instanceOf?.(HTMLInputElement) || activeEl.tagName === 'INPUT');
 
 				if (isRenameInput) {
 					const formatted = this.formatDate(today, this.settings.dateFormat);
@@ -134,10 +134,11 @@ export default class PakCLIPlugin extends Plugin {
 				let inputSelection: { start: number; end: number } | null = null;
 
 				if (activeEl) {
-					if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) {
+					if (activeEl.instanceOf?.(HTMLInputElement) || activeEl.instanceOf?.(HTMLTextAreaElement) || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') {
+						const textInput = activeEl as HTMLInputElement | HTMLTextAreaElement;
 						inputSelection = {
-							start: activeEl.selectionStart ?? 0,
-							end: activeEl.selectionEnd ?? 0
+							start: textInput.selectionStart ?? 0,
+							end: textInput.selectionEnd ?? 0
 						};
 					} else if (activeEl.isContentEditable) {
 						const selection = window.getSelection();
@@ -158,8 +159,8 @@ export default class PakCLIPlugin extends Plugin {
 					if (activeEl) {
 						activeEl.focus(); // Restore focus first
 
-						if (inputSelection && (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
-							activeEl.setSelectionRange(inputSelection.start, inputSelection.end);
+						if (inputSelection && (activeEl.instanceOf?.(HTMLInputElement) || activeEl.instanceOf?.(HTMLTextAreaElement) || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+							(activeEl as HTMLInputElement | HTMLTextAreaElement).setSelectionRange(inputSelection.start, inputSelection.end);
 							document.execCommand('insertText', false, formatted);
 						} else if (selectionRange && activeEl.isContentEditable) {
 							const selection = window.getSelection();

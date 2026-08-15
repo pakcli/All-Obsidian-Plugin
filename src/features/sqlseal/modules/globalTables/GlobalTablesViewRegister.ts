@@ -15,7 +15,7 @@ export const globalTablesViewRendererFactory = (
 		);
 
 		plugin.addCommand({
-			id: "sqlseal-command-global-tables",
+			id: "sqlseal-global-tables",
 			name: "Open global tables configuration",
 			icon: "logo-sqlseal",
 			callback: () => activateView(app, GLOBAL_TABLES_VIEW_TYPE),

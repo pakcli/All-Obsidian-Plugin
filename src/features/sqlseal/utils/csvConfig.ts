@@ -42,7 +42,7 @@ export const loadConfig = async (file: TFile, vault: Vault): Promise<ConfigObjec
     }
 }
 
-export const saveConfig = async (file: TFile, content: Object, vault: Vault) => {
+export const saveConfig = async (file: TFile, content: object, vault: Vault) => {
     const serialised = jsonStringify(content, null, 2)
 
     // Check if exists

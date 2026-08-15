@@ -56,8 +56,8 @@ export class SettingsSQLControls extends SettingsControls {
 				toggle
 					.setValue(this.settings.get("enableSQLViewer"))
 					.onChange(async (value) => {
-						this.settings.set("enableSQLViewer", !!value);
-						if (!!value) {
+						this.settings.set("enableSQLViewer", value);
+						if (value) {
 							// Enabled
 							this.register();
 						} else {

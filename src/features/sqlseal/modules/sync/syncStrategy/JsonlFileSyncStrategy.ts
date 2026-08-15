@@ -2,7 +2,6 @@ import { App } from "obsidian";
 import { ISyncStrategy } from "./abstractSyncStrategy";
 import { ParserTableDefinition } from "./types";
 import { parse } from 'json5';
-import { uniq } from "lodash";
 import { FilepathHasher } from "../../../utils/hasher";
 
 const DEFAULT_FILE_HASH = ''
@@ -57,7 +56,7 @@ export class JsonlFileSyncStrategy extends ISyncStrategy {
             }
         }
 
-        const columns = uniq(data.flatMap(d => Object.keys(d))).map(c => ({ name: c, type: 'auto' as const }))
+        const columns = Array.from(new Set(data.flatMap(d => Object.keys(d)))).map(c => ({ name: c, type: 'auto' as const }))
 
         return { columns, data }
     }

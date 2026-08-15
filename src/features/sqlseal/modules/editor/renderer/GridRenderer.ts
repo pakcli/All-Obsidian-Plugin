@@ -1,5 +1,4 @@
 import { createGrid, GridApi, GridOptions, themeQuartz, ICellEditorComp, ICellEditorParams } from "ag-grid-community";
-import { merge } from "lodash";
 import { App, Plugin } from "obsidian";
 import { RendererConfig, RendererContext } from "./rendererRegistry";
 import { parse } from 'json5';
@@ -7,7 +6,7 @@ import { EventRef } from "obsidian";
 import { Settings } from "../../settings/Settings";
 import { ViewDefinition } from "../parser";
 import { ModernCellParser } from "../../syntaxHighlight/cellParser/ModernCellParser";
-import { formatHeaderName, parseAutocompleteSettings, resolveHeaderName } from "../../../utils/views";
+import { parseAutocompleteSettings, resolveHeaderName } from "../../../utils/views";
 import { GenericTextSuggest } from "../../../utils/suggesters";
 
 class AutocompleteCellEditor implements ICellEditorComp {
@@ -342,7 +341,29 @@ export class GridRendererCommunicator {
             .withParams(getAgGridTheme(getCurrentTheme()))
 
 
-        const gridOptions: GridOptions = merge({
+function deepMerge<T extends Record<string, any>>(target: T, source?: Partial<T> | null): T {
+    if (!source) return target;
+    const output: Record<string, any> = { ...target };
+    for (const key of Object.keys(source)) {
+        const sourceVal = (source as any)[key];
+        const targetVal = output[key];
+        if (
+            sourceVal &&
+            typeof sourceVal === 'object' &&
+            !Array.isArray(sourceVal) &&
+            targetVal &&
+            typeof targetVal === 'object' &&
+            !Array.isArray(targetVal)
+        ) {
+            output[key] = deepMerge(targetVal, sourceVal);
+        } else if (sourceVal !== undefined) {
+            output[key] = sourceVal;
+        }
+    }
+    return output as T;
+}
+
+        const gridOptions: GridOptions = deepMerge({
             theme: myTheme,
             defaultColDef: {
                 resizable: false,

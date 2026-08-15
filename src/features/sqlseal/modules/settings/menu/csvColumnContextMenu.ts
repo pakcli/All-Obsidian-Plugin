@@ -30,8 +30,8 @@ export class CSVColumnContextMenu {
 		modal.open();
 	}
 
-	get columnField() {
-		return this.column.getUserProvidedColDef()?.field!;
+	get columnField(): string {
+		return this.column.getUserProvidedColDef()?.field ?? "";
 	}
 
     get config() {
@@ -53,7 +53,7 @@ export class CSVColumnContextMenu {
 
         menu.addSeparator();
         menu.addItem(item => {
-            const isHidden = !!this.config.isHidden
+            const isHidden = Boolean(this.config?.isHidden);
             item.setTitle(isHidden ? 'Show in queries' : 'Hide from queries')
             item.onClick(async () => {
                 await this.csvView.setConfig(this.columnField, { isHidden: !isHidden })

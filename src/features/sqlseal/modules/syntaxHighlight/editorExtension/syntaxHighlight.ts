@@ -112,15 +112,16 @@ export class SQLSealViewPlugin implements PluginValue {
           switch (dec.type) {
             case 'filename':
               return this.decorateFilename(dec, codeblockMatch)
-            default:
+            default: {
               const decoration = markDecorations[dec.type as keyof typeof markDecorations];
-            if (decoration) {
-              return decoration.range(
-                toDocPos(content, linePrefix || '', startIndex, dec.start),
-                toDocPos(content, linePrefix || '', startIndex, dec.end)
-              )
-            } else {
-              return []
+              if (decoration) {
+                return decoration.range(
+                  toDocPos(content, linePrefix || '', startIndex, dec.start),
+                  toDocPos(content, linePrefix || '', startIndex, dec.end)
+                );
+              } else {
+                return [];
+              }
             }
           }
         });

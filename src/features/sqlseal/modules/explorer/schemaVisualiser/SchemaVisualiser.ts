@@ -187,8 +187,7 @@ export class SchemaVisualiser {
         // Mermaid requires identifiers with spaces or special characters to be quoted
         // Also handle other problematic characters
         
-        // Check if identifier contains spaces, hyphens, or other special characters
-        const needsQuoting = /[\s\-\.\(\)\[\]{}'"!@#$%^&*+=|\\:;,<>?/~`]/.test(identifier)
+        const needsQuoting = /[^a-zA-Z0-9_]/.test(identifier);
         
         if (needsQuoting) {
             // Escape any existing quotes and wrap in quotes

@@ -179,7 +179,7 @@ export class CaptureModal extends Modal {
       if (e.key === "Enter") captureBtn.click();
     });
 
-    setTimeout(() => urlInput.focus(), 50);
+    window.setTimeout(() => urlInput.focus(), 50);
   }
 
   // ─── Transition: fetch preview ─────────────────────────────────────────────
@@ -550,9 +550,12 @@ export class CaptureModal extends Modal {
       });
       revealBtn.addEventListener("click", () => {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires -- Dynamic Electron shell import required for desktop file manager integration
-          const electronModule = require("electron") as { shell: { openPath: (p: string) => Promise<string> } };
-          electronModule.shell.openPath(this.result!.fsDirPath);
+          const electronModule = typeof window !== "undefined" && (window as any).require ? (window as any).require("electron") : null;
+          if (electronModule?.shell?.openPath) {
+            electronModule.shell.openPath(this.result!.fsDirPath);
+          } else {
+            new Notice("Could not open file explorer.");
+          }
         } catch {
           new Notice("Could not open file explorer.");
         }

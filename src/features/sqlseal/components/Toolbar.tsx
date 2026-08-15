@@ -164,7 +164,8 @@ export function Toolbar({
         }
         viewSelect.value = activeView || "Default";
       } else if (val === "__action_delete") {
-        if (confirm(`Are you sure you want to delete the view "${activeView}"?`)) {
+        const confirmed = typeof window !== "undefined" && (window as any).confirm ? (window as any).confirm(`Are you sure you want to delete the view "${activeView}"?`) : true;
+        if (confirmed) {
           onDeleteView?.();
         }
         viewSelect.value = activeView || "Default";

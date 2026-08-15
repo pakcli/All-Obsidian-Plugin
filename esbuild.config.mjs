@@ -1,7 +1,7 @@
 import esbuild from "esbuild";
 import { writeFileSync, readFileSync, existsSync, mkdirSync, copyFileSync, promises as fs } from "fs";
 import process from "process";
-import builtins from "builtin-modules";
+import { builtinModules as builtins } from "node:module";
 import { join } from 'path';
 import { polyfillNode } from 'esbuild-plugin-polyfill-node';
 import { sassPlugin } from 'esbuild-sass-plugin';

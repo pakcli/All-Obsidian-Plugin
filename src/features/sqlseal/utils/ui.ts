@@ -1,4 +1,4 @@
-import { identity } from "lodash"
+export const identity = <T>(x: T): T => x;
 
 export  const displayNotice = (el: HTMLElement, text: string) => {
     el.empty()

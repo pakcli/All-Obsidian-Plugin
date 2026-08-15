@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import { parse, show, cstVisitor } from 'sql-parser-cst';
 
 /**
@@ -191,6 +190,6 @@ export const transformQuery = (
 
   return {
     sql: show(cst),
-    mappedTables: _.uniq(watchTables)
+    mappedTables: Array.from(new Set(watchTables))
   }
 }

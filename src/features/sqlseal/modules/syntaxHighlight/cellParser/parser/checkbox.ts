@@ -21,7 +21,7 @@ const isCheckboxProp = (arg: any): arg is CheckboxProps => {
 
 export class CheckboxParser implements CellFunction<Args> {
 
-    constructor(private readonly app: App, private readonly create = createEl) { }
+    constructor(private readonly app: App) { }
 
     get name(): string {
         return 'checkbox'
@@ -37,7 +37,7 @@ export class CheckboxParser implements CellFunction<Args> {
                 type: 'checkbox',
                 attr: {
                     disabled: true,
-                    checked: !!values[0] ? true : null
+                    checked: values[0] ? true : null
                 }
             });
             return el
@@ -46,7 +46,7 @@ export class CheckboxParser implements CellFunction<Args> {
         const el = createEl('input', {
             type: 'checkbox',
             attr: {
-                checked: !!(values && values.checked) ? true : null,
+                checked: values.checked ? true : null,
                 'data-task': values.status || ' '
             }
         })

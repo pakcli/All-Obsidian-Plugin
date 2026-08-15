@@ -1,8 +1,6 @@
-import { App } from "obsidian";
 import * as Comlink from 'comlink';
 import { SqlocalWorkerDatabase } from "./sqlocalWorkerDatabase";
 import { ColumnDefinition } from "../../../utils/types";
-import { sanitise } from "../../../utils/sanitiseColumn";
 // @ts-ignore
 import wasmBinary from 'virtual:wa-sqlite-wasm-url';
 
@@ -19,50 +17,50 @@ export class SqlocalDatabaseProxy {
     private connectingPromise?: Promise<void>;
     private worker?: Worker;
 
-    constructor(private readonly app: App, private readonly dbName: string) {
+    constructor(_app: any, private readonly dbName: string) {
     }
 
-    async connect() {
+    async connect(): Promise<void> {
         if (this.isConnected) {
-            return Promise.resolve();
+            return;
         }
 
         if (this.connectingPromise) {
             return this.connectingPromise;
         }
 
-        this.connectingPromise = new Promise(async (resolve, reject) => {
-            try {
-                // Import the worker code built by esbuild
-                // @ts-ignore
-                const workerCodeModule = await import('virtual:sqlocal-worker-code');
-                const workerCode = workerCodeModule.default;
-
-                // Create worker from blob
-                const blob = new Blob([workerCode], { type: 'text/javascript' });
-                const workerUrl = URL.createObjectURL(blob);
-
-                this.worker = new Worker(workerUrl, {
-                    name: 'SQLSeal Sqlocal Database'
-                });
-
-                // Wrap worker with Comlink
-                const DatabaseWrap = Comlink.wrap<typeof SqlocalWorkerDatabase>(this.worker);
-
-                const instance = await new DatabaseWrap(this.dbName);
-
-                await instance.connect(wasmBinary);
-
-                this.db = instance;
-                this.isConnected = true;
-                resolve();
-            } catch (e) {
-                console.error('SqlocalDatabaseProxy: Failed to initialize worker database:', e);
-                reject(e);
-            }
-        });
-
+        this.connectingPromise = this.doConnect();
         return this.connectingPromise;
+    }
+
+    private async doConnect(): Promise<void> {
+        try {
+            // Import the worker code built by esbuild
+            // @ts-ignore
+            const workerCodeModule = await import('virtual:sqlocal-worker-code');
+            const workerCode = workerCodeModule.default;
+
+            // Create worker from blob
+            const blob = new Blob([workerCode], { type: 'text/javascript' });
+            const workerUrl = URL.createObjectURL(blob);
+
+            this.worker = new Worker(workerUrl, {
+                name: 'SQLSeal Sqlocal Database'
+            });
+
+            // Wrap worker with Comlink
+            const DatabaseWrap = Comlink.wrap<typeof SqlocalWorkerDatabase>(this.worker);
+
+            const instance = await new DatabaseWrap(this.dbName);
+
+            await instance.connect(wasmBinary);
+
+            this.db = instance;
+            this.isConnected = true;
+        } catch (e) {
+            console.error('SqlocalDatabaseProxy: Failed to initialize worker database:', e);
+            throw e instanceof Error ? e : new Error(String(e));
+        }
     }
 
     async disconnect() {

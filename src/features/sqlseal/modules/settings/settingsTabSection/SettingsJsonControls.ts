@@ -62,8 +62,8 @@ export class SettingsJsonControls extends SettingsControls {
 				toggle
 					.setValue(this.settings.get("enableJSONViewer"))
 					.onChange(async (value) => {
-						this.settings.set("enableJSONViewer", !!value);
-						if (!!value) {
+						this.settings.set("enableJSONViewer", value);
+						if (value) {
 							// Enabled
 							this.register();
 						} else {

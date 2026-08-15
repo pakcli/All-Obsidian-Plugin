@@ -4,7 +4,7 @@ import { App, normalizePath } from 'obsidian';
  * Sanitizes a string to make it safe for a filename.
  */
 export function sanitizeFilename(name: string, delimiter: string): string {
-	let sanitized = name.replace(/[\\/:*?"<>|\[\]#^]/g, '');
+	let sanitized = name.replace(/[\\/:*?"<>|#^[\]]/g, '');
 	// Standardize spaces to a single space and trim instead of replacing with delimiter
 	sanitized = sanitized.replace(/\s+/g, ' ').trim();
 	

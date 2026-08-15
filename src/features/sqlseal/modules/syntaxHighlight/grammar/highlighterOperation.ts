@@ -72,8 +72,8 @@ export const highlighterOperation = (grammar: ohm.Grammar) => {
             let results: Decorator[] = []
             try {
                 results = parseStatement(this)
-            } catch (e) {
-
+            } catch {
+                results = []
             }
             return [...computeNodeHighlight(this), ...results]
         },

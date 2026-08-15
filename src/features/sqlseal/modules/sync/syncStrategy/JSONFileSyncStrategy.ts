@@ -2,7 +2,6 @@ import { App } from "obsidian";
 import { ISyncStrategy } from "./abstractSyncStrategy";
 import { ParserTableDefinition } from "./types";
 import { parse } from 'json5';
-import { uniq } from "lodash";
 import * as jsonpath from 'jsonpath';
 import { FilepathHasher } from "../../../utils/hasher";
 
@@ -53,7 +52,7 @@ export class JsonFileSyncStrategy extends ISyncStrategy {
             throw new Error('Resulting data is not an array')
         }
 
-        const columns = uniq(data.map(d => Object.keys(d)).flat()).map(c => ({ name: c, type: 'auto' as const }))
+        const columns = Array.from(new Set(data.map(d => Object.keys(d)).flat())).map(c => ({ name: c, type: 'auto' as const }))
 
         return { columns, data: data }
     }

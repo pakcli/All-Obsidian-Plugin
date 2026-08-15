@@ -1,5 +1,7 @@
-import { identity, uniqueId } from "lodash";
 import { ModernCellParser } from "./ModernCellParser";
+
+let uniqueIdCounter = 0;
+const uniqueId = (prefix = "") => `${prefix}${++uniqueIdCounter}`;
 
 type OnSerialisation = (el: HTMLElement) => any;
 

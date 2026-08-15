@@ -348,7 +348,7 @@ export class AssetRouter {
 				}
 
 				const prefix = content.substring(wikiOpenIdx + 2, idx);
-				const isValidPrefix = !/[\[\]\n]/.test(prefix);
+				const isValidPrefix = !/[[\]\n]/.test(prefix);
 
 				if (isValidPrefix) {
 					result += content.substring(lastIdx, wikiOpenIdx + 2);
@@ -393,7 +393,7 @@ export class AssetRouter {
 					}
 
 					const prefix = content.substring(mdOpenIdx + 1, idx);
-					const isValidPrefix = !/[\(\)\n]/.test(prefix);
+					const isValidPrefix = !/[()\n]/.test(prefix);
 
 					if (isValidPrefix) {
 						result += content.substring(lastIdx, mdOpenIdx + 1);

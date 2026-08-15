@@ -53,7 +53,7 @@ export default class YTEvidenceCapturePlugin extends Plugin {
     });
 
     // Startup health check — deferred so Obsidian finishes booting first
-    setTimeout(() => runStartupCheck(this.settings), 2000);
+    window.setTimeout(() => runStartupCheck(this.settings), 2000);
   }
 
   onunload(): void {
