@@ -1,4 +1,3 @@
-import mermaid from 'mermaid'
 import { WaSqliteMemoryDatabase } from '../database/waSqliteMemoryDatabase'
 
 export interface DetailedColumnInfo {
@@ -37,7 +36,7 @@ export class SchemaVisualiser {
         if (typeof (window as any).mermaid !== 'undefined') {
             return (window as any).mermaid
         }
-        return mermaid
+        return null
     }
 
     private initializeMermaid() {

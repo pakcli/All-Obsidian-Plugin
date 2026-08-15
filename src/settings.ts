@@ -31,6 +31,7 @@ export interface PakCLIPluginSettings extends
     pinnedTabs?: string[];
     tabSortOrder?: TabSortOption;
     tabUsageHistory?: Record<string, number>;
+    enableAssetDrag: boolean;
 }
 
 export const DEFAULT_ASSET_ROUTER_SETTINGS: AssetRouterSettings = {
@@ -67,7 +68,8 @@ export const DEFAULT_SETTINGS: PakCLIPluginSettings = {
     ],
     pinnedTabs: [],
     tabSortOrder: 'a-z',
-    tabUsageHistory: {}
+    tabUsageHistory: {},
+    enableAssetDrag: true,
 };
 
 interface SuiteTabInfo {
@@ -77,14 +79,15 @@ interface SuiteTabInfo {
 }
 
 const ALL_SUITE_TABS: SuiteTabInfo[] = [
-    { id: 'sqlseal',    label: 'SQLSeal & Tablite', weight: 5 },
-    { id: 'leaflet',    label: 'Leaflet Map',      weight: 4 },
-    { id: 'docmost',    label: 'Docmost Sync',     weight: 3 },
-    { id: 'ytcapture',  label: 'YT Extension',     weight: 3 },
-    { id: 'router',     label: 'Asset Router',     weight: 3 },
-    { id: 'symlink',    label: 'Symlink Manager',  weight: 2 },
-    { id: 'codeblock',  label: 'Codeblock Mode',   weight: 1 },
-    { id: 'datepicker', label: 'Date Picker',      weight: 1 },
+    { id: 'sqlseal',       label: 'SQLSeal & Tablite', weight: 5 },
+    { id: 'leaflet',       label: 'Leaflet Map',       weight: 4 },
+    { id: 'docmost',       label: 'Docmost Sync',      weight: 3 },
+    { id: 'ytcapture',     label: 'YT Extension',      weight: 3 },
+    { id: 'router',        label: 'Asset Router',      weight: 3 },
+    { id: 'symlink',       label: 'Symlink Manager',   weight: 2 },
+    { id: 'codeblock',     label: 'Codeblock Mode',    weight: 1 },
+    { id: 'datepicker',    label: 'Date Picker',       weight: 1 },
+    { id: 'assetdraggable', label: 'Asset Draggable',  weight: 1 },
 ];
 
 export class PakCLISettingTab extends PluginSettingTab {
@@ -392,6 +395,27 @@ export class PakCLISettingTab extends PluginSettingTab {
                         .setValue(pluginSettings.dateFormat)
                         .onChange(async (v) => {
                             pluginSettings.dateFormat = v || '_{yyyy}{mm}{dd}';
+                            await saveSettings();
+                        })
+                );
+        } else if (this.activeTab === 'assetdraggable') {
+            const pluginSettings = this.plugin.settings;
+            const saveSettings = async () => await this.plugin.saveSettings();
+
+            new Setting(contentContainer).setName('Asset Draggable').setHeading();
+            contentContainer.createEl('p', {
+                text: 'Drag images, PDFs, videos, and other attachments from your notes directly into external apps — Gmail, Slack, Google Drive, desktop — without leaving Obsidian.',
+                cls: 'setting-item-description',
+            });
+
+            new Setting(contentContainer)
+                .setName('Enable native attachment drag')
+                .setDesc('Make attachments embedded in notes draggable as real OS-level files. Reload Obsidian after toggling for the change to take effect.')
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(pluginSettings.enableAssetDrag ?? true)
+                        .onChange(async (value) => {
+                            pluginSettings.enableAssetDrag = value;
                             await saveSettings();
                         })
                 );

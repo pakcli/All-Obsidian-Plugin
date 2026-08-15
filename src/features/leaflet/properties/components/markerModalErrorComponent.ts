@@ -1,6 +1,6 @@
-import { BaseComponent } from "obsidian";
+import { Component } from "obsidian";
 
-export class MarkerModalErrorComponent extends BaseComponent {
+export class MarkerModalErrorComponent extends Component {
 	private message: string = "";
 	private textEl: HTMLDivElement;
 

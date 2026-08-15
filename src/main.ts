@@ -29,6 +29,9 @@ import { CodeblockScaler, renderAsciiSvg } from './features/codeblock/scaler';
 import { CaptureModal as YTCaptureModal } from './features/ytcapture/ui/CaptureModal';
 import { runYTCaptureStartupCheck } from './features/ytcapture/utils/healthCheck';
 
+// Asset Draggable
+import { AttachmentDragHandler } from './features/attachmentDrag/AttachmentDragHandler';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
     
@@ -45,6 +48,9 @@ export default class PakCLIPlugin extends Plugin {
 
 	// Codeblock Scaler
 	codeblockScaler!: CodeblockScaler;
+
+	// Asset Draggable
+	private assetDragHandler: AttachmentDragHandler | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -69,10 +75,10 @@ export default class PakCLIPlugin extends Plugin {
 		let sqlsealTabInstance: SQLSealSettingsTab | null = null;
 		try {
 			const container = mainModule.build({
-				'obsidian.app': this.app,
-				'obsidian.plugin': this,
-				'obsidian.vault': this.app.vault
-			});
+				'obsidian.app': (d: { value: (v: unknown) => unknown }) => d.value(this.app),
+				'obsidian.plugin': (d: { value: (v: unknown) => unknown }) => d.value(this),
+				'obsidian.vault': (d: { value: (v: unknown) => unknown }) => d.value(this.app.vault)
+			} as unknown as Parameters<typeof mainModule.build>[0]);
 
 			const init = await container.get('init');
 			init();
@@ -286,12 +292,22 @@ export default class PakCLIPlugin extends Plugin {
 			leafletTabInstance
 		));
 
+		// =========================================================================
+		// 8. Initialize Asset Draggable
+		// =========================================================================
+		if (this.settings.enableAssetDrag) {
+			this.assetDragHandler = new AttachmentDragHandler(this.app, this.vaultRoot);
+			this.assetDragHandler.register(this);
+		}
+
 		new Notice('PakCLI Editor\'s Choice Loaded');
 	}
 
 	onunload(): void {
 		this.badges?.clearAll();
 		this.badges = null;
+
+		this.assetDragHandler = null;
 
 		document.body.classList.remove('codeblock-flowclip', 'codeblock-wrap', 'codeblock-scalefit');
 

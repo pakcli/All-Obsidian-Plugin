@@ -175,8 +175,8 @@ async function postBuild() {
 		copyFileSync("dist/styles.css", "styles.css");
 	}
 
-	// Automatic copy to target Obsidian Vault folder if .vaultpath exists
-	if (existsSync(".vaultpath")) {
+	// Automatic copy to target Obsidian Vault folder if in watch mode and .vaultpath exists
+	if (!prod && existsSync(".vaultpath")) {
 		try {
 			const vaultPath = readFileSync(".vaultpath", "utf8").trim().split(/\r?\n/)[0];
 			if (vaultPath) {
@@ -224,7 +224,6 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
-		"mermaid",
 		...builtins
 	],
 	format: "cjs",
