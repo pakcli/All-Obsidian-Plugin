@@ -1,4 +1,4 @@
-import { WorkspaceLeaf, TextFileView, Menu, MenuItem, IconName } from "obsidian";
+import { WorkspaceLeaf, TextFileView, Menu, IconName } from "obsidian";
 import { parse, unparse } from "papaparse";
 import {
 	GridRenderer,
@@ -8,11 +8,10 @@ import { errorNotice } from "../../../utils/notice";
 import { ColumnDefinition, ConfigObject, DEFAULT_CONFIG, loadConfig, saveConfig } from "../../../utils/csvConfig";
 import { ColumnType } from "../../../utils/types";
 import { Settings } from "../Settings";
-import { RenameColumnModal } from "../modal/renameColumnModal";
 import { CodeSampleModal } from "../modal/showCodeSample";
 import { DeleteConfirmationModal } from "../modal/deleteConfirmationModal";
 import { CSVColumnContextMenu } from "../menu/csvColumnContextMenu";
-import { AgColumn, Column } from "ag-grid-community";
+import { AgColumn } from "ag-grid-community";
 import { CSVViewMenuBar } from "./CSVViewMenuBar";
 import { ViewPluginGeneratorType } from "../../syntaxHighlight/viewPluginGenerator";
 

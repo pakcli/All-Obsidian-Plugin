@@ -15,7 +15,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Cell } from "./Cell";
 import { HeaderCell } from "./HeaderCell";
-import { formatHeaderName, parseAutocompleteSettings, resolveHeaderName } from "../utils/views";
+import { parseAutocompleteSettings, resolveHeaderName } from "../utils/views";
 
 interface ActiveCell {
   row: number;

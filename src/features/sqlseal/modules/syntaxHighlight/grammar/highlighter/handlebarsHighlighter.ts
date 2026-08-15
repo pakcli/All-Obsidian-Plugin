@@ -194,7 +194,6 @@ interface Decorator {
     // Find string literals
     const stringRegex = /"([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)'/g;
     let match: RegExpExecArray | null;
-    let lastPos = 0;
     
     // First pass: Handle string literals
     while ((match = stringRegex.exec(paramsStr)) !== null) {
@@ -202,7 +201,6 @@ interface Decorator {
       const literalEnd = literalStart + match[0].length;
       
       addDecorator('literal', literalStart, literalEnd);
-      lastPos = match.index + match[0].length;
     }
     
     // Second pass: Handle parameters

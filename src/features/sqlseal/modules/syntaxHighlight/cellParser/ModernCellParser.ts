@@ -48,7 +48,7 @@ export class ModernCellParser {
                         }
                     })
                     return container
-                } catch (e) {
+                } catch {
                     return content
                 }
             }
@@ -116,7 +116,7 @@ export class ModernCellParser {
                 try {
                     const parsed: string[] = parse(content)
                     return parsed.map(p => this.renderAsString(p)).join(', ')
-                } catch (e) {
+                } catch {
                     return content.toString()
                 }
             }

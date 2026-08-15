@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "preact/hooks";
+import { useState, useRef, useEffect } from "preact/hooks";
 import type { RefObject } from "preact";
 import { Fragment } from "preact";
 import { resolveWikiLink } from "../utils/wiki";

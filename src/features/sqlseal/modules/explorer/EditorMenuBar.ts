@@ -41,7 +41,7 @@ export class EditorMenuBar {
 
         if (!this.fileDatabasePreview) {
             // global button
-            const b = new ButtonComponent(container)
+            new ButtonComponent(container)
             .setIcon('bolt')
             .setClass('sqlseal-menubar-button')
             .setTooltip('Global Tables', { delay: 1, placement: 'bottom' })

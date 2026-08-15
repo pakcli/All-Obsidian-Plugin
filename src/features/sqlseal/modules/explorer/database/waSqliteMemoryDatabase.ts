@@ -104,11 +104,8 @@ export class WaSqliteMemoryDatabase {
         }
     }
 
-    query<T = ParamsObject>(query: string, params: Record<string, any> | null = null): { data: T[], columns: string[] } {
-        // Convert params object to array for wa-sqlite
-        const paramArray = params && typeof params === 'object' && !Array.isArray(params) ? Object.values(params) : [];
+    query<T = ParamsObject>(_query: string, _params: Record<string, any> | null = null): { data: T[], columns: string[] } {
         // This is a sync method in the original API, but we need async for wa-sqlite
-        // We'll need to make this async-compatible
         throw new Error('Synchronous query() not supported in wa-sqlite implementation. Use queryAsync() instead.');
     }
 

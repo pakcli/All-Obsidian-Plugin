@@ -6,7 +6,6 @@ import { SqlocalDatabaseProxy } from "../database/sqlocal/sqlocalDatabaseProxy";
 import { Settings } from "../settings/Settings";
 import { Sync } from "../sync/sync/sync";
 import { RendererRegistry } from "../editor/renderer/rendererRegistry";
-import { ViewPlugin } from "@codemirror/view";
 import { ViewPluginGeneratorType } from "../syntaxHighlight/viewPluginGenerator";
 import { DatabaseManager } from "./database/databaseManager";
 

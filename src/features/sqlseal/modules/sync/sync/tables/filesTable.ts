@@ -35,7 +35,7 @@ async function getFileRowCount(app: App, file: TFile): Promise<number | null> {
             let parsed;
             try {
                 parsed = JSON.parse(content);
-            } catch (jsonErr) {
+            } catch {
                 parsed = parseJson5(content);
             }
             if (Array.isArray(parsed)) return parsed.length;

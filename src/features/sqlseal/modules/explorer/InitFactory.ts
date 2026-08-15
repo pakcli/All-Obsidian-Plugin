@@ -5,7 +5,6 @@ import { RendererRegistry } from "../editor/renderer/rendererRegistry";
 import { Sync } from "../sync/sync/sync";
 import { Settings } from "../settings/Settings";
 import { ExplorerView } from "./explorer/ExplorerView";
-import { ViewPlugin } from "@codemirror/view";
 import { ViewPluginGeneratorType } from "../syntaxHighlight/viewPluginGenerator";
 import { SQLSEAL_FILE_VIEW, SQLSealFileView } from "./SQLSealFileView";
 import { DatabaseManager } from "./database/databaseManager";

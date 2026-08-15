@@ -1,10 +1,10 @@
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap, ViewPlugin } from "@codemirror/view";
 import {
 	ItemView,
 	MarkdownPostProcessorContext,
 	WorkspaceLeaf,
 } from "obsidian";
+import { EditorView } from "@codemirror/view";
+import { GridApi } from "ag-grid-community";
 import { CodeblockProcessor } from "../../editor/codeblockHandler/CodeblockProcessor";
 import { SqlocalDatabaseProxy } from "../../database/sqlocal/sqlocalDatabaseProxy";
 import { RendererRegistry } from "../../editor/renderer/rendererRegistry";
@@ -13,7 +13,6 @@ import { ModernCellParser } from "../../syntaxHighlight/cellParser/ModernCellPar
 import { Sync } from "../../sync/sync/sync";
 import { ViewPluginGeneratorType } from "../../syntaxHighlight/viewPluginGenerator";
 import { Editor } from "../Editor";
-import { GridApi } from "ag-grid-community";
 
 export class ExplorerView extends ItemView {
 	constructor(

@@ -8,7 +8,6 @@ import { SchemaVisualiser } from "./schemaVisualiser/SchemaVisualiser";
 import { activateView } from "./activateView";
 import { App } from "obsidian";
 import { GLOBAL_TABLES_VIEW_TYPE } from "../globalTables/GlobalTablesView";
-import { GridApi } from "ag-grid-community";
 import { SqlVariableParser } from "./variables/SqlVariableParser";
 import { VariableInputInterface } from "./variables/VariableInputInterface";
 import { VariablePersistence } from "./variables/VariablePersistence";

@@ -1,5 +1,4 @@
-import { App, PluginSettingTab, Setting, Plugin, Notice, TFolder } from 'obsidian';
-import { SettingsModule } from './module';
+import { App, PluginSettingTab, Setting, Plugin, Notice } from 'obsidian';
 import { Settings } from './Settings';
 import { SettingsControls } from './settingsTabSection/SettingsControls';
 import { parseAutocompleteSettings, formatHeaderName } from '../../utils/views';
@@ -248,7 +247,7 @@ export class SQLSealSettingsTab extends PluginSettingTab {
 					addInputSuggest.setItems(scanned);
 					addInput.placeholder = 'Type column name or select from list...';
 					addInput.focus();
-				} catch (err) {
+				} catch {
 					new Notice('Failed to scan vault columns');
 				} finally {
 					rescanBtn.disabled = false;
@@ -537,7 +536,7 @@ async function scanVaultColumns(app: App): Promise<string[]> {
 						Object.keys(obj).forEach(k => columnSet.add(k));
 					}
 				}
-			} catch (e) {
+			} catch {
 				// skip
 			}
 		}

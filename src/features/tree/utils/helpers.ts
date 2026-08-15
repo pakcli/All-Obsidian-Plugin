@@ -38,7 +38,7 @@ export async function ensureFolderExists(app: App, folderPath: string): Promise<
 		if (!existing) {
 			try {
 				await app.vault.createFolder(currentPath);
-			} catch (err) {
+			} catch {
 				// Silent fail if folder exists or is created in parallel
 			}
 		}

@@ -1,6 +1,5 @@
 import { Constants as C } from "@plugin/constants";
 import { BasesLeafletViewSettings, Manager } from "@plugin/types";
-import { BasesLeafletViewSettingsTab } from "./basesLeafletViewSettingsTab";
 
 export class SettingsManager extends Manager {
 	private _settings: BasesLeafletViewSettings;

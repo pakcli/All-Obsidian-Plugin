@@ -1,4 +1,4 @@
-import { requestUrl, RequestUrlParam } from 'obsidian';
+import { requestUrl } from 'obsidian';
 
 export interface DocmostSpace {
   id: string;

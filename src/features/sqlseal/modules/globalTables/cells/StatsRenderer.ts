@@ -17,12 +17,11 @@ export class StatsRenderer implements ICellRendererComp {
     }
 
   public init(params: ICellRendererParams<TableConfiguration, string, GlobalTablesView>) {
-    const { value, data, context } = params;
+    const { data, context } = params;
     this.context = context
     this.data = data!
 
-    this.eGui = document.createElement("div");
-    this.eGui.className = "stats";
+    this.eGui = createDiv({ cls: "stats" });
 
     const stats = this.eGui.createSpan()
     stats.textContent = 'Loading'
@@ -49,7 +48,7 @@ export class StatsRenderer implements ICellRendererComp {
     return this.eGui;
   }
 
-  public refresh(params: ICellRendererParams): boolean {
+  public refresh(_params: ICellRendererParams): boolean {
     return false;
   }
 

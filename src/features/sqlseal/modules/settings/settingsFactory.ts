@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "./SQLSealSettingsTab";
+
 import { Settings } from "./Settings";
 
 export const settingsFactory = async (plugin: any) => {

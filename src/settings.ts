@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Plugin, Setting, ButtonComponent, Notice, normalizePath } from 'obsidian';
+import { App, PluginSettingTab, Setting, ButtonComponent, Notice, normalizePath } from 'obsidian';
 import { SymlinkManagerSettings, SymlinkManagerSettingTab, DEFAULT_SYMLINK_SETTINGS } from './features/symlink/settings';
 import { AssetRouterSettings, FolderRule, TitleOverrideOption } from './features/tree/types';
 import { TablitePluginData as SQLSealSettings, DEFAULT_PLUGIN_DATA as DEFAULT_SQLSEAL_SETTINGS } from './features/sqlseal/types';
@@ -254,7 +254,7 @@ export class PakCLISettingTab extends PluginSettingTab {
 
         // Render Pinned Section if any
         if (pinnedList.length > 0) {
-            const pinnedHeader = tabsContainer.createDiv({ cls: 'pakcli-sidebar-section-title', text: `📌 PINNED (${pinnedList.length}/3)` });
+            tabsContainer.createDiv({ cls: 'pakcli-sidebar-section-title', text: `📌 PINNED (${pinnedList.length}/3)` });
             pinnedList.forEach(tab => renderTabItem(tabsContainer, tab, true));
         }
 

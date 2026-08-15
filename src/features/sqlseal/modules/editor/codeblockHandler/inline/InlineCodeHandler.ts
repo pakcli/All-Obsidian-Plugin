@@ -1,4 +1,4 @@
-import { App, MarkdownPostProcessorContext, Plugin } from "obsidian";
+import { App, MarkdownPostProcessorContext } from "obsidian";
 import { InlineProcessor } from "./InlineProcessor";
 import { SqlocalDatabaseProxy } from "../../../database/sqlocal/sqlocalDatabaseProxy";
 import { Sync } from "../../../sync/sync/sync";

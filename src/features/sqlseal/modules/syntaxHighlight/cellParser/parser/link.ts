@@ -64,7 +64,7 @@ export class LinkParser implements CellFunction<Args> {
             try {
                 // FIXME: this return should work differently
                 renderStringifiedArray(href, href => this.prepare([href]))
-            } catch (e) {
+            } catch {
                 return href
             }
         }

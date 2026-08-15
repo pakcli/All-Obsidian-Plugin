@@ -1,4 +1,4 @@
-import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFolder, Editor, MarkdownView } from 'obsidian';
+import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFolder, MarkdownView } from 'obsidian';
 import { BadgeRenderer } from './features/symlink/badges';
 import { SymlinkModal } from './features/symlink/modal';
 import { DatePickerModal } from './features/symlink/datePickerModal';
@@ -339,7 +339,7 @@ export default class PakCLIPlugin extends Plugin {
 						code.textContent = source;
 					}
 				});
-			} catch (e) {
+			} catch {
 				// Ignore if already registered
 			}
 		});

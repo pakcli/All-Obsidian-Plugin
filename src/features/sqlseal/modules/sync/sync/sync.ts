@@ -72,7 +72,7 @@ export class Sync {
         let version
         try {
             version = await this.configRepo.getConfig('version') as number
-        } catch (e) {
+        } catch {
             version = 0
         }
 

@@ -1,4 +1,4 @@
-import { MenuSeparator, Modal, Setting } from "obsidian";
+import { Modal, Setting } from "obsidian";
 import { AutocompleteInput } from "../autocompleteElement/AutocompleteInput";
 import { args, BusBuilder } from "@hypersphere/omnibus";
 
@@ -49,13 +49,13 @@ export class NewGlobalTableModal extends Modal {
 
 		const settingsEl = contentEl.createDiv();
 
-		const name = new Setting(settingsEl).setName("Table Name").addText((txt) =>
+		new Setting(settingsEl).setName("Table Name").addText((txt) =>
 			txt.setPlaceholder("eg. Data").onChange((val) => {
 				this.data.name = val;
 			}),
 		);
 
-		const type = new Setting(settingsEl)
+		new Setting(settingsEl)
 			.setName("Source Type")
 			.addDropdown((drop) =>
 				drop.addOptions({
@@ -122,7 +122,7 @@ export class NewGlobalTableModal extends Modal {
             this.data.config.filename = path
         })
 
-        const xpath = new Setting(this.typeSectionEl!)
+        new Setting(this.typeSectionEl!)
             .setName('Selector')
             .addText(c => c.setPlaceholder('$.[0]')
             .onChange(e => {

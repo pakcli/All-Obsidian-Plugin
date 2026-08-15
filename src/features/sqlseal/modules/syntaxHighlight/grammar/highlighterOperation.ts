@@ -101,7 +101,7 @@ export const highlighterOperation = (grammar: ohm.Grammar) => {
                     start: s.start + offset,
                     end: s.end + offset
                 }))
-            } catch (e) {
+            } catch {
                 return []
             }
         },
@@ -126,35 +126,13 @@ export const highlighterOperation = (grammar: ohm.Grammar) => {
                     start: d.start - prefix.length + offset,
                     end: d.end - prefix.length + offset
                 })).filter(x => x.start >= offset)
-              } catch (error) {
+              } catch {
                 return [{ type: 'error', start: this.source.startIdx, end: this.source.endIdx }]
               }
         }
     })
 
     return s
-}
-
-
-interface Trace {
-    bindings: Array<{ children: Array<{ matchLength: number }> }>
-    children: Array<Trace>
-    expr: ohm.Seq
-    input: string
-    pos: number
-    pos1: number
-    pos2: number
-    result: ohm.MatchResult
-    source: ohm.Interval
-    terminatingLREntry: null | string // FIXME: to check
-    _flags: number
-    displayString: string
-    isHeadOfLeftRecursion: boolean
-    isImplicitSpaces: boolean
-    isMemoized: boolean
-    isRootNode: boolean
-    succeeded: boolean
-    terminatesLR: boolean
 }
 
 export interface Decorator {

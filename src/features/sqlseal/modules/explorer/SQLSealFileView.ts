@@ -1,4 +1,4 @@
-import { FileView, IconName, MarkdownPostProcessorContext, Menu, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
+import { IconName, MarkdownPostProcessorContext, Menu, TextFileView, WorkspaceLeaf } from "obsidian";
 import { GridApi } from "ag-grid-community";
 import { WaSqliteMemoryDatabase } from "./database/waSqliteMemoryDatabase";
 import { DatabaseManager } from "./database/databaseManager";

@@ -671,7 +671,7 @@ function deepMerge<T extends Record<string, any>>(target: T, source?: Partial<T>
         }
 
         const details = menuContainer.createEl('details', { cls: 'sqlseal-calc-dropdown' });
-        const summary = details.createEl('summary', { cls: 'sqlseal-calc-summary', text: 'Calculations' });
+        details.createEl('summary', { cls: 'sqlseal-calc-summary', text: 'Calculations' });
         const optionsDiv = details.createDiv({ cls: 'sqlseal-calc-options' });
 
         const calcTypes = [

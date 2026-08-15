@@ -140,7 +140,6 @@ export class SchemaVisualiser {
             mermaidCode += `    ${escapedTableName} {\n`
             
             for (const column of table.columns) {
-                const typeAnnotation = this.getColumnTypeAnnotation(column)
                 const keyAnnotation = this.getKeyAnnotation(column, table.foreignKeys)
                 const escapedColumnName = this.escapeMermaidIdentifier(column.name)
                 
@@ -485,7 +484,7 @@ export class SchemaVisualiser {
         })
 
         // Zoom level display
-        const zoomDisplay = controlsContainer.createDiv({ 
+        controlsContainer.createDiv({ 
             cls: 'sqlseal-zoom-display' 
         })
         this.updateZoomDisplay(container, localZoom.value)
@@ -611,7 +610,7 @@ export class SchemaVisualiser {
             cls: 'sqlseal-fallback-schema' 
         })
         
-        const title = fallbackContainer.createEl('h3', { 
+        fallbackContainer.createEl('h3', { 
             text: 'Database Schema (Fallback View)' 
         })
         
@@ -628,7 +627,7 @@ export class SchemaVisualiser {
                 cls: 'sqlseal-fallback-table' 
             })
             
-            const tableTitle = tableContainer.createEl('h4', { 
+            tableContainer.createEl('h4', { 
                 text: table.name,
                 cls: 'sqlseal-fallback-table-title'
             })
@@ -663,7 +662,7 @@ export class SchemaVisualiser {
             }
             
             if (table.foreignKeys.length > 0) {
-                const fkTitle = tableContainer.createEl('h5', { 
+                tableContainer.createEl('h5', { 
                     text: 'Foreign Keys',
                     cls: 'sqlseal-fallback-fk-title'
                 })

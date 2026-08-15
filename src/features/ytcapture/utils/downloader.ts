@@ -6,7 +6,7 @@ import { FileSystemAdapter, requestUrl } from "obsidian";
 import * as fs from "fs";
 import * as path from "path";
 import type PakCLIPlugin from "../../../main";
-import { runCommand, resolveBinary, ensureWinGetInPath } from "./process";
+import { runCommand, ensureWinGetInPath } from "./process";
 
 export interface DownloadProgress {
   (message: string): void;

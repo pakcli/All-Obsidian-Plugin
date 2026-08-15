@@ -1,4 +1,4 @@
-import { App, Modal, Setting, TFile, TFolder } from "obsidian";
+import { App, Modal, Setting, TFile } from "obsidian";
 
 export function getArtifactPath(csvPath: string): string {
   const withoutExt = csvPath.substring(0, csvPath.lastIndexOf('.')) || csvPath;

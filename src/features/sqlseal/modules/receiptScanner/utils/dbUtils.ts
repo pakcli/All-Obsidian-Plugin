@@ -1,4 +1,4 @@
-import { App, TFile, TFolder } from "obsidian";
+import { App, TFolder } from "obsidian";
 import Papa from "papaparse";
 
 export interface RedactionShape {
@@ -195,10 +195,6 @@ export function parseReceiptLine(line: string): ParsedLine {
   const priceRegexStr = "\\b\\d{3,}[\\d.,]*\\b|\\b\\d+[\\d.,]+\\d+\\b";
   const isPriceToken = (str: string): boolean => {
     const regex = new RegExp("^(" + priceRegexStr + ")$");
-    return regex.test(str);
-  };
-  const hasPriceToken = (str: string): boolean => {
-    const regex = new RegExp(priceRegexStr);
     return regex.test(str);
   };
 

@@ -211,18 +211,6 @@ function highlightJavaScript(source: string): Decorator[] {
                         for (const quasi of node.quasis) {
                             // Mark the entire quasi segment as a string
                             addDecorator('string', quasi.range[0], quasi.range[1]);
-
-                            // Look for escape sequences within the template literal
-                            const quasiText = source.substring(quasi.range[0], quasi.range[1]);
-                            const escapeRegex = /\\./g;
-                            let escapeMatch;
-
-                            while ((escapeMatch = escapeRegex.exec(quasiText)) !== null) {
-                                const escapeStart = quasi.range[0] + escapeMatch.index;
-                                const escapeEnd = escapeStart + escapeMatch[0].length;
-                                // You can add a specific decorator for escape sequences if desired
-                                // addDecorator('string-escape', escapeStart, escapeEnd);
-                            }
                         }
 
                         // Handle template expressions ${...}

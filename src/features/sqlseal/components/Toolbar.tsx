@@ -1,7 +1,7 @@
 import type { RefObject } from "preact";
 import { useRef, useEffect, useMemo } from "preact/hooks";
 import type { Delimiter } from "../parser/detect";
-import { PromptModal, formatHeaderName, resolveHeaderName } from "../utils/views";
+import { PromptModal, resolveHeaderName } from "../utils/views";
 
 interface ToolbarProps {
   encoding: string;

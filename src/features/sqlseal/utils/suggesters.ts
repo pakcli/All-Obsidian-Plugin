@@ -1,4 +1,4 @@
-import { App, AbstractInputSuggest, TFile, TFolder } from "obsidian";
+import { App, AbstractInputSuggest, TFolder } from "obsidian";
 
 /**
  * A generic suggest class that autocompletes text inputs with a string array.

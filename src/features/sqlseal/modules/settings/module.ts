@@ -1,7 +1,7 @@
 import { Registrator } from "@hypersphere/dity";
 import { App, Plugin } from "obsidian";
 import { settingsFactory } from "./settingsFactory";
-import { settingsTabFactory, SQLSealSettingsTab } from "./SQLSealSettingsTab";
+import { settingsTabFactory } from "./SQLSealSettingsTab";
 import { settingsInit } from "./init";
 import { ModernCellParser } from "../syntaxHighlight/cellParser/ModernCellParser";
 import { ViewPluginGeneratorType } from "../syntaxHighlight/viewPluginGenerator";

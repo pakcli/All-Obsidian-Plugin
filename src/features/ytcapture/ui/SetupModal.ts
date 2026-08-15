@@ -5,7 +5,7 @@
 import { App, Modal, requestUrl } from "obsidian";
 import type PakCLIPlugin from "../../../main";
 import { runCommand, ensureWinGetInPath } from "../utils/process";
-import { ensureYtDlpAvailable, downloadYtDlpDirect, ensureFfmpegAvailable, downloadFfmpegDirect } from "../utils/downloader";
+import { ensureYtDlpAvailable, downloadYtDlpDirect, ensureFfmpegAvailable } from "../utils/downloader";
 
 type SetupStep = "confirm" | "running" | "done";
 

@@ -1,6 +1,6 @@
 import type { ICellRendererComp, ICellRendererParams } from "ag-grid-community";
 import { TableConfiguration } from "../modal/NewGlobalTableModal";
-import { Component, MarkdownRenderer, TFile } from "obsidian";
+import { TFile } from "obsidian";
 import { GlobalTablesView } from "../GlobalTablesView";
 
 export class ConfigCellRenderer implements ICellRendererComp {
@@ -13,10 +13,9 @@ export class ConfigCellRenderer implements ICellRendererComp {
 			GlobalTablesView
 		>,
 	): void {
-		const { value, data, context } = params;
+		const { value, context } = params;
 
-		this.eGui = document.createElement("div");
-		this.eGui.className = "config";
+		this.eGui = createDiv({ cls: "config" });
 
 		const container = this.eGui.createDiv();
 
@@ -41,7 +40,7 @@ export class ConfigCellRenderer implements ICellRendererComp {
 		return this.eGui;
 	}
 
-	public refresh(params: ICellRendererParams): boolean {
+	public refresh(_params: ICellRendererParams): boolean {
 		return true;
 	}
 }

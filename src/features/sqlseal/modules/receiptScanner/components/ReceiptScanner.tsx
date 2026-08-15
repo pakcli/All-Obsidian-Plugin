@@ -1,4 +1,4 @@
-import { App, Notice, TFile, TFolder, requestUrl } from "obsidian";
+import { App, Notice, TFile, requestUrl } from "obsidian";
 import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import TablitePlugin from "../../../../../main";
 import {

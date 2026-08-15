@@ -37,7 +37,7 @@ export async function checkYTCaptureDeps(
       method: "GET",
     });
     status.internet = res.status >= 200 && res.status < 400;
-  } catch (err) {
+  } catch {
     // Fallback try youtube
     try {
       const res = await requestUrl({
