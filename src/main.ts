@@ -5,10 +5,11 @@ import { DatePickerModal } from './features/symlink/datePickerModal';
 import { DEFAULT_SETTINGS, PakCLIPluginSettings, PakCLISettingTab } from './settings';
 import { SymlinkManagerSettingTab } from './features/symlink/settings';
 
-// SQLSeal Imports
+// SQLSeal & CSV Editor Imports
 import { mainModule } from './features/sqlseal/modules/main/module';
 import { SQLSealSettingsTab } from './features/sqlseal/modules/settings/SQLSealSettingsTab';
 import { ColumnConfig } from './features/sqlseal/types';
+import { CsvView, CSV_VIEW_TYPE } from './features/sqlseal/csv-view';
 
 // Leaflet Imports
 import { BasesLeafletViewPlugin } from './features/leaflet/plugin';
@@ -410,6 +411,35 @@ export default class PakCLIPlugin extends Plugin {
 			}
 		});
 
+		// =========================================================================
+		// 10. Register CSV & TSV Table Editor View (Tablite Editor)
+		// =========================================================================
+		this.registerView(
+			CSV_VIEW_TYPE,
+			(leaf) => new CsvView(leaf, this as any)
+		);
+		this.registerExtensions(['csv', 'tsv'], CSV_VIEW_TYPE);
+
+		this.addCommand({
+			id: 'tablite-csv-open-editor',
+			name: 'CSV Editor: Open Active File in Table Editor',
+			checkCallback: (checking: boolean) => {
+				const activeFile = this.app.workspace.getActiveFile();
+				const isCsv = activeFile && (activeFile.extension === 'csv' || activeFile.extension === 'tsv');
+				if (isCsv) {
+					if (!checking) {
+						const leaf = this.app.workspace.getLeaf(false);
+						leaf.setViewState({
+							type: CSV_VIEW_TYPE,
+							state: { file: activeFile.path }
+						});
+					}
+					return true;
+				}
+				return false;
+			}
+		});
+
 		new Notice('PakCLI Editor\'s Choice Loaded');
 	}
 
@@ -419,6 +449,7 @@ export default class PakCLIPlugin extends Plugin {
 
 		this.assetDragHandler = null;
 		this.syncManager?.destroy();
+		this.app.workspace.detachLeavesOfType(CSV_VIEW_TYPE);
 
 		document.body.classList.remove('codeblock-flowclip', 'codeblock-wrap', 'codeblock-scalefit');
 

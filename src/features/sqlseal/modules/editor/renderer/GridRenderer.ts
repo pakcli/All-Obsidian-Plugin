@@ -390,14 +390,14 @@ function deepMerge<T extends Record<string, any>>(target: T, source?: Partial<T>
                 return undefined;
             },
             rowSelection: 'multiple',
-            pagination: true,
+            pagination: (this.settings.get('gridItemsPerPage') ?? 20) > 0,
             suppressMovableColumns: true,
             loadThemeGoogleFonts: false,
             rowData: [],
             columnDefs: [],
             domLayout: 'autoHeight', // This can be overridden by config
             enableCellTextSelection: true,
-            paginationPageSize: this.settings.get('gridItemsPerPage') ?? 10,
+            paginationPageSize: (this.settings.get('gridItemsPerPage') ?? 20) > 0 ? (this.settings.get('gridItemsPerPage') ?? 20) : undefined,
             onPaginationChanged: () => {
                 this.updatePaginationControls();
             }

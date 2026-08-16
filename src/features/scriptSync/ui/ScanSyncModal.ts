@@ -26,6 +26,7 @@ export class ScanSyncModal extends Modal {
     private scannedItems: ScannedNoteItem[] = [];
     private isScanning = false;
     private activeDiffNotePath: string | null = null;
+    private hideSynced = false;
 
     constructor(
         app: App,
@@ -111,12 +112,17 @@ export class ScanSyncModal extends Modal {
         const settings = this.getSettings();
         const targetFolderDisplay = settings.cliRootFolder || '(Not set)';
 
+        const totalCount = this.scannedItems.length;
+        const needsSyncItems = this.scannedItems.filter(item => item.syncResult.status !== 'synced');
+        const needsSyncCount = needsSyncItems.length;
+        const syncedCount = totalCount - needsSyncCount;
+
         contentEl.createDiv({
             cls: 'pakcli-scan-meta-bar',
-            text: `🎯 Target Folder: ${targetFolderDisplay}  |  📝 Discovered Script Notes: ${this.scannedItems.length}`
+            text: `🎯 Target: ${targetFolderDisplay}  |  📝 Notes: ${totalCount}  |  ⚡ Changed: ${needsSyncCount}  |  ✓ Synced: ${syncedCount}`
         });
 
-        if (this.scannedItems.length === 0) {
+        if (totalCount === 0) {
             contentEl.createDiv({
                 cls: 'pakcli-pending-empty',
                 text: 'No notes with script codeblocks found in the configured folder.'
@@ -129,13 +135,14 @@ export class ScanSyncModal extends Modal {
 
         const syncAllBtn = topActions.createEl('button', {
             cls: 'mod-cta',
-            text: `⚡ Sync All Notes ➔ Scripts (${this.scannedItems.length})`
+            text: `⚡ Sync ${needsSyncCount > 0 ? `Changed (${needsSyncCount})` : `All (${totalCount})`}`
         });
         syncAllBtn.addEventListener('click', async () => {
             syncAllBtn.setText('⏳ Syncing...');
             syncAllBtn.setAttribute('disabled', 'true');
+            const targetItems = needsSyncCount > 0 ? needsSyncItems : this.scannedItems;
             let count = 0;
-            for (const item of this.scannedItems) {
+            for (const item of targetItems) {
                 const ok = await this.syncManager.executeSync(item.file, 'manager_to_cli', item.code, item.language);
                 if (ok) count++;
             }
@@ -150,10 +157,34 @@ export class ScanSyncModal extends Modal {
             await this.scanAndRender();
         });
 
+        // Hide Synced Toggle
+        const toggleLabel = topActions.createEl('label', { cls: 'pakcli-scan-toggle-label' });
+        const toggleCheckbox = toggleLabel.createEl('input', { type: 'checkbox' });
+        toggleCheckbox.checked = this.hideSynced;
+        toggleCheckbox.addEventListener('change', () => {
+            this.hideSynced = toggleCheckbox.checked;
+            this.renderDashboard();
+        });
+        toggleLabel.createSpan({ text: ` Hide Synced (${syncedCount})` });
+
+        // Filter Displayed Items
+        const displayedItems = this.hideSynced ? needsSyncItems : this.scannedItems;
+
+        if (displayedItems.length === 0 && this.hideSynced) {
+            const emptyEl = contentEl.createDiv({ cls: 'pakcli-pending-empty' });
+            emptyEl.createEl('p', { text: `✨ All ${totalCount} script notes are currently synced!` });
+            const showAllBtn = emptyEl.createEl('button', { text: 'Show All Notes' });
+            showAllBtn.addEventListener('click', () => {
+                this.hideSynced = false;
+                this.renderDashboard();
+            });
+            return;
+        }
+
         // Items List
         const listContainer = contentEl.createDiv({ cls: 'pakcli-scan-list-container' });
 
-        this.scannedItems.forEach((item) => {
+        displayedItems.forEach((item) => {
             const itemCard = listContainer.createDiv({ cls: 'pakcli-scan-item-card' });
 
             const row = itemCard.createDiv({ cls: 'pakcli-scan-item-row' });
