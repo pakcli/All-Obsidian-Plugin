@@ -3,6 +3,7 @@ import type { RefObject } from "preact";
 import { Fragment } from "preact";
 import { resolveWikiLink } from "../utils/wiki";
 import { GenericTextSuggest } from "../utils/suggesters";
+import { extractYouTubeVideoId, getOrDownloadYtThumbnail } from "../utils/youtubeThumbnail";
 
 interface CellProps {
   value: string;
@@ -169,6 +170,59 @@ export function Cell({
       }
     }
   };
+
+  const ytVideoId = extractYouTubeVideoId(value);
+  const [thumbSrc, setThumbSrc] = useState<string | null>(() =>
+    ytVideoId ? `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` : null,
+  );
+
+  useEffect(() => {
+    if (ytVideoId) {
+      const globalApp = (window as any).app;
+      if (globalApp) {
+        getOrDownloadYtThumbnail(globalApp, ytVideoId).then((cachedPath) => {
+          if (cachedPath) setThumbSrc(cachedPath);
+        });
+      }
+    }
+  }, [ytVideoId]);
+
+  if (ytVideoId) {
+    return (
+      <div
+        class={`tablite-cell tablite-yt-cell ${isMatch ? "tablite-cell-match" : ""}`}
+        onDblClick={() => {
+          setEditValue(value);
+          setEditing(true);
+        }}
+      >
+        <img
+          class="tablite-yt-thumb"
+          src={thumbSrc || `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg`}
+          alt="YouTube Thumbnail"
+          loading="lazy"
+          title={`Click to open YouTube video (${ytVideoId})`}
+          onClick={(e) => {
+            if (!editing) {
+              e.stopPropagation();
+              window.open(value, "_blank");
+            }
+          }}
+        />
+        <a
+          class="tablite-yt-link"
+          href={value}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => {
+            if (editing) e.preventDefault();
+          }}
+        >
+          {value}
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div

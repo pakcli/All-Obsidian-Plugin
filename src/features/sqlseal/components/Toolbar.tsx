@@ -39,6 +39,11 @@ interface ToolbarProps {
   onDuplicateView?: (viewName: string) => void;
   onDeleteView?: () => void;
   autocompleteColumns?: string;
+  viewMode?: "table" | "raw";
+  onToggleViewMode?: () => void;
+  onDownloadThumbnails?: () => void;
+  isFindOpen?: boolean;
+  onToggleFindReplace?: () => void;
 }
 
 const DELIMITER_LABELS: Record<string, string> = {
@@ -84,6 +89,11 @@ export function Toolbar({
   onDuplicateView,
   onDeleteView,
   autocompleteColumns,
+  viewMode,
+  onToggleViewMode,
+  onDownloadThumbnails,
+  isFindOpen,
+  onToggleFindReplace,
 }: ToolbarProps) {
   const undoBtnRef = useRef<HTMLButtonElement>(null);
   const redoBtnRef = useRef<HTMLButtonElement>(null);
@@ -325,6 +335,31 @@ export function Toolbar({
             ))}
           </select>
         </label>
+
+        {onToggleViewMode && (
+          <>
+            <span class="tablite-separator" />
+            <button
+              type="button"
+              class={`tablite-btn ${viewMode === "raw" ? "tablite-btn-primary" : ""}`}
+              onClick={onToggleViewMode}
+              title={viewMode === "raw" ? "Switch to Spreadsheet Table View" : "Switch to Raw CSV Text View"}
+            >
+              {viewMode === "raw" ? "📊 Table View" : "📝 Raw View"}
+            </button>
+          </>
+        )}
+
+        {onDownloadThumbnails && (
+          <button
+            type="button"
+            class="tablite-btn"
+            onClick={onDownloadThumbnails}
+            title="Download & cache all YouTube thumbnails into vault (assets/yt_thumbnails/)"
+          >
+            🎬 Cache Thumbnails
+          </button>
+        )}
       </div>
 
       <div class="tablite-toolbar-right">
@@ -336,24 +371,36 @@ export function Toolbar({
             </span>
           )}
         </span>
-        <div class="tablite-search-group">
-          <input
-            ref={searchInputRef}
-            class="tablite-search"
-            type="text"
-            value={searchQuery}
-            placeholder="Search..."
-          />
-          <span class="tablite-search-count">
-            {searchMatchCount === 0 ? "0/0" : `${searchMatchIndex}/${searchMatchCount}`}
-          </span>
-          <button ref={searchPrevRef} class="tablite-icon-btn" title="Previous match (Shift+Enter / Shift+F3)">
-            ↑
+
+        {onToggleFindReplace ? (
+          <button
+            type="button"
+            class={`tablite-btn ${isFindOpen ? "tablite-btn-primary" : ""}`}
+            onClick={onToggleFindReplace}
+            title="Toggle Find & Replace (Ctrl+F / Ctrl+H)"
+          >
+            🔍 Find & Replace
           </button>
-          <button ref={searchNextRef} class="tablite-icon-btn" title="Next match (Enter / F3)">
-            ↓
-          </button>
-        </div>
+        ) : (
+          <div class="tablite-search-group">
+            <input
+              ref={searchInputRef}
+              class="tablite-search"
+              type="text"
+              value={searchQuery}
+              placeholder="Search..."
+            />
+            <span class="tablite-search-count">
+              {searchMatchCount === 0 ? "0/0" : `${searchMatchIndex}/${searchMatchCount}`}
+            </span>
+            <button ref={searchPrevRef} class="tablite-icon-btn" title="Previous match (Shift+Enter / Shift+F3)">
+              ↑
+            </button>
+            <button ref={searchNextRef} class="tablite-icon-btn" title="Next match (Enter / F3)">
+              ↓
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

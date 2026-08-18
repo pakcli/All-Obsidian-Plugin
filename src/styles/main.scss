@@ -1017,6 +1017,203 @@ body.codeblock-scalefit {
     text-align: center;
 }
 
+/* --- Find & Replace Bar --- */
+.tablite-find-replace-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    z-index: 20;
+    user-select: none;
+}
+
+.tablite-find-row,
+.tablite-replace-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tablite-fr-toggle-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        color: var(--text-normal);
+    }
+}
+
+.tablite-fr-chevron {
+    display: inline-block;
+    font-size: 9px;
+    transition: transform 0.15s ease;
+
+    &.expanded {
+        transform: rotate(90deg);
+    }
+}
+
+.tablite-fr-spacer {
+    width: 20px;
+    flex-shrink: 0;
+}
+
+.tablite-fr-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.tablite-fr-input {
+    padding: 3px 52px 3px 8px;
+    height: 26px;
+    width: 230px;
+    font-size: 12px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+
+    &:focus {
+        border-color: var(--interactive-accent);
+        outline: none;
+    }
+}
+
+.tablite-replace-row .tablite-fr-input {
+    padding-right: 8px;
+}
+
+.tablite-fr-opt-btn {
+    position: absolute;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 1px 4px;
+    font-size: 11px;
+    font-family: var(--font-monospace);
+    color: var(--text-faint);
+    border-radius: 3px;
+    line-height: 1;
+
+    &:hover {
+        background-color: var(--background-modifier-hover);
+        color: var(--text-normal);
+    }
+
+    &.active {
+        background-color: var(--interactive-accent);
+        color: var(--text-on-accent);
+        font-weight: bold;
+    }
+
+    &:nth-of-type(1) {
+        right: 26px;
+    }
+
+    &:nth-of-type(2) {
+        right: 4px;
+    }
+}
+
+.tablite-fr-count {
+    font-size: 11px;
+    font-family: var(--font-monospace);
+    color: var(--text-muted);
+    min-width: 70px;
+    text-align: center;
+}
+
+.tablite-fr-nav-btn {
+    padding: 2px 6px;
+    height: 24px;
+    font-size: 9px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        background-color: var(--background-modifier-hover);
+    }
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+}
+
+.tablite-fr-col-select {
+    padding: 2px 6px;
+    height: 24px;
+    font-size: 11px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+}
+
+.tablite-fr-close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: auto;
+
+    &:hover {
+        color: var(--text-normal);
+    }
+}
+
+.tablite-fr-btn-group {
+    display: flex;
+    gap: 6px;
+}
+
+.tablite-fr-action-btn {
+    padding: 3px 10px;
+    height: 26px;
+    font-size: 11px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        background-color: var(--background-modifier-hover);
+    }
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    &.tablite-fr-action-all {
+        background-color: var(--interactive-accent);
+        color: var(--text-on-accent);
+        border-color: var(--interactive-accent);
+
+        &:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+    }
+}
+
 /* --- Table Container & Virtualized Grid --- */
 .tablite-table-container {
     flex: 1 1 auto;
@@ -1059,12 +1256,34 @@ body.codeblock-scalefit {
     min-height: 32px;
 
     &.tablite-th-row-num {
-        width: 45px !important;
+        width: 55px !important;
         min-width: 45px !important;
         text-align: center;
         justify-content: center;
         color: var(--text-faint);
         background-color: var(--background-secondary-alt);
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--background-modifier-hover);
+            color: var(--text-normal);
+        }
+    }
+}
+
+.tablite-row-num-header {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 11px;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+
+    &:hover {
+        color: var(--text-accent);
     }
 }
 
@@ -1072,43 +1291,75 @@ body.codeblock-scalefit {
     display: flex;
     flex-direction: column;
     width: 100%;
-    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+    cursor: grab;
+    transition: background-color 0.15s ease, border-left-color 0.15s ease;
+
+    &:active {
+        cursor: grabbing;
+    }
+
+    &.tablite-col-drag-over {
+        border-left: 2px solid var(--interactive-accent) !important;
+        background-color: rgba(var(--color-accent-rgb, 100, 150, 255), 0.18) !important;
+    }
 }
 
-.tablite-header-title-row {
+.tablite-header-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    cursor: pointer;
+    gap: 4px;
+    position: relative;
 }
 
-.tablite-header-title {
+.tablite-header-name {
     font-weight: 600;
     font-size: 12px;
     color: var(--text-normal);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
+    flex: 1 1 auto;
 }
 
-.tablite-header-type-badge {
+.tablite-header-type {
     font-size: 9px;
     font-family: var(--font-monospace);
     color: var(--text-muted);
-    margin-left: 4px;
-    padding: 1px 4px;
+    padding: 1px 5px;
     border-radius: 3px;
     background-color: var(--background-modifier-hover);
+    flex-shrink: 0;
+    text-transform: lowercase;
 }
 
-.tablite-header-filter {
-    padding: 2px 4px;
+.tablite-resize-handle {
+    position: absolute;
+    right: -8px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none;
+    z-index: 5;
+
+    &:hover {
+        background-color: var(--interactive-accent);
+    }
+}
+
+.tablite-column-filter {
+    padding: 2px 6px;
     font-size: 11px;
     margin-top: 4px;
     width: 100%;
     border: 1px solid var(--background-modifier-border);
-    border-radius: 3px;
+    border-radius: var(--radius-s);
     background-color: var(--background-primary);
     color: var(--text-normal);
     box-sizing: border-box;
@@ -1119,20 +1370,86 @@ body.codeblock-scalefit {
     }
 }
 
-.tablite-resizer {
+.tablite-multiselect {
+    position: relative;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.tablite-multiselect-trigger {
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 0;
+}
+
+.tablite-multiselect-dropdown {
     position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    cursor: col-resize;
-    user-select: none;
-    touch-action: none;
-    z-index: 2;
+    top: calc(100% + 2px);
+    left: 0;
+    z-index: 1000;
+    min-width: 180px;
+    max-width: 280px;
+    max-height: 220px;
+    overflow-y: auto;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.tablite-multiselect-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: var(--radius-s);
+    font-size: 11px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &:hover {
-        background-color: var(--interactive-accent);
+        background-color: var(--background-modifier-hover);
     }
+
+    input[type="checkbox"] {
+        cursor: pointer;
+        accent-color: var(--interactive-accent);
+    }
+}
+
+.tablite-multiselect-clear {
+    font-weight: 600;
+    color: var(--text-accent);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+}
+
+.tablite-range-filter {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.tablite-range-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-top: 0;
+}
+
+.tablite-range-sep {
+    font-size: 11px;
+    color: var(--text-muted);
 }
 
 /* --- Table Rows & Cells --- */
@@ -1211,6 +1528,360 @@ th.tablite-frozen-cell {
     font-size: 12px;
     font-family: inherit;
 }
+
+/* --- YouTube Thumbnail Cell --- */
+.tablite-yt-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.tablite-yt-thumb {
+    width: 32px;
+    height: 20px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid var(--background-modifier-border);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        transform: scale(2.2);
+        z-index: 1000;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    }
+}
+
+.tablite-yt-link {
+    color: var(--text-accent);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+/* --- Tablite Raw Text View --- */
+.tablite-raw-editor-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--background-primary);
+}
+
+.tablite-raw-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-size: 12px;
+    user-select: none;
+    z-index: 10;
+}
+
+.tablite-raw-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tablite-raw-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tablite-raw-body {
+    flex: 1 1 auto;
+    display: flex;
+    height: calc(100% - 38px);
+    overflow: hidden;
+    position: relative;
+    background-color: var(--background-primary);
+}
+
+.tablite-raw-gutter {
+    width: 48px;
+    flex-shrink: 0;
+    background-color: var(--background-secondary-alt);
+    border-right: 1px solid var(--background-modifier-border);
+    overflow: hidden;
+    user-select: none;
+    padding: 8px 0;
+    box-sizing: border-box;
+}
+
+.tablite-raw-line-number {
+    font-family: var(--font-monospace);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-faint);
+    text-align: right;
+    padding-right: 10px;
+    height: 18px;
+    box-sizing: border-box;
+}
+
+.tablite-raw-textarea {
+    flex: 1 1 auto;
+    width: calc(100% - 48px);
+    height: 100%;
+    padding: 8px 12px;
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+    font-size: 12px;
+    line-height: 1.5;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow: auto;
+    box-sizing: border-box;
+
+    &.nowrap {
+        white-space: pre;
+        word-wrap: normal;
+        overflow-x: auto;
+    }
+
+    &.wrap {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    &:focus {
+        outline: none;
+    }
+}
+
+/* ==========================================================================
+   Tablite Row Multi-Select Checkboxes & Row Drag-and-Drop
+   ========================================================================== */
+
+.tablite-th-select,
+.tablite-td-select {
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background-secondary-alt);
+}
+
+.tablite-row-select-header,
+.tablite-row-select-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.tablite-row-checkbox {
+    cursor: pointer;
+    accent-color: var(--interactive-accent);
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+}
+
+.tablite-row-num-drag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+
+    &:active {
+        cursor: grabbing;
+    }
+}
+
+.tablite-drag-dots {
+    font-size: 10px;
+    letter-spacing: -1px;
+    opacity: 0.35;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+        opacity: 0.9;
+        color: var(--text-accent);
+    }
+}
+
+.tablite-tr {
+    transition: background-color 0.1s ease;
+
+    &.tablite-tr-checked {
+        background-color: rgba(var(--color-accent-rgb, 100, 150, 255), 0.12) !important;
+
+        .tablite-td {
+            background-color: rgba(var(--color-accent-rgb, 100, 150, 255), 0.08) !important;
+        }
+
+        .tablite-th-select,
+        .tablite-td-select,
+        .tablite-th-row-num,
+        .tablite-row-num {
+            background-color: rgba(var(--color-accent-rgb, 100, 150, 255), 0.18) !important;
+            color: var(--text-accent);
+            font-weight: 600;
+        }
+    }
+
+    &.tablite-tr-drag-over {
+        border-top: 2px solid var(--interactive-accent) !important;
+        background-color: rgba(var(--color-accent-rgb, 100, 150, 255), 0.2) !important;
+    }
+}
+
+/* ==========================================================================
+   Tablite Floating Selection Actions Bar
+   ========================================================================== */
+
+.tablite-floating-actions {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
+    animation: tablite-fade-in 0.2s ease-out;
+}
+
+@keyframes tablite-fade-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 10px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.tablite-fa-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-normal);
+    padding-right: 8px;
+    border-right: 1px solid var(--background-modifier-border);
+}
+
+.tablite-fa-badge {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.tablite-fa-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 4px 10px;
+    height: 28px;
+    border-radius: 4px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+        background: var(--background-modifier-hover);
+        border-color: var(--interactive-accent);
+    }
+
+    &.tablite-fa-danger {
+        color: var(--text-error);
+        border-color: rgba(var(--color-red-rgb, 255, 100, 100), 0.3);
+
+        &:hover {
+            background: rgba(var(--color-red-rgb, 255, 100, 100), 0.15);
+            border-color: var(--text-error);
+        }
+    }
+}
+
+.tablite-fa-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+
+    &:hover {
+        background: var(--background-modifier-hover);
+        color: var(--text-normal);
+    }
+}
+
+/* ==========================================================================
+   Tablite Confirmation Modal
+   ========================================================================== */
+
+.tablite-confirm-modal {
+    padding: 16px 20px;
+}
+
+.tablite-confirm-title {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.tablite-confirm-msg {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.tablite-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+
 
 
 

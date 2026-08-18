@@ -5,6 +5,8 @@ import { useTableData, type TableState } from "../hooks/useTableData";
 import { useProgressiveLoad } from "../hooks/useProgressiveLoad";
 import { Toolbar } from "./Toolbar";
 import { Table } from "./Table";
+import { RawEditor } from "./RawEditor";
+import { FindReplaceBar } from "./FindReplaceBar";
 import {
   normalizeColumnConfig,
   remapColumnConfigForDelete,
@@ -12,6 +14,7 @@ import {
   type ColumnConfig,
 } from "../types";
 import { getArtifactPath, ensureFolderExists } from "../utils/views";
+import { downloadAllYtThumbnails } from "../utils/youtubeThumbnail";
 import { Notice } from "obsidian";
 
 interface AppProps {
@@ -137,6 +140,16 @@ export function App({
   const [views, setViews] = useState<Record<string, ColumnConfig>>({});
   const [activeView, setActiveView] = useState<string>("Default");
   const [isViewsLoaded, setIsViewsLoaded] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "raw">("table");
+  const [rawText, setRawText] = useState<string>(() => initialData);
+
+  const handleRawTextChange = useCallback(
+    (newText: string) => {
+      setRawText(newText);
+      onDataChange(newText);
+    },
+    [onDataChange],
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -167,6 +180,13 @@ export function App({
     [],
   );
 
+  const [isFindOpen, setIsFindOpen] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
+  const [replaceQuery, setReplaceQuery] = useState("");
+  const [matchCase, setMatchCase] = useState(false);
+  const [matchWholeWord, setMatchWholeWord] = useState(false);
+  const [searchTargetCol, setSearchTargetCol] = useState<number | null>(null);
+
   const {
     headers,
     data,
@@ -174,11 +194,16 @@ export function App({
     updateHeader,
     insertRow,
     deleteRow,
+    deleteRows,
+    moveRow,
+    moveRows,
     insertColumn,
     deleteColumn,
     undo,
     redo,
     reset,
+    replaceSingle,
+    replaceAll,
   } = useTableData(initialState, useCallback(
     (nextHeaders: string[], nextData: string[][]) => {
       const csv = serializeCSV(nextHeaders, nextData, delimiter, hasHeader);
@@ -382,20 +407,73 @@ export function App({
 
   // Search always uses full data, not just the progressively-loaded portion
   const searchMatches = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = searchQuery.trim();
     if (!query) return [] as ActiveCell[];
 
+    const flags = matchCase ? "g" : "gi";
+    let pattern: RegExp;
+    try {
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regexStr = matchWholeWord ? `\\b${escaped}\\b` : escaped;
+      pattern = new RegExp(regexStr, flags);
+    } catch {
+      return [] as ActiveCell[];
+    }
+
     const matches: ActiveCell[] = [];
+    const colsToSearch =
+      searchTargetCol !== null && searchTargetCol >= 0
+        ? [searchTargetCol]
+        : visibleColumns;
+
     for (let rowIndex = 0; rowIndex < data.length; rowIndex += 1) {
-      for (const colIndex of visibleColumns) {
+      for (const colIndex of colsToSearch) {
         const value = data[rowIndex]?.[colIndex] ?? "";
-        if (value.toLowerCase().includes(query)) {
+        if (pattern.test(value)) {
           matches.push({ row: rowIndex, col: colIndex });
         }
       }
     }
     return matches;
-  }, [data, searchQuery, visibleColumns]);
+  }, [data, searchQuery, visibleColumns, matchCase, matchWholeWord, searchTargetCol]);
+
+  const navigateSearch = useCallback((direction: 1 | -1) => {
+    if (searchMatches.length === 0) return;
+    const currentIndex = searchMatches.findIndex(
+      (match) => match.row === activeCell?.row && match.col === activeCell?.col,
+    );
+    const nextIndex =
+      currentIndex === -1
+        ? direction > 0
+          ? 0
+          : searchMatches.length - 1
+        : (currentIndex + direction + searchMatches.length) % searchMatches.length;
+    setActiveCell(searchMatches[nextIndex]);
+  }, [activeCell?.col, activeCell?.row, searchMatches]);
+
+  const handleReplaceCurrent = useCallback(() => {
+    if (!activeCell || !searchQuery) return;
+    const isReplaced = replaceSingle(
+      activeCell.row,
+      activeCell.col,
+      searchQuery,
+      replaceQuery,
+      { matchCase, matchWholeWord },
+    );
+    if (isReplaced) {
+      navigateSearch(1);
+    }
+  }, [activeCell, searchQuery, replaceQuery, matchCase, matchWholeWord, replaceSingle, navigateSearch]);
+
+  const handleReplaceAll = useCallback(() => {
+    if (!searchQuery) return;
+    const count = replaceAll(
+      searchQuery,
+      replaceQuery,
+      { matchCase, matchWholeWord, targetCol: searchTargetCol },
+    );
+    new Notice(`✓ Replaced ${count} occurrence${count === 1 ? "" : "s"}.`);
+  }, [searchQuery, replaceQuery, matchCase, matchWholeWord, searchTargetCol, replaceAll]);
 
   useEffect(() => {
     if (searchMatches.length === 0) return;
@@ -508,20 +586,6 @@ export function App({
     setColumnConfig((prev) => normalizeColumnConfig({ ...prev, frozenCount }, headers.length));
   }, [headers.length]);
 
-  const navigateSearch = useCallback((direction: 1 | -1) => {
-    if (searchMatches.length === 0) return;
-    const currentIndex = searchMatches.findIndex(
-      (match) => match.row === activeCell?.row && match.col === activeCell?.col,
-    );
-    const nextIndex =
-      currentIndex === -1
-        ? direction > 0
-          ? 0
-          : searchMatches.length - 1
-        : (currentIndex + direction + searchMatches.length) % searchMatches.length;
-    setActiveCell(searchMatches[nextIndex]);
-  }, [activeCell?.col, activeCell?.row, searchMatches]);
-
   // Navigate rows in display order (respects sorting/filtering)
   const getAdjacentRow = useCallback(
     (currentRow: number, delta: number): number => {
@@ -552,8 +616,14 @@ export function App({
 
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
+        setIsFindOpen(true);
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "h") {
+        event.preventDefault();
+        setIsFindOpen(true);
+        setShowReplace(true);
         return;
       }
 
@@ -623,6 +693,30 @@ export function App({
     [activeCell?.col, activeCell?.row, searchMatches],
   );
 
+  const handleToggleViewMode = useCallback(() => {
+    if (viewMode === "table") {
+      const currentCsv = serializeCSV(headers, data, delimiter, hasHeader);
+      setRawText(currentCsv);
+      setViewMode("raw");
+    } else {
+      try {
+        const parsed = parseCSV(rawText, delimiter, hasHeader);
+        const validatedState = ensureEditableState({ headers: parsed.headers, data: parsed.data });
+        reset(validatedState);
+      } catch (err) {
+        console.error("Tablite: error parsing raw CSV", err);
+      }
+      setViewMode("table");
+    }
+  }, [viewMode, headers, data, delimiter, hasHeader, rawText, reset]);
+
+  const handleDownloadThumbnails = useCallback(() => {
+    const globalApp = (window as any).app;
+    if (globalApp) {
+      downloadAllYtThumbnails(globalApp, data);
+    }
+  }, [data]);
+
   return (
     <div
       ref={containerRef}
@@ -635,8 +729,8 @@ export function App({
         delimiter={delimiter}
         hasHeader={hasHeader}
         crossHighlight={crossHighlight}
-        rowCount={data.length}
-        colCount={headers.length}
+        rowCount={viewMode === "raw" ? rawText.split("\n").length : data.length}
+        colCount={viewMode === "raw" ? 1 : headers.length}
         headers={headers}
         columnOrder={columnConfig.order}
         hiddenColumns={columnConfig.hidden}
@@ -666,37 +760,79 @@ export function App({
         onDuplicateView={handleDuplicateView}
         onDeleteView={handleDeleteView}
         autocompleteColumns={autocompleteColumns}
+        viewMode={viewMode}
+        onToggleViewMode={handleToggleViewMode}
+        onDownloadThumbnails={handleDownloadThumbnails}
+        isFindOpen={isFindOpen}
+        onToggleFindReplace={() => setIsFindOpen(!isFindOpen)}
       />
-      <Table
-        headers={headers}
-        data={visibleData}
+      <FindReplaceBar
+        isOpen={isFindOpen}
+        showReplace={showReplace}
         searchQuery={searchQuery}
-        crossHighlight={crossHighlight}
-        activeCell={activeCell}
-        selection={selection}
-        columnOrder={columnConfig.order}
-        hiddenColumns={columnConfig.hidden}
-        columnSizing={columnConfig.sizing}
-        frozenCount={columnConfig.frozenCount}
-        onActiveCellChange={setActiveCell}
-        onSelectionChange={setSelection}
-        onCopy={() => copySelectionToClipboard(data, selection, activeCell, sortedRowIndicesRef.current)}
-        onColumnOrderChange={moveColumn}
-        onColumnSizingChange={updateColumnSizing}
-        onUpdateCell={updateCell}
-        onUpdateHeader={updateHeader}
-        onInsertRow={insertRow}
-        onDeleteRow={handleDeleteRow}
-        onInsertColumn={handleInsertColumn}
-        onDeleteColumn={handleDeleteColumn}
-        sortedRowIndicesRef={sortedRowIndicesRef}
-        autocompleteColumns={autocompleteColumns}
-        filePath={filePath}
-        sorting={columnConfig.sorting || []}
-        columnFilters={columnConfig.filters || []}
-        onSortingChange={handleSortingChange}
-        onColumnFiltersChange={handleColumnFiltersChange}
+        replaceQuery={replaceQuery}
+        matchCase={matchCase}
+        matchWholeWord={matchWholeWord}
+        selectedColumn={searchTargetCol}
+        headers={headers}
+        matchIndex={activeMatchIndex >= 0 ? activeMatchIndex + 1 : 0}
+        matchCount={searchMatches.length}
+        onSearchChange={setSearchQuery}
+        onReplaceChange={setReplaceQuery}
+        onToggleMatchCase={() => setMatchCase(!matchCase)}
+        onToggleMatchWholeWord={() => setMatchWholeWord(!matchWholeWord)}
+        onColumnChange={setSearchTargetCol}
+        onToggleReplaceRow={() => setShowReplace(!showReplace)}
+        onNextMatch={() => navigateSearch(1)}
+        onPrevMatch={() => navigateSearch(-1)}
+        onReplaceCurrent={handleReplaceCurrent}
+        onReplaceAll={handleReplaceAll}
+        onClose={() => setIsFindOpen(false)}
       />
+      {viewMode === "raw" ? (
+        <RawEditor
+          value={rawText}
+          onChange={handleRawTextChange}
+          onSwitchToTable={handleToggleViewMode}
+          delimiter={delimiter}
+          encoding={encoding}
+          filePath={filePath}
+        />
+      ) : (
+        <Table
+          headers={headers}
+          data={visibleData}
+          searchQuery={searchQuery}
+          crossHighlight={crossHighlight}
+          activeCell={activeCell}
+          selection={selection}
+          columnOrder={columnConfig.order}
+          hiddenColumns={columnConfig.hidden}
+          columnSizing={columnConfig.sizing}
+          frozenCount={columnConfig.frozenCount}
+          onActiveCellChange={setActiveCell}
+          onSelectionChange={setSelection}
+          onCopy={() => copySelectionToClipboard(data, selection, activeCell, sortedRowIndicesRef.current)}
+          onColumnOrderChange={moveColumn}
+          onColumnSizingChange={updateColumnSizing}
+          onUpdateCell={updateCell}
+          onUpdateHeader={updateHeader}
+          onInsertRow={insertRow}
+          onDeleteRow={handleDeleteRow}
+          onMoveRow={moveRow}
+          onMoveRows={moveRows}
+          onDeleteRows={deleteRows}
+          onInsertColumn={handleInsertColumn}
+          onDeleteColumn={handleDeleteColumn}
+          sortedRowIndicesRef={sortedRowIndicesRef}
+          autocompleteColumns={autocompleteColumns}
+          filePath={filePath}
+          sorting={columnConfig.sorting || []}
+          columnFilters={columnConfig.filters || []}
+          onSortingChange={handleSortingChange}
+          onColumnFiltersChange={handleColumnFiltersChange}
+        />
+      )}
     </div>
   );
 }

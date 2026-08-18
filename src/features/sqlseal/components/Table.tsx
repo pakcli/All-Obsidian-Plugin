@@ -16,6 +16,10 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Cell } from "./Cell";
 import { HeaderCell } from "./HeaderCell";
 import { parseAutocompleteSettings, resolveHeaderName } from "../utils/views";
+import { ConfirmReorderModal } from "../utils/confirmModal";
+import { serializeCSV } from "../parser/csv-engine";
+import { downloadAllYtThumbnails } from "../utils/youtubeThumbnail";
+import { Notice } from "obsidian";
 
 interface ActiveCell {
   row: number;
@@ -50,6 +54,9 @@ interface TableProps {
   onUpdateHeader: (colIndex: number, value: string) => void;
   onInsertRow: (afterIndex: number) => void;
   onDeleteRow: (index: number) => void;
+  onMoveRow?: (sourceIndex: number, targetIndex: number) => void;
+  onMoveRows?: (sourceIndices: number[], targetIndex: number) => void;
+  onDeleteRows?: (indices: number[]) => void;
   onInsertColumn: (afterIndex: number) => void;
   onDeleteColumn: (index: number) => void;
   autocompleteColumns?: string;
@@ -107,8 +114,12 @@ function getFilterVariant(data: string[][], colIndex: number, dataType: "number"
 
   if (normalized.length === 0) return "text";
 
+  // If items look like URLs, paths, or long sentences, default to text search filter
+  const hasLongOrUrl = normalized.some((v) => v.length > 25 || v.startsWith("http://") || v.startsWith("https://"));
+  if (hasLongOrUrl) return "text";
+
   const uniqueCount = new Set(normalized).size;
-  if (uniqueCount >= 2 && uniqueCount <= 10) {
+  if (uniqueCount >= 2 && uniqueCount <= 8) {
     return "select";
   }
 
@@ -189,6 +200,9 @@ export function Table({
   onUpdateHeader,
   onInsertRow,
   onDeleteRow,
+  onMoveRow,
+  onMoveRows,
+  onDeleteRows,
   onInsertColumn,
   onDeleteColumn,
   sortedRowIndicesRef,
@@ -200,6 +214,9 @@ export function Table({
   onColumnFiltersChange,
 }: TableProps) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const lastSelectedRowRef = useRef<number | null>(null);
+  const [dragOverRow, setDragOverRow] = useState<number | null>(null);
 
   const autocompleteCols = useMemo(() => {
     const setting = autocompleteColumns || "";
@@ -211,7 +228,7 @@ export function Table({
     const colValuesMap: Record<number, string[]> = {};
     headers.forEach((_, colIndex) => {
       colValuesMap[colIndex] = Array.from(
-        new Set(data.map((row) => row[colIndex]).filter((v) => v !== undefined && v !== null && v !== ""))
+        new Set(data.map((row) => row[colIndex]).filter((v) => v !== undefined && v !== null && v !== "")),
       );
     });
     return colValuesMap;
@@ -226,10 +243,14 @@ export function Table({
   const onUpdateHeaderRef = useRef(onUpdateHeader);
   onUpdateHeaderRef.current = onUpdateHeader;
 
-  const visibleColumnOrder = useMemo(
-    () => columnOrder.filter((index) => !hiddenColumns.includes(index)),
-    [columnOrder, hiddenColumns],
-  );
+  const visibleColumnOrder = useMemo(() => {
+    const orderSet = new Set(columnOrder);
+    const completeOrder = [
+      ...columnOrder.filter((idx) => idx < headers.length),
+      ...headers.map((_, idx) => idx).filter((idx) => !orderSet.has(idx)),
+    ];
+    return completeOrder.filter((index) => !hiddenColumns.includes(index));
+  }, [columnOrder, headers, hiddenColumns]);
 
   const columnTypes = useMemo(
     () => Object.fromEntries(headers.map((_, index) => [index, inferColumnType(data, index)])),
@@ -247,30 +268,178 @@ export function Table({
   const columns = useMemo<ColumnDef<string[], string>[]>(
     () => [
       {
-        id: "__row_num",
-        header: () => (
-          <div
-            class="tablite-row-num"
-            style={{ cursor: "pointer" }}
-            onClick={(e) => {
-              e.preventDefault();
-              onActiveCellChange({ row: 0, col: 0 });
-              onSelectionChange({
-                startRow: 0,
-                startCol: 0,
-                endRow: data.length - 1,
-                endCol: headers.length - 1,
-              });
-            }}
-          >
-            #
-          </div>
-        ),
-        size: 50,
-        minSize: 40,
+        id: "__select",
         enableSorting: false,
         enableColumnFilter: false,
-        cell: ({ row }) => <div class="tablite-row-num">{row.index + 1}</div>,
+        size: 34,
+        minSize: 34,
+        header: () => (
+          <div class="tablite-row-select-header" title="Select / Deselect All">
+            <input
+              type="checkbox"
+              class="tablite-row-checkbox"
+              checked={selectedRows.size === data.length && data.length > 0}
+              indeterminate={selectedRows.size > 0 && selectedRows.size < data.length}
+              onChange={(e) => {
+                const checked = (e.target as HTMLInputElement).checked;
+                if (checked) {
+                  setSelectedRows(new Set(data.map((_, i) => i)));
+                } else {
+                  setSelectedRows(new Set());
+                }
+              }}
+            />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div class="tablite-row-select-cell" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              class="tablite-row-checkbox"
+              checked={selectedRows.has(row.index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                const mouseEvent = e as unknown as MouseEvent;
+                const isShift = mouseEvent.shiftKey;
+                const targetIndex = row.index;
+
+                setSelectedRows((prev) => {
+                  const next = new Set(prev);
+                  if (isShift && lastSelectedRowRef.current !== null) {
+                    const start = Math.min(lastSelectedRowRef.current, targetIndex);
+                    const end = Math.max(lastSelectedRowRef.current, targetIndex);
+                    for (let i = start; i <= end; i++) {
+                      next.add(i);
+                    }
+                  } else {
+                    if (next.has(targetIndex)) {
+                      next.delete(targetIndex);
+                    } else {
+                      next.add(targetIndex);
+                    }
+                  }
+                  return next;
+                });
+                lastSelectedRowRef.current = targetIndex;
+              }}
+            />
+          </div>
+        ),
+      },
+      {
+        id: "__row_num",
+        accessorFn: (_, index) => index,
+        enableSorting: true,
+        enableColumnFilter: false,
+        sortingFn: (rowA, rowB) => rowA.index - rowB.index,
+        header: ({ column }) => {
+          const sortDir = column.getIsSorted();
+          const sortIndicator = sortDir === "asc" ? " ▲" : sortDir === "desc" ? " ▼" : "";
+          return (
+            <div
+              class="tablite-row-num tablite-row-num-header"
+              style={{ cursor: "pointer", userSelect: "none" }}
+              title="Click to sort by Row ID (#) | Drag row to reorder"
+              onClick={() => {
+                column.toggleSorting(undefined, true);
+              }}
+            >
+              #{sortIndicator}
+            </div>
+          );
+        },
+        size: 50,
+        minSize: 45,
+        cell: ({ row }) => {
+          const isSelected = selectedRows.has(row.index);
+          return (
+            <div
+              class="tablite-row-num tablite-row-num-drag"
+              draggable
+              title="Drag to reorder row (or Shift+Click to multiselect)"
+              onClick={(e) => {
+                const mouseEvent = e as unknown as MouseEvent;
+                if (mouseEvent.shiftKey && lastSelectedRowRef.current !== null) {
+                  const start = Math.min(lastSelectedRowRef.current, row.index);
+                  const end = Math.max(lastSelectedRowRef.current, row.index);
+                  setSelectedRows((prev) => {
+                    const next = new Set(prev);
+                    for (let i = start; i <= end; i++) {
+                      next.add(i);
+                    }
+                    return next;
+                  });
+                }
+              }}
+              onDragStart={(e) => {
+                const indicesToDrag =
+                  isSelected && selectedRows.size > 1
+                    ? Array.from(selectedRows).sort((a, b) => a - b)
+                    : [row.index];
+                e.dataTransfer?.setData("text/tablite-rows", JSON.stringify(indicesToDrag));
+                e.dataTransfer?.setData("text/tablite-row", String(row.index));
+                e.dataTransfer?.setData("text/plain", `[Row ${row.index + 1}]`);
+                e.dataTransfer!.effectAllowed = "move";
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer!.dropEffect = "move";
+                setDragOverRow(row.index);
+              }}
+              onDragLeave={() => {
+                setDragOverRow(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverRow(null);
+                let sourceIndices: number[] = [];
+                const rowsJson = e.dataTransfer?.getData("text/tablite-rows");
+                if (rowsJson) {
+                  try {
+                    sourceIndices = JSON.parse(rowsJson);
+                  } catch {}
+                }
+                if (sourceIndices.length === 0) {
+                  const single = Number(e.dataTransfer?.getData("text/tablite-row"));
+                  if (!Number.isNaN(single)) sourceIndices = [single];
+                }
+
+                if (sourceIndices.length > 0) {
+                  if (sourceIndices.length === 1 && sourceIndices[0] === row.index) return;
+                  const count = sourceIndices.length;
+                  const targetPos = row.index + 1;
+                  const msg =
+                    count === 1
+                      ? `Are you sure you want to move Row #${sourceIndices[0] + 1} to position #${targetPos}?`
+                      : `Are you sure you want to move ${count} selected rows to position #${targetPos}?`;
+
+                  const globalApp = (window as any).app;
+                  const executeMove = () => {
+                    if (onMoveRows) {
+                      onMoveRows(sourceIndices, row.index);
+                    } else if (onMoveRow && sourceIndices.length === 1) {
+                      onMoveRow(sourceIndices[0], row.index);
+                    }
+                  };
+
+                  if (globalApp) {
+                    new ConfirmReorderModal(
+                      globalApp,
+                      count === 1 ? "Move Row" : "Move Selected Rows",
+                      msg,
+                      executeMove,
+                    ).open();
+                  } else {
+                    executeMove();
+                  }
+                }
+              }}
+            >
+              <span class="tablite-drag-dots">⋮⋮</span>
+              <span>{row.index + 1}</span>
+            </div>
+          );
+        },
       },
       ...visibleColumnOrder.map(
         (sourceIndex): ColumnDef<string[], string> => ({
@@ -287,12 +456,35 @@ export function Table({
                   ? dateRangeFilter
                   : textFilter,
           sortingFn: (rowA, rowB, columnId) => {
-            const a = String(rowA.getValue(columnId) ?? "");
-            const b = String(rowB.getValue(columnId) ?? "");
+            const a = String(rowA.getValue(columnId) ?? "").trim();
+            const b = String(rowB.getValue(columnId) ?? "").trim();
             const type = columnTypes[sourceIndex];
-            if (type === "number") return Number(a) - Number(b);
-            if (type === "date") return Date.parse(a) - Date.parse(b);
-            return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+            let diff = 0;
+            if (type === "number") {
+              const numA = Number(a);
+              const numB = Number(b);
+              if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+                diff = numA - numB;
+              } else {
+                diff = a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+              }
+            } else if (type === "date") {
+              const dateA = Date.parse(a);
+              const dateB = Date.parse(b);
+              if (!Number.isNaN(dateA) && !Number.isNaN(dateB)) {
+                diff = dateA - dateB;
+              } else {
+                diff = a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+              }
+            } else {
+              diff = a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+            }
+
+            // Stable priority: Fall back to original row index (Column 1 / # priority)
+            if (diff === 0) {
+              return rowA.index - rowB.index;
+            }
+            return diff;
           },
           meta: {
             sourceIndex,
@@ -345,6 +537,9 @@ export function Table({
       autocompleteCols,
       uniqueValues,
       data,
+      selectedRows,
+      onMoveRow,
+      onMoveRows,
       onActiveCellChange,
       onSelectionChange,
     ],
@@ -361,6 +556,7 @@ export function Table({
     state: { sorting, columnFilters },
     onSortingChange: onSortingChange,
     onColumnFiltersChange: onColumnFiltersChange,
+    enableMultiSort: true,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
@@ -610,7 +806,7 @@ export function Table({
 
   const getPinnedStyles = useCallback(
     (cellId: string, position: number, isHeader: boolean) => {
-      const isPinned = position < frozenCount || cellId === "__row_num";
+      const isPinned = position < frozenCount || cellId === "__select" || cellId === "__row_num";
       if (!isPinned) return {};
       return {
         position: "sticky",
@@ -635,16 +831,18 @@ export function Table({
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} style={{ display: "flex", width: `${totalWidth}px`, minWidth: "100%" }}>
               {headerGroup.headers.map((header, position) => {
-                const isRowNum = header.column.id === "__row_num";
-                const colIdx = isRowNum ? -1 : Number(header.column.id.replace("col_", ""));
+                const isSpecialCol = header.column.id === "__select" || header.column.id === "__row_num";
+                const colIdx = isSpecialCol ? -1 : Number(header.column.id.replace("col_", ""));
                 const isColHL = crossHighlight && activeCell != null && colIdx === activeCell.col;
-                const isColSelected = !isRowNum && (selection
+                const isColSelected = !isSpecialCol && (selection
                   ? (colIdx >= Math.min(selection.startCol, selection.endCol) && colIdx <= Math.max(selection.startCol, selection.endCol))
                   : (activeCell?.col === colIdx));
 
                 let thClass = "tablite-th";
+                if (header.column.id === "__select") thClass += " tablite-th-select";
+                if (header.column.id === "__row_num") thClass += " tablite-th-row-num";
                 if (isColHL) thClass += " tablite-col-highlight";
-                if (position < frozenCount + 1) thClass += " tablite-frozen-cell";
+                if (position < frozenCount + 2) thClass += " tablite-frozen-cell";
                 if (isColSelected) thClass += " tablite-col-selected";
 
                 return (
@@ -675,11 +873,18 @@ export function Table({
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const row = rows[virtualRow.index];
+            const isChecked = selectedRows.has(row.index);
+            const isDragTarget = dragOverRow === row.index;
+            let trClass = "tablite-tr";
+            if (isChecked) trClass += " tablite-tr-checked";
+            if (isDragTarget) trClass += " tablite-tr-drag-over";
+
             return (
               <tr
                 key={row.id}
                 data-index={virtualRow.index}
                 data-row-index={row.index}
+                class={trClass}
                 ref={(element) => {
                   if (element) rowVirtualizer.measureElement(element);
                 }}
@@ -690,28 +895,84 @@ export function Table({
                   width: `${totalWidth}px`,
                   minWidth: "100%",
                 }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverRow(row.index);
+                }}
+                onDragLeave={() => {
+                  setDragOverRow((current) => (current === row.index ? null : current));
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverRow(null);
+                  let sourceIndices: number[] = [];
+                  const rowsJson = e.dataTransfer?.getData("text/tablite-rows");
+                  if (rowsJson) {
+                    try {
+                      sourceIndices = JSON.parse(rowsJson);
+                    } catch {}
+                  }
+                  if (sourceIndices.length === 0) {
+                    const single = Number(e.dataTransfer?.getData("text/tablite-row"));
+                    if (!Number.isNaN(single)) sourceIndices = [single];
+                  }
+
+                  if (sourceIndices.length > 0) {
+                    if (sourceIndices.length === 1 && sourceIndices[0] === row.index) return;
+                    const count = sourceIndices.length;
+                    const targetPos = row.index + 1;
+                    const msg =
+                      count === 1
+                        ? `Are you sure you want to move Row #${sourceIndices[0] + 1} to position #${targetPos}?`
+                        : `Are you sure you want to move ${count} selected rows to position #${targetPos}?`;
+
+                    const globalApp = (window as any).app;
+                    const executeMove = () => {
+                      if (onMoveRows) {
+                        onMoveRows(sourceIndices, row.index);
+                      } else if (onMoveRow && sourceIndices.length === 1) {
+                        onMoveRow(sourceIndices[0], row.index);
+                      }
+                    };
+
+                    if (globalApp) {
+                      new ConfirmReorderModal(
+                        globalApp,
+                        count === 1 ? "Move Row" : "Move Selected Rows",
+                        msg,
+                        executeMove,
+                      ).open();
+                    } else {
+                      executeMove();
+                    }
+                  }
+                }}
               >
                 {row.getVisibleCells().map((cell, position) => {
+                   const isSelect = cell.column.id === "__select";
                    const isRowNum = cell.column.id === "__row_num";
-                   const colIdx = isRowNum ? -1 : Number(cell.column.id.replace("col_", ""));
-                   const isActive = !isRowNum && activeCell?.row === row.index && activeCell?.col === colIdx;
-                   const isSelected = !isRowNum && !isActive && isCellSelected(row.index, colIdx);
-                   const isRowHL = crossHighlight && !isRowNum && activeCell != null && activeCell.row === row.index;
-                   const isColHL = crossHighlight && !isRowNum && activeCell != null && activeCell.col === colIdx;
+                   const colIdx = isSelect || isRowNum ? -1 : Number(cell.column.id.replace("col_", ""));
+                   const isActive = !isSelect && !isRowNum && activeCell?.row === row.index && activeCell?.col === colIdx;
+                   const isSelected = !isSelect && !isRowNum && !isActive && isCellSelected(row.index, colIdx);
+                   const isRowHL = crossHighlight && !isSelect && !isRowNum && activeCell != null && activeCell.row === row.index;
+                   const isColHL = crossHighlight && !isSelect && !isRowNum && activeCell != null && activeCell.col === colIdx;
  
                    const isRowSelected = selection
                      ? (row.index >= Math.min(selection.startRow, selection.endRow) && row.index <= Math.max(selection.startRow, selection.endRow))
                      : (activeCell?.row === row.index);
  
                    let className = "tablite-td";
-                   if (isRowNum) {
+                   if (isSelect) {
+                     className += " tablite-td-select";
+                   } else if (isRowNum) {
                      if (isRowSelected) className += " tablite-row-num-selected";
                    } else {
                      if (isActive && !selection) className += " tablite-td-active";
                      else if (isActive || isSelected) className += " tablite-td-selected";
                      else if (isRowHL || isColHL) className += " tablite-td-cross";
                    }
-                   if (position < frozenCount + 1) className += " tablite-frozen-cell";
+                   if (position < frozenCount + 2) className += " tablite-frozen-cell";
 
                   return (
                     <td
@@ -727,7 +988,11 @@ export function Table({
                         userSelect: "none",
                         ...getPinnedStyles(cell.column.id, position, false),
                       }}
-                      onMouseDown={(event) => handleCellMouseDown(event as unknown as MouseEvent, row.index, colIdx)}
+                      onMouseDown={(event) => {
+                        if (!isSelect && !isRowNum) {
+                          handleCellMouseDown(event as unknown as MouseEvent, row.index, colIdx);
+                        }
+                      }}
                       onContextMenu={(event) => onContextMenu(event as unknown as MouseEvent, row.index, colIdx)}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -739,6 +1004,78 @@ export function Table({
           })}
         </tbody>
       </table>
+      {selectedRows.size > 0 && (
+        <div class="tablite-floating-actions">
+          <div class="tablite-fa-info">
+            <span class="tablite-fa-badge">{selectedRows.size}</span>
+            <span>row{selectedRows.size === 1 ? "" : "s"} selected</span>
+          </div>
+          <button
+            type="button"
+            class="tablite-fa-btn"
+            title="Copy selected rows as CSV to clipboard"
+            onClick={() => {
+              const selectedIndices = Array.from(selectedRows).sort((a, b) => a - b);
+              const selectedData = selectedIndices.map((i) => data[i]);
+              const csv = serializeCSV(headers, selectedData, ",", false);
+              navigator.clipboard.writeText(csv);
+              new Notice(`✓ Copied ${selectedIndices.length} rows to clipboard!`);
+            }}
+          >
+            📋 Copy CSV
+          </button>
+          <button
+            type="button"
+            class="tablite-fa-btn"
+            title="Cache YouTube thumbnails for selected rows"
+            onClick={() => {
+              const selectedIndices = Array.from(selectedRows);
+              const selectedData = selectedIndices.map((i) => data[i]);
+              const globalApp = (window as any).app;
+              if (globalApp) {
+                downloadAllYtThumbnails(globalApp, selectedData);
+              }
+            }}
+          >
+            🎬 Cache YT
+          </button>
+          <button
+            type="button"
+            class="tablite-fa-btn tablite-fa-danger"
+            title="Delete selected rows"
+            onClick={() => {
+              const globalApp = (window as any).app;
+              const count = selectedRows.size;
+              const doDelete = () => {
+                if (onDeleteRows) onDeleteRows(Array.from(selectedRows));
+                setSelectedRows(new Set());
+                new Notice(`Deleted ${count} rows.`);
+              };
+
+              if (globalApp) {
+                new ConfirmReorderModal(
+                  globalApp,
+                  "Delete Selected Rows",
+                  `Are you sure you want to delete ${count} selected row${count === 1 ? "" : "s"}? You can undo this with Ctrl+Z.`,
+                  doDelete,
+                ).open();
+              } else {
+                doDelete();
+              }
+            }}
+          >
+            🗑️ Delete ({selectedRows.size})
+          </button>
+          <button
+            type="button"
+            class="tablite-fa-close"
+            title="Clear selection"
+            onClick={() => setSelectedRows(new Set())}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

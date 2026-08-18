@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "preact/hooks";
 import type { Column } from "@tanstack/react-table";
 
+import { ConfirmReorderModal } from "../utils/confirmModal";
+
 interface HeaderCellProps {
   name: string;
   displayName: string;
@@ -91,22 +93,42 @@ export function HeaderCell({
     column.setFilterValue(next.length > 0 ? next : undefined);
   }, [column, selectValues]);
 
+  const [isDragOver, setIsDragOver] = useState(false);
+
   return (
     <div
-      class="tablite-header-cell"
+      class={`tablite-header-cell ${isDragOver ? "tablite-col-drag-over" : ""}`}
       draggable
       onDragStart={(event) => {
         event.dataTransfer?.setData("text/tablite-column", String(colIndex));
+        event.dataTransfer?.setData("text/plain", displayName || String(colIndex));
         event.dataTransfer!.effectAllowed = "move";
       }}
       onDragOver={(event) => {
         event.preventDefault();
         event.dataTransfer!.dropEffect = "move";
+        setIsDragOver(true);
+      }}
+      onDragLeave={() => {
+        setIsDragOver(false);
       }}
       onDrop={(event) => {
         event.preventDefault();
+        setIsDragOver(false);
         const sourceIndex = Number(event.dataTransfer?.getData("text/tablite-column"));
-        if (!Number.isNaN(sourceIndex)) onMoveColumn(sourceIndex, colIndex);
+        if (!Number.isNaN(sourceIndex) && sourceIndex !== colIndex) {
+          const globalApp = (window as any).app;
+          if (globalApp) {
+            new ConfirmReorderModal(
+              globalApp,
+              "Move Column",
+              `Are you sure you want to move column "${displayName}" to column position ${colIndex + 1}?`,
+              () => onMoveColumn(sourceIndex, colIndex),
+            ).open();
+          } else {
+            onMoveColumn(sourceIndex, colIndex);
+          }
+        }
       }}
     >
       <div class="tablite-header-top">
