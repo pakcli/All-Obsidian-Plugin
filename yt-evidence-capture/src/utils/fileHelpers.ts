@@ -10,10 +10,13 @@
  * Strips illegal chars, collapses whitespace, limits length.
  */
 export function sanitizeFilename(name: string): string {
+  const cleaned = name
+    .split("")
+    .map((c) => (c.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(c) ? "_" : c))
+    .join("");
+
   return (
-    name
-      // Remove filesystem-illegal characters (Windows + Unix superset)
-      .replace(new RegExp('[<>:"/\\\\|?*\\u0000-\\u001f]', 'g'), "_")
+    cleaned
       // Collapse runs of whitespace/underscores
       .replace(/[\s_]+/g, "_")
       // Strip leading dots/underscores

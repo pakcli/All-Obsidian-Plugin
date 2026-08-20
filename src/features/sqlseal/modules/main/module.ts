@@ -11,14 +11,14 @@ import { apiModule } from '../api/module'
 import { globalTables } from '../globalTables/module'
 import { explorer } from '../explorer/module'
 
-const obsidian = new Registrator(process.env.NODE_ENV === 'development' ? { logger: console.log } : undefined)
+const obsidian = new Registrator(process.env.NODE_ENV === 'development' ? { logger: console.debug } : undefined)
 .import<'app', App>()
 .import<'plugin', Plugin>()
 .import<'vault', Vault>()
 .export('app', 'plugin', 'vault')
 
 
-export const mainModule = new Registrator(process.env.NODE_ENV === 'development' ? {logger: console.log} : undefined)
+export const mainModule = new Registrator(process.env.NODE_ENV === 'development' ? {logger: console.debug} : undefined)
 .module('obsidian', obsidian)
 .module('db', db)
 .module('editor', editor)

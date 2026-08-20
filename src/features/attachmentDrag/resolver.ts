@@ -28,7 +28,9 @@ function appUrlToAbsPath(src: string): string | null {
             absPath = path.normalize(absPath);
             if (fs.existsSync(absPath)) return absPath;
         }
-    } catch {}
+    } catch {
+        // Ignore URL parsing errors
+    }
     return null;
 }
 
@@ -72,7 +74,7 @@ export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string):
     };
 
     // 1. Embedded widget container (.internal-embed)
-    const embed = el.closest('.internal-embed') as HTMLElement | null;
+    const embed = el.closest<HTMLElement>('.internal-embed');
     if (embed) {
         const src = embed.getAttribute('src') || embed.getAttribute('alt') || '';
         if (src) {
@@ -82,7 +84,7 @@ export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string):
     }
 
     // 2. <img> element
-    const img = el.tagName === 'IMG' ? (el as HTMLImageElement) : el.querySelector('img');
+    const img = el instanceof HTMLImageElement ? el : el.querySelector('img');
     if (img) {
         const src = img.getAttribute('src') || '';
         const decoded = appUrlToAbsPath(src);
@@ -103,9 +105,9 @@ export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string):
     }
 
     // 3. <video> or <audio>
-    const media = (el.tagName === 'VIDEO' || el.tagName === 'AUDIO')
-        ? (el as HTMLVideoElement | HTMLAudioElement)
-        : el.querySelector('video, audio') as HTMLVideoElement | HTMLAudioElement | null;
+    const media = (el instanceof HTMLVideoElement || el instanceof HTMLAudioElement)
+        ? el
+        : el.querySelector<HTMLVideoElement | HTMLAudioElement>('video, audio');
     if (media) {
         const src = media.currentSrc || media.getAttribute('src') || '';
         const decoded = appUrlToAbsPath(src);
@@ -120,7 +122,7 @@ export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string):
     }
 
     // 4. <a class="internal-link">
-    const anchor = (el.tagName === 'A' ? el : el.closest('a.internal-link')) as HTMLAnchorElement | null;
+    const anchor = el instanceof HTMLAnchorElement ? el : el.closest<HTMLAnchorElement>('a.internal-link');
     if (anchor) {
         const href = anchor.getAttribute('data-href') || anchor.getAttribute('href') || '';
         if (href) {

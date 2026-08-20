@@ -305,7 +305,6 @@ export class AssetRouter {
 			if (content !== newContent) {
 				editor.setValue(newContent);
 				editor.setCursor(cursor);
-				console.log("[Asset Router] Manually updated link in editor as fallback.");
 			}
 		}
 	}

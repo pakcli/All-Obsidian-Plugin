@@ -11,11 +11,7 @@ export function parseWikilinks(text: string): DocumentFragment {
 	let lastIndex = 0;
 	let match;
 	
-	console.log(`[parseWikilinks] Parsing text: "${text}"`);
-	
 	while ((match = wikilinkRegex.exec(text)) !== null) {
-		console.log(`[parseWikilinks] Found wikilink: ${match[0]}`);
-		
 		// Add text before the wikilink
 		if (match.index > lastIndex) {
 			const textNode = document.createTextNode(text.substring(lastIndex, match.index));
@@ -25,8 +21,6 @@ export function parseWikilinks(text: string): DocumentFragment {
 		// Create wikilink element
 		const target = match[1].trim();
 		const alias = match[2] ? match[2].trim() : target;
-		
-		console.log(`[parseWikilinks] Creating link: target="${target}", alias="${alias}"`);
 		
 		const link = document.createElement('a');
 		link.className = 'internal-link';

@@ -3,7 +3,7 @@
  *
  * Review modal for deferred ("Remind me later") sync changes with 1-click execution.
  */
-import { App, Modal, Notice, Setting, TFile } from 'obsidian';
+import { App, Modal, Notice, TFile } from 'obsidian';
 import { SyncManager } from '../SyncManager';
 import { FolderSyncSettings, PendingSyncItem } from '../types';
 

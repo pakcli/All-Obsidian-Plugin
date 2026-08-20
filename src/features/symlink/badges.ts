@@ -84,18 +84,16 @@ export class BadgeRenderer {
 		titleEl.addClass(kind === 'active' ? 'sm-link-active' : 'sm-link-broken');
 		if (type) titleEl.addClass(`sm-link-${type}`);
 
-		const contentEl = titleEl.querySelector('.nav-folder-title-content') as HTMLElement | null;
+		const contentEl = titleEl.querySelector<HTMLElement>('.nav-folder-title-content');
 		const anchor = contentEl ?? titleEl;
 
 		// ── target path span (right-aligned, responsive) ──────────────────────
-		const pathSpan = document.createElement('span');
-		pathSpan.className = PATH_CLS;
+		const pathSpan = createSpan({ cls: PATH_CLS });
 		const disposeObserver = applyResponsivePath(pathSpan, target);
 		this.observers.set(titleEl, disposeObserver);
 
 		// ── coloured dot span ─────────────────────────────────────────────────
-		const dot = document.createElement('span');
-		dot.className = `${DOT_CLS} ${DOT_CLS}-${type ?? 'broken'}`;
+		const dot = createSpan({ cls: `${DOT_CLS} ${DOT_CLS}-${type ?? 'broken'}` });
 
 		// Insert order matters: pathSpan between name and dot.
 		anchor.insertAdjacentElement('afterend', dot);

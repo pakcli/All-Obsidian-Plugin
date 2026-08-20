@@ -19,7 +19,7 @@ export function getPluginBinDir(plugin: PakCLIPlugin): string {
   const adapter = plugin.app.vault.adapter;
   let pluginDir = "";
   if (adapter instanceof FileSystemAdapter) {
-    const configDir = (plugin.app.vault as any).configDir || ".obsidian";
+    const configDir = plugin.app.vault.configDir ?? ".obsidian";
     pluginDir = path.join(adapter.getBasePath(), plugin.manifest.dir || `${configDir}/plugins/${plugin.manifest.id || "master"}`);
   } else {
     pluginDir = path.join(process.cwd(), "bin");

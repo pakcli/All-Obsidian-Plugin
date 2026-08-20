@@ -38,7 +38,7 @@ export class FileConfig<T> {
                 // Migrate old file to new extension
                 try {
                     await this.vault.rename(oldFile, this.path);
-                    console.log(`SQLSeal: Migrated config file from ${oldPath} to ${this.path}`);
+                    console.debug(`SQLSeal: Migrated config file from ${oldPath} to ${this.path}`);
                 } catch (error) {
                     console.error(`SQLSeal: Failed to migrate config file from ${oldPath} to ${this.path}:`, error);
                 }

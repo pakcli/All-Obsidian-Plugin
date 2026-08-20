@@ -97,16 +97,13 @@ export class DiagramRenderer extends MarkdownRenderChild {
 	 * Get settings panel open state from plugin storage
 	 */
 	private get settingsPanelOpen(): boolean {
-		const isOpen = this.plugin.settingsPanelStates.get(this.sourceHash) || false;
-		console.log(`[settingsPanelOpen getter] hash=${this.sourceHash}, isOpen=${isOpen}`);
-		return isOpen;
+		return this.plugin.settingsPanelStates.get(this.sourceHash) || false;
 	}
 
 	/**
 	 * Set settings panel open state in plugin storage
 	 */
 	private set settingsPanelOpen(value: boolean) {
-		console.log(`[settingsPanelOpen setter] hash=${this.sourceHash}, value=${value}`);
 		this.plugin.settingsPanelStates.set(this.sourceHash, value);
 	}
 
@@ -114,9 +111,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 	 * Update the source codeblock with current config flags
 	 */
 	private async updateSourceCodeblock() {
-		console.log('=== updateSourceCodeblock called ===');
-		console.log('Source path:', this.ctx.sourcePath);
-		
 		// Set flag to indicate we're updating
 		this.isUpdatingSource = true;
 		
@@ -147,8 +141,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 				sourceTreeContent.push(line);
 			}
 			const sourceTreeText = sourceTreeContent.join('\n').trim();
-			
-			console.log('Source tree content length:', sourceTreeText.length);
 			
 			// Find all tree codeblocks and match with our source
 			let codeblockStart = -1;
@@ -444,9 +436,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 		// Enable wikilinks in table after DOM is ready
 		// Use window.setTimeout to ensure DOM is fully rendered
 		window.setTimeout(() => {
-			console.log('[TableModeA] Enabling wikilinks...');
-			const links = table.querySelectorAll('a.internal-link');
-			console.log(`[TableModeA] Found ${links.length} internal links`);
 			enableWikiLinks(table, this.plugin.app, this.ctx.sourcePath);
 		}, 0);
 	}
@@ -506,9 +495,6 @@ export class DiagramRenderer extends MarkdownRenderChild {
 		// Enable wikilinks in table after DOM is ready
 		// Use window.setTimeout to ensure DOM is fully rendered
 		window.setTimeout(() => {
-			console.log('[TableModeB] Enabling wikilinks...');
-			const links = tableContainer.querySelectorAll('a.internal-link');
-			console.log(`[TableModeB] Found ${links.length} internal links`);
 			enableWikiLinks(tableContainer, this.plugin.app, this.ctx.sourcePath);
 		}, 0);
 	}

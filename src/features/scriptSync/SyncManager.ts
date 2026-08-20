@@ -69,7 +69,9 @@ export class SyncManager {
 
     private stopWatcher(): void {
         this.fileWatchers.forEach(w => {
-            try { w.close(); } catch {}
+            try { w.close(); } catch {
+                // Ignore watcher close error
+            }
         });
         this.fileWatchers = [];
     }
@@ -133,7 +135,9 @@ export class SyncManager {
                     managerCode = extracted.code;
                     language = extracted.language;
                 }
-            } catch {}
+            } catch {
+                // Ignore vault read failure
+            }
         }
 
         const cliPath = this.resolveCliPath(noteFile.path, language);
@@ -218,7 +222,9 @@ export class SyncManager {
                 status = 'conflict';
                 statusLabel = 'Both Modified (Potential Conflict)';
             }
-        } catch {}
+        } catch {
+            // Ignore stat errors for missing or inaccessible files
+        }
 
         return {
             status,

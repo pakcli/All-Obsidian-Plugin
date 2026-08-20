@@ -222,7 +222,7 @@ export class SyncCodeblockRenderer extends MarkdownRenderChild {
         if (!this.outputContainerEl) return;
         this.isOutputOpen = true;
         this.outputContainerEl.empty();
-        this.outputContainerEl.style.display = 'block';
+        this.outputContainerEl.setCssStyles({ display: 'block' });
 
         const outHeader = this.outputContainerEl.createDiv({ cls: 'pakcli-output-header' });
         outHeader.createSpan({ 
@@ -233,7 +233,7 @@ export class SyncCodeblockRenderer extends MarkdownRenderChild {
         const closeBtn = outHeader.createEl('button', { cls: 'pakcli-output-close-btn', text: '✕' });
         closeBtn.addEventListener('click', () => {
             this.isOutputOpen = false;
-            if (this.outputContainerEl) this.outputContainerEl.style.display = 'none';
+            if (this.outputContainerEl) this.outputContainerEl.setCssStyles({ display: 'none' });
         });
 
         if (res.stdout) {

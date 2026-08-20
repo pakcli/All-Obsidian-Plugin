@@ -57,7 +57,7 @@ export default class YTEvidenceCapturePlugin extends Plugin {
   }
 
   onunload(): void {
-    console.log("YT Evidence Capture: unloaded");
+    // Cleanup
   }
 
   async loadSettings(): Promise<void> {

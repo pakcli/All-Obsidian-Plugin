@@ -140,9 +140,12 @@ export default class PakCLIPlugin extends Plugin {
 					activeEl.closest('.nav-folder') !== null
 				) && (activeEl.instanceOf?.(HTMLInputElement) || activeEl.tagName === 'INPUT');
 
-				if (isRenameInput) {
+				if (isRenameInput && (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
 					const formatted = this.formatDate(today, this.settings.dateFormat);
-					document.execCommand('insertText', false, formatted);
+					const start = activeEl.selectionStart ?? 0;
+					const end = activeEl.selectionEnd ?? 0;
+					activeEl.setRangeText(formatted, start, end, 'end');
+					activeEl.dispatchEvent(new Event('input', { bubbles: true }));
 					return;
 				}
 
@@ -151,8 +154,8 @@ export default class PakCLIPlugin extends Plugin {
 				let inputSelection: { start: number; end: number } | null = null;
 
 				if (activeEl) {
-					if (activeEl.instanceOf?.(HTMLInputElement) || activeEl.instanceOf?.(HTMLTextAreaElement) || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') {
-						const textInput = activeEl as HTMLInputElement | HTMLTextAreaElement;
+					if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) {
+						const textInput = activeEl;
 						inputSelection = {
 							start: textInput.selectionStart ?? 0,
 							end: textInput.selectionEnd ?? 0
@@ -176,16 +179,20 @@ export default class PakCLIPlugin extends Plugin {
 					if (activeEl) {
 						activeEl.focus(); // Restore focus first
 
-						if (inputSelection && (activeEl.instanceOf?.(HTMLInputElement) || activeEl.instanceOf?.(HTMLTextAreaElement) || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-							(activeEl as HTMLInputElement | HTMLTextAreaElement).setSelectionRange(inputSelection.start, inputSelection.end);
-							document.execCommand('insertText', false, formatted);
+						if (inputSelection && (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
+							activeEl.setRangeText(formatted, inputSelection.start, inputSelection.end, 'end');
+							activeEl.dispatchEvent(new Event('input', { bubbles: true }));
 						} else if (selectionRange && activeEl.isContentEditable) {
+							selectionRange.deleteContents();
+							const textNode = document.createTextNode(formatted);
+							selectionRange.insertNode(textNode);
+							selectionRange.setStartAfter(textNode);
+							selectionRange.setEndAfter(textNode);
 							const selection = window.getSelection();
 							if (selection) {
 								selection.removeAllRanges();
 								selection.addRange(selectionRange);
 							}
-							document.execCommand('insertText', false, formatted);
 						} else if (activeView && activeView.editor) {
 							const editor = activeView.editor;
 							editor.replaceRange(formatted, editor.getCursor());
@@ -366,7 +373,9 @@ export default class PakCLIPlugin extends Plugin {
 							const ok = await this.syncManager.executeSync(file, 'manager_to_cli', extracted.code, extracted.language);
 							if (ok) count++;
 						}
-					} catch {}
+					} catch {
+						// Ignore read / parse errors for non-matching notes
+					}
 				}
 				new Notice(`✓ Codeblock Sync: Synced ${count} script files.`);
 			}
@@ -449,7 +458,6 @@ export default class PakCLIPlugin extends Plugin {
 
 		this.assetDragHandler = null;
 		this.syncManager?.destroy();
-		this.app.workspace.detachLeavesOfType(CSV_VIEW_TYPE);
 
 		document.body.classList.remove('codeblock-flowclip', 'codeblock-wrap', 'codeblock-scalefit');
 

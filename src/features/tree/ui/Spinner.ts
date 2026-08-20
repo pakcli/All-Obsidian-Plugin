@@ -27,43 +27,40 @@ export class Spinner {
 	 * Render the spinner element
 	 */
 	render(): HTMLElement {
-		const spinner = document.createElement('div');
-		spinner.className = 'tree-spinner';
+		const spinner = createDiv({ cls: 'tree-spinner' });
 		
 		if (this.label) {
-			const labelEl = document.createElement('span');
-			labelEl.textContent = this.label + ":";
-			(labelEl as HTMLElement).setCssStyles({ marginRight: "4px", fontSize: "11px" });
-			spinner.appendChild(labelEl);
+			const labelEl = spinner.createSpan({ text: this.label + ":" });
+			labelEl.setCssStyles({ marginRight: "4px", fontSize: "11px" });
 		}
 		
 		// Decrease button
-		const decreaseBtn = document.createElement('button');
-		decreaseBtn.textContent = "−";
-		decreaseBtn.className = 'spinner-button';
+		const decreaseBtn = spinner.createEl('button', {
+			text: "−",
+			cls: 'spinner-button'
+		});
 		decreaseBtn.onclick = () => {
 			if (this.value > this.min) {
-				this.onChange(this.value - 1);
+				void this.onChange(this.value - 1);
 			}
 		};
-		spinner.appendChild(decreaseBtn);
 		
 		// Value display
-		const valueEl = document.createElement('span');
-		valueEl.textContent = this.value.toString();
-		valueEl.className = 'spinner-value';
-		spinner.appendChild(valueEl);
+		spinner.createSpan({
+			text: this.value.toString(),
+			cls: 'spinner-value'
+		});
 		
 		// Increase button
-		const increaseBtn = document.createElement('button');
-		increaseBtn.textContent = "+";
-		increaseBtn.className = 'spinner-button';
+		const increaseBtn = spinner.createEl('button', {
+			text: "+",
+			cls: 'spinner-button'
+		});
 		increaseBtn.onclick = () => {
 			if (this.value < this.max) {
-				this.onChange(this.value + 1);
+				void this.onChange(this.value + 1);
 			}
 		};
-		spinner.appendChild(increaseBtn);
 		
 		return spinner;
 	}

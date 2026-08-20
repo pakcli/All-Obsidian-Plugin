@@ -77,7 +77,6 @@ export async function runYTCaptureStartupCheck(
 ): Promise<void> {
   const status = await checkYTCaptureDeps(settings);
   if (status.internet && status.ytDlp && status.ffmpeg) {
-    console.log(`[PakCLI] YT Extension ready ✓ yt-dlp ${status.ytDlpVersion}`);
     return;
   }
   const lines = ["⚠ YT Extension — missing dependencies:", ...status.errors];

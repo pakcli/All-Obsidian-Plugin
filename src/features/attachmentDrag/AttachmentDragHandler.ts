@@ -31,7 +31,9 @@ export async function copyAttachmentToClipboard(absPath: string): Promise<boolea
                 }
             }
         }
-    } catch {}
+    } catch {
+        // Ignore electron clipboard failure
+    }
 
     try {
         const ext = path.extname(absPath).toLowerCase().slice(1);
@@ -42,7 +44,9 @@ export async function copyAttachmentToClipboard(absPath: string): Promise<boolea
             new ClipboardItem({ [mime]: blob })
         ]);
         return true;
-    } catch {}
+    } catch {
+        // Ignore fallback clipboard failure
+    }
 
     return false;
 }
@@ -84,12 +88,12 @@ export class AttachmentDragHandler {
     }
 
     private onMouseDown(e: MouseEvent): void {
-        const target = e.target as HTMLElement | null;
+        const target = e.target instanceof HTMLElement ? e.target : null;
         if (!target) return;
 
-        const attachmentEl = target.closest(
+        const attachmentEl = target.closest<HTMLElement>(
             '.internal-embed, .cm-embed-block, img, video, audio, a.internal-link'
-        ) as HTMLElement | null;
+        );
 
         if (attachmentEl) {
             attachmentEl.setAttribute('draggable', 'true');
@@ -97,7 +101,7 @@ export class AttachmentDragHandler {
             if (target !== attachmentEl) {
                 target.setAttribute('draggable', 'true');
             }
-            const cmBlock = target.closest('.cm-embed-block') as HTMLElement | null;
+            const cmBlock = target.closest<HTMLElement>('.cm-embed-block');
             if (cmBlock) {
                 cmBlock.setAttribute('draggable', 'true');
                 cmBlock.setAttribute('contenteditable', 'false');
@@ -106,7 +110,7 @@ export class AttachmentDragHandler {
     }
 
     private onDragStart(e: DragEvent): void {
-        const target = e.target as HTMLElement | null;
+        const target = e.target instanceof HTMLElement ? e.target : null;
         if (!target) return;
 
         const resolved = resolveAttachment(target, this.app, this.vaultRoot);
@@ -116,8 +120,6 @@ export class AttachmentDragHandler {
         const fileName = path.basename(absPath);
         const normalizedPath = absPath.replace(/\\/g, '/');
         const fileUrl = normalizedPath.startsWith('/') ? `file://${normalizedPath}` : `file:///${normalizedPath}`;
-
-        console.log('[Asset Draggable] Initiating drag for:', fileName, absPath);
 
         // 1. Use Obsidian's internal dragManager
         const dragManager = (this.app as unknown as {
@@ -178,7 +180,9 @@ export class AttachmentDragHandler {
                         const transparentPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
                         icon = electron.nativeImage.createFromDataURL(transparentPng);
                     }
-                } catch {}
+                } catch {
+                    // Ignore nativeImage creation failure
+                }
             }
 
             if (webContents && typeof webContents.startDrag === 'function') {
@@ -216,14 +220,18 @@ export class AttachmentDragHandler {
             // DownloadURL format for Windows Explorer, Finder, and Chromium browser drops (Claude/ChatGPT/Drive)
             try {
                 e.dataTransfer.setData('DownloadURL', `${mime}:${fileName}:${fileUrl}`);
-            } catch {}
+            } catch {
+                // Ignore dataTransfer failure
+            }
 
             // Standard URI, plain text, and HTML representations
             try {
                 e.dataTransfer.setData('text/uri-list', fileUrl);
                 e.dataTransfer.setData('text/plain', fileUrl);
                 e.dataTransfer.setData('text/html', `<img src="${fileUrl}" alt="${fileName}">`);
-            } catch {}
+            } catch {
+                // Ignore dataTransfer failure
+            }
         }
     }
 

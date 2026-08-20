@@ -1,4 +1,4 @@
-import { MarkdownView } from 'obsidian';
+import { MarkdownView, Plugin } from 'obsidian';
 
 export interface CodeblockLanguageRule {
 	id: string;
@@ -88,7 +88,7 @@ export class CodeblockScaler {
 	private isProcessing = false;
 	private debounceTimer: number | null = null;
 
-	constructor(private plugin: any) {}
+	constructor(private plugin: Plugin & { settings?: { codeblockLanguageRules?: CodeblockLanguageRule[]; codeblockWrapMode?: 'scalefit' | 'flowclip' | 'wrap' } }) {}
 
 	init(): void {
 		// 1. Register Post Processor for Reading View
@@ -187,13 +187,13 @@ export class CodeblockScaler {
 		// Reading View <pre>
 		const preElements = container.querySelectorAll('pre');
 		preElements.forEach((pre) => {
-			const codeEl = (pre.querySelector('code') || pre) as HTMLElement;
-			const behavior = this.getBehaviorForElement(pre as HTMLElement, codeEl);
+			const codeEl = pre.querySelector('code') ?? pre;
+			const behavior = this.getBehaviorForElement(pre, codeEl);
 
 			if (behavior === 'scalefit') {
 				const text = codeEl.textContent || pre.textContent || '';
 				if (text.trim()) {
-					renderAsciiSvg(text, pre as HTMLElement);
+					renderAsciiSvg(text, pre);
 				}
 			} else if (behavior === 'wrap') {
 				pre.classList.add('pakcli-codeblock-wrap');

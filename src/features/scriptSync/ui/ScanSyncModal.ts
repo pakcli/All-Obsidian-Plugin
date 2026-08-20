@@ -5,8 +5,7 @@
  * Scans all notes in the vault/folder, inspects codeblocks, matches them to target script files,
  * and allows 1-click individual and bulk synchronization.
  */
-import { App, Modal, Notice, Setting, TFile } from 'obsidian';
-import * as path from 'path';
+import { App, Modal, Notice, TFile } from 'obsidian';
 import { SyncManager } from '../SyncManager';
 import { FolderSyncSettings, SyncStatusResult } from '../types';
 import { extractFirstCodeBlock } from '../markdownParser';
@@ -94,7 +93,9 @@ export class ScanSyncModal extends Modal {
                         syncResult
                     });
                 }
-            } catch {}
+            } catch {
+                // Ignore vault read failure
+            }
         }
 
         this.isScanning = false;
@@ -200,7 +201,7 @@ export class ScanSyncModal extends Modal {
             });
             statusBadge.setText(this.getStatusBadgeText(item.syncResult.status));
 
-            const langPill = titleRow.createSpan({ cls: 'pakcli-scan-lang-pill', text: item.language.toUpperCase() });
+            titleRow.createSpan({ cls: 'pakcli-scan-lang-pill', text: item.language.toUpperCase() });
 
             // Path Details
             const pathsDiv = info.createDiv({ cls: 'pakcli-scan-item-paths' });

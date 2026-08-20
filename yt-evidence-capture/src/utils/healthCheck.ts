@@ -80,9 +80,6 @@ export async function runStartupCheck(settings: YTEvidenceSettings): Promise<voi
 
   if (allOk) {
     // Silent success — no need to bother the user
-    console.log(
-      `[YT Evidence Capture] Ready ✓  yt-dlp ${status.ytDlpVersion}`
-    );
     return;
   }
 

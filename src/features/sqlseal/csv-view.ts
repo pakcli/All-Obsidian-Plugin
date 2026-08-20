@@ -100,14 +100,14 @@ export class CsvView extends TextFileView {
           const isDebug = this.plugin.settings.debug;
           if (isDebug) {
             new Notice("Tablite: Saving CSV...");
-            console.log("Tablite Debug: onDataChange triggered, data length:", newData.length);
+            console.debug("Tablite Debug: onDataChange triggered, data length:", newData.length);
           }
           try {
             if (this.file) {
               await this.app.vault.modify(this.file, newData);
               if (isDebug) {
                 new Notice("Tablite: Save successful!");
-                console.log("Tablite Debug: app.vault.modify succeeded");
+                console.debug("Tablite Debug: app.vault.modify succeeded");
               }
             } else {
               if (isDebug) {

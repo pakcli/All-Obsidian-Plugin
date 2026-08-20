@@ -17,7 +17,9 @@ export function getAllVaultFolders(app: App): string[] {
                 }
             }
         }
-    } catch {}
+    } catch {
+        // Ignore vault access errors
+    }
 
     const list = Array.from(folderSet);
     list.sort();

@@ -143,7 +143,7 @@ export class GlobalTablesView extends ItemView {
 				await this.sync.registerTable(this.getTableDefinition(data));
 				break;
 			case "md-table":
-				console.log("NOT IMPLEMENTED YET", data);
+				console.debug("NOT IMPLEMENTED YET", data);
 		}
 		this.refresh();
 	}
