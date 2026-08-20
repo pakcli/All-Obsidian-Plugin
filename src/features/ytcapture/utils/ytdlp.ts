@@ -49,16 +49,23 @@ export async function downloadClip(
   fps: VideoFps = "auto",
   onProgress?: (msg: string) => void
 ): Promise<void> {
+  const isInstagram = url.includes("instagram.com") || url.includes("instagr.am");
   let formatStr = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/18/best[ext=mp4]/best";
 
-  if (quality === "audio") {
+  if (isInstagram) {
+    formatStr = quality === "audio" ? "bestaudio/best" : "best";
+  } else if (quality === "audio") {
     formatStr = "bestaudio[ext=m4a]/bestaudio/best";
   } else {
     let maxH = "";
-    if (quality === "1080p") maxH = "[height<=1080]";
+    if (quality === "4k") maxH = "[height<=2160]";
+    else if (quality === "2k") maxH = "[height<=1440]";
+    else if (quality === "1080p") maxH = "[height<=1080]";
     else if (quality === "720p") maxH = "[height<=720]";
     else if (quality === "480p") maxH = "[height<=480]";
     else if (quality === "360p") maxH = "[height<=360]";
+    else if (quality === "240p") maxH = "[height<=240]";
+    else if (quality === "144p") maxH = "[height<=144]";
 
     let maxFps = "";
     if (fps === "60") maxFps = "[fps<=60]";
@@ -67,23 +74,26 @@ export async function downloadClip(
     formatStr = `bestvideo${maxH}${maxFps}[ext=mp4]+bestaudio[ext=m4a]/18/best${maxH}${maxFps}[ext=mp4]/best`;
   }
 
-  const args: string[] = [
-    "--newline",
-    "--extractor-args",
-    "youtube:player_client=mweb,android,web",
-    "--download-sections",
-    `*${start}-${end}`,
-    "--force-keyframes-at-cuts",
-    "-f",
-    formatStr,
-    "--merge-output-format",
-    "mp4",
-    "--no-playlist",
-    "--no-colors",
-    "-o",
-    outputPath,
-    url,
-  ];
+  const args: string[] = ["--newline"];
+
+  if (!isInstagram) {
+    args.push("--extractor-args", "youtube:player_client=mweb,android,web");
+    if (start > 0 || end > 0) {
+      args.push("--download-sections", `*${start}-${end}`, "--force-keyframes-at-cuts");
+    }
+  }
+
+  const isAudio = quality === "audio";
+
+  args.push("-f", formatStr);
+
+  if (isAudio) {
+    args.push("-x", "--audio-format", "mp3");
+  } else {
+    args.push("--merge-output-format", "mp4");
+  }
+
+  args.push("--no-playlist", "--no-colors", "-o", outputPath, url);
 
   const ffmpegCmd = resolveBinary(settings.ffmpegPath || "ffmpeg");
   if (ffmpegCmd) {

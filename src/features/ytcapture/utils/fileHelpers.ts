@@ -18,6 +18,43 @@ export function formatTime(seconds: number | undefined): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Format timestamp into dd-hh-mm-ss-ss (day-jam-minute-second-frame)
+ */
+export function formatDetailedTimestamp(seconds: number): string {
+  const total = Math.max(0, seconds || 0);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = Math.floor(total % 60);
+  const f = Math.floor((total % 1) * 100);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d)}-${pad(h)}-${pad(m)}-${pad(s)}-${pad(f)}`;
+}
+
+/**
+ * Build structured filename base following pattern:
+ * titlevid_[timestamp start and end]_[format]_[resolution]
+ */
+export function buildMediaBaseName(
+  title: string,
+  startSec: number,
+  endSec: number,
+  quality: string
+): { baseName: string; formatExt: "mp4" | "mp3"; resolution: string } {
+  const safeTitle = sanitizeFilename(title);
+  const startStr = formatDetailedTimestamp(startSec);
+  const endStr = formatDetailedTimestamp(endSec);
+  const formatExt = quality === "audio" ? "mp3" : "mp4";
+  const resolution = quality || "1080p";
+
+  const timeStampStr = `${startStr}_to_${endStr}`;
+  const baseName = `${safeTitle}_${timeStampStr}_${formatExt}_${resolution}`;
+
+  return { baseName, formatExt, resolution };
+}
+
 interface NoteParams {
   title: string;
   url: string;

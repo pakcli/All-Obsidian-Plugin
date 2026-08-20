@@ -1,6 +1,16 @@
 /** YT Extension — shared types (inside PakCLI Suite) */
 
-export type VideoQuality = "best" | "1080p" | "720p" | "480p" | "360p" | "audio";
+export type VideoQuality =
+  | "best"
+  | "4k"
+  | "2k"
+  | "1080p"
+  | "720p"
+  | "480p"
+  | "360p"
+  | "240p"
+  | "144p"
+  | "audio";
 export type VideoFps = "auto" | "60" | "30";
 
 export interface YTPreset {
@@ -115,6 +125,8 @@ export interface YtDlpInfo {
 
 export interface VideoPreview {
   video_id: string;
+  original_url: string;
+  platform: "youtube" | "instagram";
   title: string;
   channel: string;
   channel_url: string;

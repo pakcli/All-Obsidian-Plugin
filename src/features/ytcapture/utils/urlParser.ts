@@ -1,16 +1,22 @@
-/** YouTube URL parsing utilities */
+/** YouTube & Instagram URL parsing utilities */
 
-export interface ParsedYouTubeUrl {
+export type PlatformType = "youtube" | "instagram";
+
+export interface ParsedMediaUrl {
+  platform: PlatformType;
   videoId: string;
   startSeconds: number;
   originalUrl: string;
 }
 
+export type ParsedYouTubeUrl = ParsedMediaUrl;
+
 /**
- * Parse any YouTube URL format and extract video ID + timestamp.
- * Supports: youtu.be, youtube.com/watch, youtube.com/shorts, /embed/, /v/
+ * Parse YouTube or Instagram URL format and extract video/post ID + platform + timestamp.
+ * Supports YouTube: youtu.be, youtube.com/watch, youtube.com/shorts, /embed/, /v/
+ * Supports Instagram: instagram.com/p/, instagram.com/reel/, instagram.com/reels/, instagram.com/tv/, instagr.am
  */
-export function parseYouTubeUrl(input: string): ParsedYouTubeUrl | null {
+export function parseMediaUrl(input: string): ParsedMediaUrl | null {
   const raw = input.trim();
   let url: URL;
 
@@ -21,12 +27,15 @@ export function parseYouTubeUrl(input: string): ParsedYouTubeUrl | null {
   }
 
   const host = url.hostname.replace(/^www\./, "");
+  let platform: PlatformType = "youtube";
   let videoId = "";
   let startSeconds = 0;
 
   if (host === "youtu.be") {
+    platform = "youtube";
     videoId = url.pathname.slice(1).split("/")[0] ?? "";
   } else if (host === "youtube.com" || host === "m.youtube.com") {
+    platform = "youtube";
     if (url.pathname.startsWith("/shorts/")) {
       videoId = url.pathname.split("/")[2] ?? "";
     } else if (url.pathname.startsWith("/live/")) {
@@ -39,15 +48,33 @@ export function parseYouTubeUrl(input: string): ParsedYouTubeUrl | null {
     } else {
       videoId = url.searchParams.get("v") ?? "";
     }
+  } else if (
+    host === "instagram.com" ||
+    host === "m.instagram.com" ||
+    host === "instagr.am"
+  ) {
+    platform = "instagram";
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length >= 2 && ["reel", "reels", "p", "tv"].includes(parts[0])) {
+      videoId = parts[1];
+    } else if (parts.length >= 1 && parts[0].length > 3) {
+      videoId = parts[0];
+    }
   }
 
-  if (!videoId || videoId.length < 4) return null;
+  if (!videoId || videoId.length < 3) return null;
 
   // Timestamp: ?t=4731 or ?t=1h18m51s or ?t=94s or ?start=94
   const tParam = url.searchParams.get("t") ?? url.searchParams.get("start");
   if (tParam) {
     const hmsMatch = tParam.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/i);
-    if (hmsMatch && (hmsMatch[1] || hmsMatch[2] || (hmsMatch[3] && (tParam.includes("h") || tParam.includes("m") || tParam.includes("s"))))) {
+    if (
+      hmsMatch &&
+      (hmsMatch[1] ||
+        hmsMatch[2] ||
+        (hmsMatch[3] &&
+          (tParam.includes("h") || tParam.includes("m") || tParam.includes("s"))))
+    ) {
       const hours = parseInt(hmsMatch[1] || "0", 10);
       const minutes = parseInt(hmsMatch[2] || "0", 10);
       const seconds = parseInt(hmsMatch[3] || "0", 10);
@@ -59,10 +86,15 @@ export function parseYouTubeUrl(input: string): ParsedYouTubeUrl | null {
   }
 
   return {
+    platform,
     videoId,
     startSeconds,
     originalUrl: raw.startsWith("http") ? raw : `https://${raw}`,
   };
+}
+
+export function parseYouTubeUrl(input: string): ParsedYouTubeUrl | null {
+  return parseMediaUrl(input);
 }
 
 /** Build a canonical watch URL with optional timestamp */
@@ -81,3 +113,4 @@ export function secondsToTimestamp(s: number): string {
   }
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
+

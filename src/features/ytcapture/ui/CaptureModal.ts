@@ -9,7 +9,7 @@ import * as os from "os";
 import * as path from "path";
 import type PakCLIPlugin from "../../../main";
 import type { VideoPreview, CaptureResult, TranscriptEntry, VideoQuality, VideoFps, ProgressInfo } from "../types";
-import { parseYouTubeUrl, buildYouTubeUrl } from "../utils/urlParser";
+import { parseMediaUrl, parseYouTubeUrl, buildYouTubeUrl } from "../utils/urlParser";
 import {
   fetchVideoInfo,
   downloadClip,
@@ -26,6 +26,7 @@ import {
   sanitizeFilename,
   formatTime,
   buildNotesMarkdown,
+  buildMediaBaseName,
 } from "../utils/fileHelpers";
 import { buildZip } from "../utils/zipBuilder";
 import { getIncrementalCaptureHistory } from "../utils/historyCache";
@@ -41,6 +42,7 @@ export class CaptureModal extends Modal {
 
   private step: Step = "input";
   private activeCardId: CardId = "url";
+  private activeHistoryTab: "youtube" | "instagram" | "downloads" = "youtube";
 
   private urlValue = "";
   private durationValue: number;
@@ -63,7 +65,9 @@ export class CaptureModal extends Modal {
   constructor(app: App, plugin: PakCLIPlugin) {
     super(app);
     this.plugin = plugin;
-    this.bgManager = new YTCaptureBackgroundManager(plugin);
+    this.bgManager = new YTCaptureBackgroundManager(plugin, () => {
+      new CaptureModal(this.app, this.plugin).open();
+    });
     const defDur = plugin.settings.ytCaptureDefaultDuration ?? 10;
     this.durationValue = defDur;
     this.selectedQuality = plugin.settings.ytCaptureQuality ?? "best";
@@ -104,7 +108,7 @@ export class CaptureModal extends Modal {
 
     const hdr = contentEl.createDiv({ cls: "ytec-header" });
     hdr.createDiv({ cls: "ytec-logo", text: "🎬" });
-    hdr.createEl("h2", { cls: "ytec-title", text: "YT Extension — Evidence Capture" });
+    hdr.createEl("h2", { cls: "ytec-title", text: "YT & IG Extension — Evidence Capture" });
     hdr.createEl("p", {
       cls: "ytec-subtitle",
       text: "Interactive 1:1 Component Cards: Edit card values directly in place.",
@@ -117,19 +121,19 @@ export class CaptureModal extends Modal {
     cardUrl.dataset.cardId = "url";
 
     const headerUrl = cardUrl.createDiv({ cls: "ytec-card-header" });
-    headerUrl.createDiv({ cls: "ytec-card-title", text: "🎬 1. YouTube URL & Source" });
+    headerUrl.createDiv({ cls: "ytec-card-title", text: "🎬 1. Media URL & Source (YouTube / Instagram)" });
     headerUrl.createDiv({ cls: "ytec-card-badge", text: "Source" });
 
     const groupUrl = cardUrl.createDiv({ cls: "ytec-field-group" });
     const urlInput = groupUrl.createEl("input", {
       cls: "ytec-input ytec-url-input",
       type: "text",
-      placeholder: "https://youtube.com/watch?v=...&t=94s",
+      placeholder: "https://youtube.com/watch?v=... or https://instagram.com/reel/...",
     }) as HTMLInputElement;
     urlInput.value = this.urlValue;
     groupUrl.createEl("div", {
       cls: "ytec-hint",
-      text: "Include ?t= for start timestamp. Edits take effect immediately.",
+      text: "Supports YouTube (videos/shorts) & Instagram (reels/posts).",
     });
 
     const durGroup = cardUrl.createDiv({ cls: "ytec-field-group ytec-mt-10" });
@@ -158,7 +162,7 @@ export class CaptureModal extends Modal {
 
     const fetchBtn = cardUrl.createEl("button", {
       cls: "ytec-btn ytec-btn-primary ytec-w-full ytec-mt-10",
-      text: "Fetch Video Info →",
+      text: "Fetch Media Info →",
     });
 
     // ── CARD 2: Quality & Format (1:1 Component Card) ──────────────────
@@ -296,24 +300,43 @@ export class CaptureModal extends Modal {
 
     if (this.preview) {
       const p = this.preview;
+      const isInstagram = p.platform === "instagram";
       const playerBox = cardPreview.createDiv({ cls: "ytec-player-box" });
-      const embedUrl = `https://www.youtube.com/embed/${p.video_id}?autoplay=0&start=${this.editedStart}`;
-      playerBox.createEl("iframe", {
-        cls: "ytec-video-iframe",
-        attr: {
-          src: embedUrl,
-          title: p.title,
-          frameborder: "0",
-          allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-          allowfullscreen: "true",
-        },
-      });
+
+      if (isInstagram) {
+        const embedUrl = `https://www.instagram.com/reel/${p.video_id}/embed/`;
+        playerBox.createEl("iframe", {
+          cls: "ytec-video-iframe",
+          attr: {
+            src: embedUrl,
+            title: p.title,
+            frameborder: "0",
+            allowfullscreen: "true",
+          },
+        });
+      } else {
+        const embedUrl = `https://www.youtube.com/embed/${p.video_id}?autoplay=0&start=${this.editedStart}`;
+        playerBox.createEl("iframe", {
+          cls: "ytec-video-iframe",
+          attr: {
+            src: embedUrl,
+            title: p.title,
+            frameborder: "0",
+            allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+            allowfullscreen: "true",
+          },
+        });
+      }
 
       const meta = cardPreview.createDiv({ cls: "ytec-meta" });
       meta.createEl("div", { cls: "ytec-video-title", text: p.title });
       meta.createEl("div", { cls: "ytec-channel", text: p.channel });
 
       const badges = cardPreview.createDiv({ cls: "ytec-badges ytec-mt-6" });
+      badges.createEl("span", {
+        cls: "ytec-badge ytec-badge-ok",
+        text: isInstagram ? "📸 Instagram Media" : "🎬 YouTube Media",
+      });
       badges.createEl("span", {
         cls: p.has_transcript
           ? "ytec-badge ytec-badge-ok"
@@ -323,13 +346,13 @@ export class CaptureModal extends Modal {
     } else {
       cardPreview.createDiv({
         cls: "ytec-hint",
-        text: "Enter a URL and click 'Fetch Video Info' above to load the live video preview player.",
+        text: "Enter a URL and click 'Fetch Media Info' above to load the live video preview player.",
       });
     }
 
     const captureBtn = cardPreview.createEl("button", {
       cls: "ytec-btn ytec-btn-primary ytec-w-full ytec-mt-12",
-      text: "⚡ Start Capture & Generate Zip →",
+      text: "⚡ Start Capture & Save to Vault →",
     });
 
     const errorEl = contentEl.createDiv({ cls: "ytec-error ytec-hidden" });
@@ -338,39 +361,215 @@ export class CaptureModal extends Modal {
       errorEl.removeClass("ytec-hidden");
     };
 
-    // ── CARD 5: History & Past Captures (Incremental JSON Cache) ─────
+    // ── CARD 5: History & Past Captures (3 Ribbon Tabs: YouTube / Instagram / Downloads)
     const cardHistory = contentEl.createDiv({ cls: "ytec-card ytec-muted ytec-mt-16" });
     const headerHistory = cardHistory.createDiv({ cls: "ytec-card-header" });
     headerHistory.createDiv({ cls: "ytec-card-title", text: "📜 Past Captures History" });
-    const historyBadge = headerHistory.createDiv({ cls: "ytec-card-badge", text: "Incremental Cache" });
+
+    // Ribbon Tab Menu with 3 tabs: YouTube, Instagram, Downloads
+    const ribbonTab = headerHistory.createDiv({ cls: "ytec-tab-ribbon" });
+
+    const ytTabBtn = ribbonTab.createEl("button", {
+      cls: `ytec-tab-btn ${this.activeHistoryTab === "youtube" ? "is-active" : ""}`,
+      attr: { "data-tab": "youtube" },
+    });
+    ytTabBtn.createSpan({ text: "🎬 YouTube" });
+    const ytCountEl = ytTabBtn.createSpan({ cls: "ytec-tab-count", text: "0" });
+
+    const igTabBtn = ribbonTab.createEl("button", {
+      cls: `ytec-tab-btn ${this.activeHistoryTab === "instagram" ? "is-active" : ""}`,
+      attr: { "data-tab": "instagram" },
+    });
+    igTabBtn.createSpan({ text: "📸 Instagram" });
+    const igCountEl = igTabBtn.createSpan({ cls: "ytec-tab-count", text: "0" });
+
+    const dlTabBtn = ribbonTab.createEl("button", {
+      cls: `ytec-tab-btn ${this.activeHistoryTab === "downloads" ? "is-active" : ""}`,
+      attr: { "data-tab": "downloads" },
+    });
+    dlTabBtn.createSpan({ text: "📥 Downloads" });
+    const dlCountEl = dlTabBtn.createSpan({ cls: "ytec-tab-count", text: "0" });
 
     const historyContainer = cardHistory.createDiv({ cls: "ytec-history-container" });
     historyContainer.createDiv({ cls: "ytec-hint", text: "Scanning history cache…" });
 
     getIncrementalCaptureHistory(this.app, this.plugin).then((historyItems) => {
-      historyContainer.empty();
-      historyBadge.textContent = `${historyItems.length} Saved`;
+      const ytItems = historyItems.filter((i) => i.platform !== "instagram");
+      const igItems = historyItems.filter((i) => i.platform === "instagram");
+      const dlItems = historyItems.filter((i) => Boolean(i.mediaPath || i.filePath));
 
-      if (historyItems.length === 0) {
-        historyContainer.createDiv({ cls: "ytec-hint", text: "No past captures found in vault." });
-        return;
-      }
+      ytCountEl.textContent = String(ytItems.length);
+      igCountEl.textContent = String(igItems.length);
+      dlCountEl.textContent = String(dlItems.length);
 
-      const listEl = historyContainer.createEl("div", { cls: "ytec-history-list" });
-      historyItems.slice(0, 10).forEach((item) => {
-        const row = listEl.createDiv({ cls: "ytec-history-row" });
+      const renderTabContent = () => {
+        historyContainer.empty();
 
-        const infoCol = row.createDiv({ cls: "ytec-history-info-col" });
-        infoCol.createEl("strong", { text: item.title, cls: "ytec-history-title" });
-        infoCol.createEl("span", { text: `${item.channel ? item.channel + " • " : ""}${item.timeRange}`, cls: "ytec-hint ytec-history-time" });
+        if (this.activeHistoryTab === "downloads") {
+          if (dlItems.length === 0) {
+            historyContainer.createDiv({
+              cls: "ytec-hint",
+              text: "No downloaded media files found in vault.",
+            });
+            return;
+          }
 
-        const openBtn = row.createEl("button", { cls: "ytec-preset-btn", text: "Open Note" });
-        openBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          this.app.workspace.openLinkText(item.filePath, "", false);
-          this.close();
+          const listEl = historyContainer.createEl("div", { cls: "ytec-history-list" });
+          dlItems.slice(0, 10).forEach((item) => {
+            const row = listEl.createDiv({ cls: "ytec-history-row" });
+
+            const infoCol = row.createDiv({ cls: "ytec-history-info-col" });
+            const titleRow = infoCol.createDiv({ cls: "ytec-history-title-row" });
+            titleRow.createEl("span", {
+              cls: "ytec-res-badge",
+              text: (item.resolution || "1080p").toUpperCase(),
+            });
+            titleRow.createEl("strong", { text: item.title, cls: "ytec-history-title" });
+            infoCol.createEl("span", {
+              text: `${item.channel ? item.channel + " • " : ""}${item.timeRange}`,
+              cls: "ytec-hint ytec-history-time",
+            });
+
+            const actionsDiv = row.createDiv({ cls: "ytec-history-actions" });
+
+            const openNoteBtn = actionsDiv.createEl("button", { cls: "ytec-preset-btn", text: "Open Note" });
+            openNoteBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              this.app.workspace.openLinkText(item.filePath, "", false);
+              this.close();
+            });
+
+            if (item.mediaPath) {
+              const openMediaBtn = actionsDiv.createEl("button", {
+                cls: "ytec-preset-btn ytec-full-dur-btn",
+                text: "Downloaded Media",
+              });
+              openMediaBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.app.workspace.openLinkText(item.mediaPath!, "", false);
+                this.close();
+              });
+            }
+          });
+          return;
+        }
+
+        // YouTube or Instagram Fetches Tab
+        const activeItems = this.activeHistoryTab === "instagram" ? igItems : ytItems;
+
+        if (activeItems.length === 0) {
+          const platformLabel = this.activeHistoryTab === "instagram" ? "Instagram" : "YouTube";
+          historyContainer.createDiv({
+            cls: "ytec-hint",
+            text: `No past ${platformLabel} fetches found in history cache.`,
+          });
+          return;
+        }
+
+        const listEl = historyContainer.createEl("div", { cls: "ytec-history-list" });
+        activeItems.slice(0, 10).forEach((item) => {
+          const card = listEl.createDiv({ cls: "ytec-history-fetch-card" });
+
+          const fetchHeader = card.createDiv({ cls: "ytec-history-fetch-header" });
+          const infoCol = fetchHeader.createDiv({ cls: "ytec-history-info-col" });
+          infoCol.createEl("strong", { text: item.title, cls: "ytec-history-title" });
+          infoCol.createEl("span", {
+            text: `${item.channel ? item.channel + " • " : ""}${item.timeRange}`,
+            cls: "ytec-hint ytec-history-time",
+          });
+
+          const actionsDiv = fetchHeader.createDiv({ cls: "ytec-history-actions" });
+
+          if (item.filePath) {
+            const openBtn = actionsDiv.createEl("button", { cls: "ytec-preset-btn", text: "Open Note" });
+            openBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              this.app.workspace.openLinkText(item.filePath, "", false);
+              this.close();
+            });
+          }
+
+          if (item.mediaPath) {
+            const openMediaBtn = actionsDiv.createEl("button", {
+              cls: "ytec-preset-btn ytec-full-dur-btn",
+              text: "Downloaded Media",
+            });
+            openMediaBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              this.app.workspace.openLinkText(item.mediaPath!, "", false);
+              this.close();
+            });
+          }
+
+          // 2x4 Resolution Button Grid:
+          // Row 1: Audio Only | 144 | 240 | 360
+          // Row 2: 480 | 1080 | 2k | 4k
+          const downloadedResSet = new Set(
+            dlItems
+              .filter((d) => (d.videoId && d.videoId === item.videoId) || (d.title && d.title === item.title))
+              .map((d) => (d.resolution || "").toLowerCase())
+          );
+
+          const resGrid = card.createDiv({ cls: "ytec-res-grid" });
+          const resolutions: { label: string; quality: VideoQuality; isAudio?: boolean }[] = [
+            { label: "Audio Only", quality: "audio", isAudio: true },
+            { label: "144p", quality: "144p" },
+            { label: "240p", quality: "240p" },
+            { label: "360p", quality: "360p" },
+            { label: "480p", quality: "480p" },
+            { label: "1080p", quality: "1080p" },
+            { label: "2K", quality: "2k" },
+            { label: "4K", quality: "4k" },
+          ];
+
+          resolutions.forEach((res) => {
+            const isDownloaded = downloadedResSet.has(res.quality.toLowerCase());
+            const resBtn = resGrid.createEl("button", {
+              cls: `ytec-res-btn ${res.isAudio ? "ytec-res-audio" : ""} ${isDownloaded ? "is-downloaded" : ""}`,
+              text: isDownloaded ? `✓ ${res.label}` : res.label,
+              attr: isDownloaded ? { title: "Already downloaded in vault (click to re-download)" } : {},
+            });
+            resBtn.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              this.urlValue = item.url;
+              urlInput.value = item.url;
+              this.selectedQuality = res.quality;
+              qSelect.value = res.quality;
+              this.activeCardId = "preview";
+              await this.goToPreview();
+            });
+          });
         });
+      };
+
+      ytTabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.activeHistoryTab = "youtube";
+        ytTabBtn.addClass("is-active");
+        igTabBtn.removeClass("is-active");
+        dlTabBtn.removeClass("is-active");
+        renderTabContent();
       });
+
+      igTabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.activeHistoryTab = "instagram";
+        igTabBtn.addClass("is-active");
+        ytTabBtn.removeClass("is-active");
+        dlTabBtn.removeClass("is-active");
+        renderTabContent();
+      });
+
+      dlTabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.activeHistoryTab = "downloads";
+        dlTabBtn.addClass("is-active");
+        ytTabBtn.removeClass("is-active");
+        igTabBtn.removeClass("is-active");
+        renderTabContent();
+      });
+
+      renderTabContent();
     });
 
     // ── Highlighting logic for 1:1 Component Cards ─────────────────────
@@ -405,11 +604,11 @@ export class CaptureModal extends Modal {
       const url = urlInput.value.trim();
       const dur = parseInt(durInput.value, 10);
 
-      if (!url) { showError("Please enter a YouTube URL."); return; }
+      if (!url) { showError("Please enter a YouTube or Instagram URL."); return; }
 
-      const parsed = parseYouTubeUrl(url);
+      const parsed = parseMediaUrl(url);
       if (!parsed) {
-        showError("Could not parse YouTube URL. Check it and try again.");
+        showError("Could not parse URL. Enter a valid YouTube or Instagram link.");
         return;
       }
       if (isNaN(dur) || dur < 1) {
@@ -427,7 +626,7 @@ export class CaptureModal extends Modal {
     captureBtn.addEventListener("click", async () => {
       if (!this.preview) {
         const url = urlInput.value.trim();
-        if (!url) { showError("Please enter a YouTube URL first."); return; }
+        if (!url) { showError("Please enter a YouTube or Instagram URL first."); return; }
         this.urlValue = url;
         this.durationValue = parseInt(durInput.value, 10) || 10;
         await this.goToPreview();
@@ -447,17 +646,29 @@ export class CaptureModal extends Modal {
   private async goToPreview(): Promise<void> {
     this.step = "processing";
     this.render();
-    this.setStatus("Fetching video info via yt-dlp…");
+    if (!this.currentTaskId) {
+      this.currentTaskId = `task_${Date.now()}`;
+    }
+    this.bgManager.addTask({
+      id: this.currentTaskId,
+      title: this.urlValue || "Media Capture",
+      progress: 0,
+      statusText: "Fetching info…",
+    });
+    this.setStatus("Fetching media info via yt-dlp…");
     this.addLog("Running: yt-dlp --dump-json --skip-download");
 
     try {
-      const parsed = parseYouTubeUrl(this.urlValue)!;
-      const targetUrl = buildYouTubeUrl(parsed.videoId);
+      const parsed = parseMediaUrl(this.urlValue)!;
+      const targetUrl =
+        parsed.platform === "instagram"
+          ? parsed.originalUrl
+          : buildYouTubeUrl(parsed.videoId, parsed.startSeconds);
       const info = await fetchVideoInfo(targetUrl, this.plugin.settings);
-      this.addLog(`✓ Got info: "${info.title}"`);
+      this.addLog(`✓ Got info: "${info.title || info.description || "Media"}"`);
 
       const start = parsed.startSeconds;
-      const videoDur = info.duration || 300;
+      const videoDur = info.duration || (parsed.platform === "instagram" ? 60 : 300);
       const end = Math.min(videoDur, start + this.durationValue);
 
       this.editedStart = start;
@@ -469,11 +680,23 @@ export class CaptureModal extends Modal {
         info.automatic_captions && Object.keys(info.automatic_captions).length > 0;
 
       this.preview = {
-        video_id: info.id,
-        title: info.title,
-        channel: info.channel || info.uploader || "Unknown",
+        video_id: info.id || parsed.videoId,
+        original_url: targetUrl,
+        platform: parsed.platform,
+        title:
+          info.title ||
+          info.description ||
+          `${parsed.platform === "instagram" ? "Instagram Post" : "YouTube Video"} (${info.id || parsed.videoId})`,
+        channel:
+          info.channel ||
+          info.uploader ||
+          (parsed.platform === "instagram" ? "Instagram Creator" : "Unknown Channel"),
         channel_url: info.channel_url || info.uploader_url || "",
-        thumbnail: info.thumbnail || (info.thumbnails && info.thumbnails.length > 0 ? info.thumbnails[info.thumbnails.length - 1].url : ""),
+        thumbnail:
+          info.thumbnail ||
+          (info.thumbnails && info.thumbnails.length > 0
+            ? info.thumbnails[info.thumbnails.length - 1].url
+            : ""),
         start,
         end,
         duration: end - start,
@@ -506,6 +729,12 @@ export class CaptureModal extends Modal {
     this.render();
 
     this.currentTaskId = `task_${Date.now()}`;
+    this.bgManager.addTask({
+      id: this.currentTaskId,
+      title: p.title,
+      progress: 0,
+      statusText: "Downloading clip…",
+    });
     const tempDir = path.join(os.tmpdir(), `ytec_${Date.now()}`);
 
     try {
@@ -514,7 +743,9 @@ export class CaptureModal extends Modal {
       this.setStatus("Downloading clip…");
       this.addLog("Starting yt-dlp clip download…");
 
-      const targetUrl = buildYouTubeUrl(p.video_id);
+      const targetUrl =
+        p.original_url ||
+        (p.platform === "instagram" ? this.urlValue : buildYouTubeUrl(p.video_id));
       const clipOutPath = path.join(tempDir, "clip.mp4");
 
       await downloadClip(
@@ -583,7 +814,7 @@ export class CaptureModal extends Modal {
       if (!fs.existsSync(clipOutPath)) {
         const candidates = fs
           .readdirSync(tempDir)
-          .filter((f) => f.startsWith("clip."))
+          .filter((f) => !f.endsWith(".json3") && !f.endsWith(".jpg") && !f.endsWith(".json"))
           .map((f) => path.join(tempDir, f));
         if (candidates.length === 0)
           throw new Error(
@@ -637,12 +868,15 @@ export class CaptureModal extends Modal {
           ? formatTranscriptForMarkdown(transcriptEntries, true)
           : "_No transcript available._";
 
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const safeTitle = sanitizeFilename(p.title);
-      const baseName = `${safeTitle}_${dateStr}`;
+      const { baseName, formatExt } = buildMediaBaseName(
+        p.title,
+        p.start,
+        p.end,
+        p.quality
+      );
       const outputFolder = this.plugin.settings.ytCaptureOutputFolder || "YT Captures";
 
-      const mp4Name = `${baseName}.mp4`;
+      const mp4Name = `${baseName}.${formatExt}`;
       const thumbName = `${baseName}_thumb.jpg`;
       const noteName = `${baseName}.md`;
       const zipName = `${baseName}.zip`;
@@ -827,11 +1061,12 @@ export class CaptureModal extends Modal {
     });
 
     bgBtn.addEventListener("click", () => {
-      if (this.preview && !this.currentTaskId) {
+      if (!this.currentTaskId) {
         this.currentTaskId = `task_${Date.now()}`;
+        const titleStr = this.preview?.title || this.urlValue || "Media Capture";
         this.bgManager.addTask({
           id: this.currentTaskId,
-          title: this.preview.title,
+          title: titleStr,
           progress: 0,
           statusText: "Downloading…",
         });
@@ -858,6 +1093,9 @@ export class CaptureModal extends Modal {
         info.eta ? `ETA: ${info.eta}` : "",
       ].filter(Boolean).join(" | ");
       this.progressStatsEl.textContent = stats;
+    }
+    if (this.currentTaskId) {
+      this.bgManager.updateTaskProgress(this.currentTaskId, info.percent, info);
     }
   }
 

@@ -324,6 +324,12 @@
   color: var(--ytec-accent);
   cursor: pointer;
   padding: 0 6px;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.ytec-status-bar-item:hover {
+  color: var(--ytec-accent-hover);
+  opacity: 0.85;
 }
 
 /* ── Buttons & Actions ───────────────────────────────────────────────────── */
@@ -589,4 +595,155 @@
 .ytec-history-time {
   font-size: 0.8em;
 }
+
+/* ── Tab Ribbon for Past Captures History ────────────────────────────────── */
+
+.ytec-tab-ribbon {
+  display: flex;
+  gap: 6px;
+  background: var(--background-secondary-alt, var(--background-secondary));
+  padding: 3px;
+  border-radius: var(--ytec-radius-sm);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.ytec-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ytec-tab-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.ytec-tab-btn.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.ytec-tab-btn.is-active[data-tab="instagram"] {
+  color: #e1306c;
+  border-color: rgba(225, 48, 108, 0.3);
+}
+
+.ytec-tab-btn.is-active[data-tab="youtube"] {
+  color: #e53935;
+  border-color: rgba(229, 57, 53, 0.3);
+}
+
+.ytec-tab-btn.is-active[data-tab="downloads"] {
+  color: #2196f3;
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
+.ytec-tab-count {
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  border-radius: 100px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.ytec-tab-btn.is-active .ytec-tab-count {
+  background: var(--ytec-accent-muted);
+  color: var(--text-normal);
+}
+
+/* ── 2x4 Resolution Download Button Grid & History Layout ──────────────── */
+
+.ytec-history-fetch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ytec-history-fetch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ytec-res-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.ytec-res-btn {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 6px;
+  text-align: center;
+  transition: all 0.12s ease;
+}
+
+.ytec-res-btn:hover {
+  background: var(--ytec-accent-muted);
+  border-color: var(--ytec-accent);
+  color: var(--ytec-accent);
+}
+
+.ytec-res-btn.ytec-res-audio {
+  background: rgba(156, 39, 176, 0.12);
+  color: #ab47bc;
+  border-color: rgba(156, 39, 176, 0.3);
+}
+
+.ytec-res-btn.ytec-res-audio:hover {
+  background: rgba(156, 39, 176, 0.25);
+  color: #e1bee7;
+}
+
+.ytec-res-btn.is-downloaded {
+  opacity: 0.55;
+  background: var(--background-modifier-border);
+  color: var(--text-faint);
+  border-color: transparent;
+}
+
+.ytec-res-btn.is-downloaded:hover {
+  opacity: 0.9;
+  border-color: var(--ytec-accent);
+  color: var(--text-normal);
+}
+
+.ytec-history-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ytec-res-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--ytec-accent-muted);
+  color: var(--ytec-accent);
+  margin-right: 6px;
+  font-family: var(--ytec-font-mono);
+}
+
+
 

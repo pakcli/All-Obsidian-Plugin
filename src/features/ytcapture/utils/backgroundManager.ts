@@ -15,19 +15,45 @@ export interface BackgroundTask {
 }
 
 export class YTCaptureBackgroundManager {
+  private static instance: YTCaptureBackgroundManager | null = null;
+
+  public static getInstance(plugin: PakCLIPlugin, onOpenModal?: () => void): YTCaptureBackgroundManager {
+    if (!YTCaptureBackgroundManager.instance || YTCaptureBackgroundManager.instance.plugin !== plugin) {
+      YTCaptureBackgroundManager.instance = new YTCaptureBackgroundManager(plugin, onOpenModal);
+    }
+    if (onOpenModal) {
+      YTCaptureBackgroundManager.instance.setOpenModalHandler(onOpenModal);
+    }
+    return YTCaptureBackgroundManager.instance;
+  }
+
   private plugin: PakCLIPlugin;
   private statusBarItem: HTMLElement | null = null;
   private activeTasks: Map<string, BackgroundTask> = new Map();
+  private onOpenModal?: () => void;
 
-  constructor(plugin: PakCLIPlugin) {
+  constructor(plugin: PakCLIPlugin, onOpenModal?: () => void) {
     this.plugin = plugin;
+    this.onOpenModal = onOpenModal;
+    this.init();
+  }
+
+  public setOpenModalHandler(handler: () => void): void {
+    this.onOpenModal = handler;
   }
 
   public init(): void {
     if (!this.statusBarItem) {
       this.statusBarItem = this.plugin.addStatusBarItem();
       this.statusBarItem.addClass("ytec-status-bar-item");
+      this.statusBarItem.title = "Click to open Evidence Capture panel";
       this.statusBarItem.hide();
+
+      this.statusBarItem.addEventListener("click", () => {
+        if (this.onOpenModal) {
+          this.onOpenModal();
+        }
+      });
     }
   }
 

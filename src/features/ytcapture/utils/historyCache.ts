@@ -3,6 +3,7 @@ import type PakCLIPlugin from "../../../main";
 
 export interface CaptureHistoryItem {
   filePath: string;
+  mediaPath?: string;
   title: string;
   url: string;
   videoId: string;
@@ -11,6 +12,8 @@ export interface CaptureHistoryItem {
   capturedAt: string;
   timeRange: string;
   mtime: number;
+  platform: "youtube" | "instagram";
+  resolution?: string;
 }
 
 export interface YTHistoryCache {
@@ -54,7 +57,7 @@ export async function getIncrementalCaptureHistory(
   // Incrementally scan new or modified files
   for (const file of currentFiles) {
     const cachedItem = cache.items[file.path];
-    if (cachedItem && cachedItem.mtime === file.stat.mtime) {
+    if (cachedItem && cachedItem.mtime === file.stat.mtime && cachedItem.platform) {
       // Unchanged file — skip reading/parsing!
       continue;
     }
@@ -63,17 +66,41 @@ export async function getIncrementalCaptureHistory(
     try {
       const content = await app.vault.read(file);
       const parsed = parseYamlFrontmatter(content);
+      const rawUrl = parsed.yt_url || parsed.url || "";
+      const isIg =
+        rawUrl.includes("instagram.com") ||
+        rawUrl.includes("instagr.am") ||
+        parsed.platform === "instagram";
+
+      let resolution = parsed.quality || parsed.resolution || "";
+      if (!resolution) {
+        const resMatch = file.basename.match(/_(4k|2k|1080p|720p|480p|360p|240p|144p|audio)$/i);
+        if (resMatch) resolution = resMatch[1].toLowerCase();
+      }
+
+      const baseWithoutExt = file.path.slice(0, -3);
+      const possibleExtensions = [".mp4", ".mp3", ".m4a", ".webm", ".zip"];
+      let mediaPath = "";
+      for (const ext of possibleExtensions) {
+        if (app.vault.getAbstractFileByPath(baseWithoutExt + ext)) {
+          mediaPath = baseWithoutExt + ext;
+          break;
+        }
+      }
 
       cache.items[file.path] = {
         filePath: file.path,
+        mediaPath,
         title: parsed.yt_title || parsed.title || file.basename,
-        url: parsed.yt_url || parsed.url || "",
+        url: rawUrl,
         videoId: parsed.video_id || "",
-        channel: parsed.yt_channel || parsed.channel || "",
+        channel: parsed.yt_channel || parsed.channel || parsed.uploader || "",
         uploadDate: parsed.yt_upload_date || parsed.upload_date || "",
         capturedAt: parsed.captured_at || new Date(file.stat.ctime).toISOString(),
         timeRange: parsed.capture_time_range || parsed.time_range || `${parsed.clip_start || ""}–${parsed.clip_end || ""}`,
         mtime: file.stat.mtime,
+        platform: isIg ? "instagram" : "youtube",
+        resolution: resolution || "1080p",
       };
       cacheModified = true;
     } catch {
