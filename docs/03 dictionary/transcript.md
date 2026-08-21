@@ -8,4 +8,4 @@ A video or audio **Transcript** is a written, time-synchronized text representat
 
 ## 🎬 Subtitle Extraction in YT Extension
 
-PakCLI Suite's **[[yt extension|YT Extension]]** module automatically extracts timestamped subtitle tracks and synchronized transcripts from YouTube videos directly into your active [[obsidian|Obsidian]] research notes.
+PakCLI Suite's **** module automatically extracts timestamped subtitle tracks and synchronized transcripts from YouTube videos directly into your active  research notes.

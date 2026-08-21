@@ -4,7 +4,7 @@ title: "Markdown"
 
 
 
-**Markdown** is a lightweight plain-text markup language designed to be easy to read and write on any [[computer|computer]].
+**Markdown** is a lightweight plain-text markup language designed to be easy to read and write on any .
 
 ---
 
@@ -26,8 +26,8 @@ Write-Host "Executing script on local computer..."
 ```
 ````
 
-### 3. Wikilinks (`[[Page Name]]`)
-Used heavily in [[obsidian|Obsidian]] to create relationships between notes and terms in this dictionary.
+### 3. Wikilinks (``)
+Used heavily in  to create relationships between notes and terms in this dictionary.
 
 ### 4. Tables & Delimited Data
-Markdown supports formatted text tables and integrates seamlessly with structured [[csv and tsv|CSV and TSV]] data.
+Markdown supports formatted text tables and integrates seamlessly with structured  data.

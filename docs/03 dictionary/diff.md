@@ -8,4 +8,4 @@ A **Diff** (difference comparison) visualizes line-by-line additions, deletions,
 
 ## 🔍 Codeblock Sync Diff Viewer
 
-In PakCLI Suite's **[[codeblock sync|Codeblock Sync]]** module, the built-in split Diff Viewer compares the script codeblock in your [[markdown|Markdown]] note against the actual standalone script file stored on your [[computer|computer]]'s disk, allowing 1-click merging and two-way sync.
+In PakCLI Suite's **** module, the built-in split Diff Viewer compares the script codeblock in your  note against the actual standalone script file stored on your 's disk, allowing 1-click merging and two-way sync.

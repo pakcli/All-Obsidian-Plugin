@@ -8,4 +8,4 @@ title: "SQLite"
 
 ## 🗄️ Embedded Database in SQLSeal
 
-PakCLI Suite integrates WebAssembly SQLite via **[[sqlseal and tablite|SQLSeal]]** to execute real-time relational SQL queries (`SELECT`, `JOIN`, `WHERE`) across your [[obsidian|Obsidian]] vault's [[markdown|Markdown]] tables, frontmatter, and [[csv and tsv|CSV]] files.
+PakCLI Suite integrates WebAssembly SQLite via **** to execute real-time relational SQL queries (`SELECT`, `JOIN`, `WHERE`) across your  vault's  tables, frontmatter, and  files.

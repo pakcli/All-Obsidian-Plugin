@@ -4,7 +4,7 @@ title: "Desktop All in One PowerShell with Obsidian"
 
 # Desktop Installation: PowerShell (Obsidian Already Installed)
 
-Automated interactive [[powershell|PowerShell]] script for users who already have **[[obsidian|Obsidian]]** installed on their Windows [[computer|computer]].
+Automated interactive  script for users who already have **** installed on their Windows .
 
 ---
 
@@ -50,5 +50,5 @@ Write-Host "Next: Open Obsidian -> Settings -> Community plugins -> Enable PakCL
 
 ## 🛠️ Next Steps
 
-1. Open **[[obsidian|Obsidian]]** and open the vault folder you selected.
-2. Go to **Settings** -> **[[community|Community]] [[plugin|plugins]]** -> **Reload plugins** -> Enable **PakCLI Suite**.
+1. Open **** and open the vault folder you selected.
+2. Go to **Settings** -> ** ** -> **Reload plugins** -> Enable **PakCLI Suite**.

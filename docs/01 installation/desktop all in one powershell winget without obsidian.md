@@ -4,7 +4,7 @@ title: "Desktop All in One PowerShell Winget without Obsidian"
 
 # Desktop Installation: PowerShell & Winget (Without Obsidian Installed)
 
-Automated interactive [[powershell|PowerShell]] and [[winget|winget]] installer for new Windows [[computer|computers]] that do not have **[[obsidian|Obsidian]]** installed yet.
+Automated interactive  and  installer for new Windows  that do not have **** installed yet.
 
 ---
 
@@ -56,5 +56,5 @@ Write-Host "Next: Open Obsidian -> Open vault '$vaultPath' -> Settings -> Commun
 
 ## 🛠️ Next Steps
 
-1. Launch **[[obsidian|Obsidian]]** and open the vault folder you selected above.
-2. Go to **Settings** -> **[[community|Community]] [[plugin|plugins]]** -> **Reload plugins** -> Enable **PakCLI Suite**.
+1. Launch **** and open the vault folder you selected above.
+2. Go to **Settings** -> ** ** -> **Reload plugins** -> Enable **PakCLI Suite**.

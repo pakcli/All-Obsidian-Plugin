@@ -8,4 +8,4 @@ A **Wiki** is a hypertext publication or team knowledge base collaboratively edi
 
 ## 🌐 Docmost Wiki Synchronization
 
-PakCLI Suite's **[[docmost sync|Docmost Sync]]** module provides two-way synchronization over the [[internet|internet]] between your local [[obsidian|Obsidian]] vault and self-hosted Docmost open-source team wiki workspaces.
+PakCLI Suite's **** module provides two-way synchronization over the  between your local  vault and self-hosted Docmost open-source team wiki workspaces.

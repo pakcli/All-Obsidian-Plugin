@@ -9,6 +9,6 @@ A **computer** is an electronic device that manipulates information and data acc
 
 ## 💻 Roles in Note-Taking & Development
 
-- **Local Storage**: Your computer's hard drive or SSD physically stores your [[obsidian|Obsidian]] vault, markdown files, and scripts locally.
-- **Execution**: Runs runtime engines like [[nodejs and typescript|Node.js]] and shells like [[powershell|PowerShell]] to automate file management, development builds, and note processing.
-- **Offline Reliability**: Because all files exist directly on your computer, tools in PakCLI Suite function seamlessly even without an [[internet|internet]] connection.
+- **Local Storage**: Your computer's hard drive or SSD physically stores your  vault, markdown files, and scripts locally.
+- **Execution**: Runs runtime engines like  and shells like  to automate file management, development builds, and note processing.
+- **Offline Reliability**: Because all files exist directly on your computer, tools in PakCLI Suite function seamlessly even without an  connection.

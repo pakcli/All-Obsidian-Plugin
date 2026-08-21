@@ -8,4 +8,4 @@ title: "GeoJSON"
 
 ## 🗺️ Geospatial Layering in Leaflet Map
 
-PakCLI Suite's **[[leaflet map|Leaflet Map]]** module supports loading and overlaying GeoJSON layer files onto interactive world maps and custom image maps directly inside [[obsidian|Obsidian]] notes.
+PakCLI Suite's **** module supports loading and overlaying GeoJSON layer files onto interactive world maps and custom image maps directly inside  notes.

@@ -4,9 +4,9 @@ title: "Codeblock Sync"
 
 # Feature: Codeblock Sync (Two Way Script Sync)
 
-**Codeblock Sync** connects the script codeblocks inside your [[markdown|Markdown]] notes (`.md`) with standalone script files on your [[computer|computer]]'s disk (e.g. [[powershell|PowerShell]] `.ps1`, Python `.py`, Node.js `.js`, Bash `.sh`, Command Prompt `.cmd`).
+**Codeblock Sync** connects the script codeblocks inside your [[obsidian|Obsidian]] [[markdown|Markdown]] notes (`.md`) with standalone script files on your [[computer|computer]]'s disk (e.g. [[powershell|PowerShell]] `.ps1`, Python `.py`, [[nodejs and typescript|Node.js]] `.js`, Bash `.sh`, Command Prompt `.cmd`).
 
-It turns your [[obsidian|Obsidian]] notes into interactive executable dashboards with real-time change detection, visual diff comparisons, and instant subfolder mirroring.
+It turns your [[obsidian|Obsidian]] notes into interactive executable dashboards with real-time change detection, visual [[diff viewer|diff comparisons]], and instant [[auto subfolder mirroring|subfolder mirroring]].
 
 ---
 
@@ -40,20 +40,20 @@ When any script codeblock (`powershell`, `python`, `bash`, `cmd`, `javascript`, 
 - **Disk Script ➔ Manager Note**: Reverse-sync replaces only the first code block, leaving all surrounding notes and descriptions 100% intact.
 
 ### 2. Automatic Subfolder Mirroring
-- If your note lives in a nested subfolder (e.g. `Digital Library/CLI & Commands/Git/Checkout.md`), Codeblock Sync will automatically mirror that exact subfolder hierarchy on your [[computer|computer]]'s target scripts folder (`ALL SCRIPT/Git/Checkout.sh`).
+- If your note lives in a nested subfolder (e.g. `Digital Library/CLI & Commands/Git/Checkout.md`), Codeblock Sync will trigger [[auto subfolder mirroring|auto subfolder mirroring]] to mirror that exact subfolder hierarchy on your [[computer|computer]]'s target scripts folder (`ALL SCRIPT/Git/Checkout.sh`).
 
 ### 3. Interactive Actions:
 - **`⚡ Sync to Script`**: Writes the code in the note directly to the disk script file on your [[computer|computer]].
 - **`📥 Pull from Script`**: Injects external changes from disk back into the note.
-- **`👁️ Diff`**: Expands an inline line-by-line visual comparison with green added and red deleted highlights.
+- **`👁️ Diff`**: Launches the [[diff viewer|diff viewer]] to expand an inline line-by-line visual comparison with green added and red deleted highlights.
 - **`✕ Ignore`**: Ignores the difference for the current session.
 - **`⏰ Remind Later`**: Defers the change to the **Pending Sync Queue**.
-- **`▶ Run`**: Executes the script directly (via [[powershell|PowerShell]], Node.js, Python, or Bash) and displays the terminal output in an expandable drawer.
+- **`▶ Run`**: Uses the [[script runner|script runner]] to execute the script directly (via [[powershell|PowerShell]], [[nodejs and typescript|Node.js]], Python, or Bash) and displays the terminal output in an expandable drawer.
 
 ### 4. Interactive Scan & Sync Dashboard
-- Click the **`terminal` icon** on the left [[obsidian|Obsidian]] ribbon (or run `Codeblock Sync: Scan Vault Notes & Open Dashboard`).
+- Click the **`terminal` icon** on the left [[obsidian|Obsidian]] ribbon (or run `Codeblock Sync: Scan Vault Notes & Open Dashboard`) to access the [[bulk dashboard|bulk dashboard]].
 - Features a **`Hide Synced`** checkbox filter to focus only on notes with unsaved changes.
-- Click **`⚡ Sync Changed`** for a 1-click batch sync of all notes.
+- Click **`⚡ Sync Changed`** for a 1-click batch sync of all notes in the [[bulk dashboard|bulk dashboard]].
 
 ---
 

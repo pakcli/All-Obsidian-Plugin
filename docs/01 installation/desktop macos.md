@@ -10,9 +10,9 @@ Installation guide for **macOS** desktop devices (MacBook, Mac mini, Mac Studio,
 
 ## 🛠️ Method 1: Community Plugin Market
 
-1. Launch **[[obsidian|Obsidian]]** on macOS.
+1. Launch **** on macOS.
 2. Open **Settings** (`Cmd + ,`).
-3. Select **[[community|Community]] [[plugin|plugins]]** and disable **Restricted mode**.
+3. Select ** ** and disable **Restricted mode**.
 4. Click **Browse**, search for `PakCLI Suite`, then click **Install** and **Enable**.
 
 ---
@@ -24,4 +24,4 @@ Installation guide for **macOS** desktop devices (MacBook, Mac mini, Mac Studio,
    /Users/<YourUsername>/Documents/ObsidianVault/.obsidian/plugins/pakcli-suite/
    ```
 2. Place `main.js`, `manifest.json`, and `styles.css` inside `pakcli-suite/`.
-3. In **[[obsidian|Obsidian]]**, reload plugins in **Settings -> [[community|Community]] [[plugin|plugins]]** and enable **PakCLI Suite**.
+3. In ****, reload plugins in **Settings ->  ** and enable **PakCLI Suite**.
