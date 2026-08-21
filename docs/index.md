@@ -34,3 +34,9 @@ PakCLI Suite supercharges your note-taking environment into an integrated develo
 2. **Local-First & Offline**: All operations run locally on your [[computer|computer]] without external cloud dependencies.
 3. **High Performance**: Built with virtualized DOM rendering and lazy initialization so your [[obsidian|Obsidian]] vault stays ultra-fast.
 4. **[[community|Community]]-Driven**: Designed following Obsidian [[community|community]] best practices.
+
+---
+
+📌 *Learn more about this documentation hub and the customized Quartz v5 engine in **[[about|About This Website]]**.*
+
+
