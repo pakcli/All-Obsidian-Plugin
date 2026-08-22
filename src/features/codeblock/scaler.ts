@@ -1,4 +1,5 @@
-import { MarkdownView, Plugin } from 'obsidian';
+import { MarkdownView } from 'obsidian';
+import type PakCLIPlugin from '../../main';
 
 export interface CodeblockLanguageRule {
 	id: string;
@@ -88,7 +89,7 @@ export class CodeblockScaler {
 	private isProcessing = false;
 	private debounceTimer: number | null = null;
 
-	constructor(private plugin: Plugin & { settings?: { codeblockLanguageRules?: CodeblockLanguageRule[]; codeblockWrapMode?: 'scalefit' | 'flowclip' | 'wrap' } }) {}
+	constructor(private plugin: PakCLIPlugin) {}
 
 	init(): void {
 		// 1. Register Post Processor for Reading View

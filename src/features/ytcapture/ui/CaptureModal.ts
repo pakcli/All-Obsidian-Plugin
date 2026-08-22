@@ -9,7 +9,7 @@ import * as os from "os";
 import * as path from "path";
 import type PakCLIPlugin from "../../../main";
 import type { VideoPreview, CaptureResult, TranscriptEntry, VideoQuality, VideoFps, ProgressInfo } from "../types";
-import { parseMediaUrl, parseYouTubeUrl, buildYouTubeUrl } from "../utils/urlParser";
+import { parseMediaUrl, buildYouTubeUrl } from "../utils/urlParser";
 import {
   fetchVideoInfo,
   downloadClip,
@@ -23,7 +23,6 @@ import {
   formatTranscriptForMarkdown,
 } from "../utils/transcript";
 import {
-  sanitizeFilename,
   formatTime,
   buildNotesMarkdown,
   buildMediaBaseName,
