@@ -46,7 +46,7 @@ It supercharges your note-taking environment into an integrated development, dat
 * **Diff Viewer & Merge Modal**: Compare note code with disk scripts side-by-side with color-coded diff highlights before syncing.
 * **Bulk Sync Dashboard**: 1-click scanning modal to synchronize all modified scripts across your entire vault.
 
-### 3. Asset Draggable & AI Exporter
+### 3. Asset Media Draggable 
 * **Direct Drag to Web Apps**: Grab any embedded image, audio, or video inside Obsidian and drag it directly into ChatGPT, Claude, Google Drive, Gmail, or Windows Explorer.
 * **Multi-Format Payloads**: Injects native Electron `startDrag`, Chromium `DownloadURL`, and `text/uri-list` simultaneously for maximum compatibility.
 * **1-Click Clipboard Copy**: Right-click any image or attachment embed to copy native bitmap data to your clipboard.
