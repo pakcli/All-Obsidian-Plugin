@@ -32,7 +32,7 @@ jobs:
       - name: Generate artifact attestations
         uses: actions/attest-build-provenance@v2
         with:
-          subject-paths: |
+          subject-path: |
             main.js
             manifest.json
             styles.css
