@@ -1,0 +1,102 @@
+Skip to content
+pakcli
+All-Obsidian-Plugin
+Repository navigation
+Code
+Issues
+Pull requests
+Agents
+Actions
+Projects
+Wiki
+Security and quality
+Insights
+Settings
+
+ GitHub users are now required to enable two-factor authentication as an additional security measure. Your activity on GitHub includes you in this requirement. You will need to enable two-factor authentication on your account before September 12, 2026, or be restricted from account actions.
+
+Release Plugin
+Release 1.1.22 #31
+All jobs
+Run details
+Annotations
+1 error and 1 warning
+build
+failed 40 minutes ago in 14s
+Search logs
+3s
+2s
+4s
+2s
+Run npm ci
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @typescript-eslint/eslint-plugin@8.35.1
+npm warn Found: typescript@5.9.3
+npm warn node_modules/typescript
+npm warn   dev typescript@"^5.9.2" from the root project
+npm warn   4 more (@hypersphere/dity, @hypersphere/dity, ts-api-utils, ts-jest)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer typescript@">=4.8.4 <5.9.0" from @typescript-eslint/eslint-plugin@8.35.1
+npm warn node_modules/@typescript-eslint/eslint-plugin
+npm warn   @typescript-eslint/eslint-plugin@"8.35.1" from typescript-eslint@8.35.1
+npm warn   node_modules/typescript-eslint
+npm warn
+npm warn Conflicting peer dependency: typescript@5.8.3
+npm warn node_modules/typescript
+npm warn   peer typescript@">=4.8.4 <5.9.0" from @typescript-eslint/eslint-plugin@8.35.1
+npm warn   node_modules/@typescript-eslint/eslint-plugin
+npm warn     @typescript-eslint/eslint-plugin@"8.35.1" from typescript-eslint@8.35.1
+npm warn     node_modules/typescript-eslint
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @typescript-eslint/parser@8.35.1
+npm warn Found: typescript@5.9.3
+npm warn node_modules/typescript
+npm warn   dev typescript@"^5.9.2" from the root project
+npm warn   4 more (@hypersphere/dity, @hypersphere/dity, ts-api-utils, ts-jest)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer typescript@">=4.8.4 <5.9.0" from @typescript-eslint/parser@8.35.1
+npm warn node_modules/@typescript-eslint/parser
+npm warn   peer @typescript-eslint/parser@"^8.35.1" from @typescript-eslint/eslint-plugin@8.35.1
+npm warn   node_modules/@typescript-eslint/eslint-plugin
+npm warn   1 more (typescript-eslint)
+npm warn
+npm warn Conflicting peer dependency: typescript@5.8.3
+npm warn node_modules/typescript
+npm warn   peer typescript@">=4.8.4 <5.9.0" from @typescript-eslint/parser@8.35.1
+npm warn   node_modules/@typescript-eslint/parser
+npm warn     peer @typescript-eslint/parser@"^8.35.1" from @typescript-eslint/eslint-plugin@8.35.1
+npm warn     node_modules/@typescript-eslint/eslint-plugin
+npm warn     1 more (typescript-eslint)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @typescript-eslint/project-service@8.35.1
+npm warn Found: typescript@5.9.3
+npm warn node_modules/typescript
+npm warn   dev typescript@"^5.9.2" from the root project
+npm warn   4 more (@hypersphere/dity, @hypersphere/dity, ts-api-utils, ts-jest)
+0s
+0s
+0s
+0s
+0s
+0s
+Footer
+© 2026 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Community
+Docs
+Contact
+Manage cookies
+Do not share my personal information
+ 
+
+ ---
+
+
+ build
+Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

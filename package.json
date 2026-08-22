@@ -1,6 +1,6 @@
 {
     "name":  "pakcli-suite",
-    "version":  "1.1.22",
+    "version":  "1.1.23",
     "description":  "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, Tablite CSV Editor \u0026 SQLSeal, and Leaflet bases.",
     "main":  "dist/main.js",
     "type":  "module",
@@ -43,7 +43,7 @@
                             "obsidian-typings":  "obsidian-public-latest",
                             "ts-jest":  "^29.4.1",
                             "tslib":  "2.8.1",
-                            "typescript":  "^5.9.2",
+                            "typescript":  "~5.8.3",
                             "typescript-eslint":  "8.35.1"
                         },
     "dependencies":  {
