@@ -1,38 +1,108 @@
 # PakCLI Suite
 
-An all-in-one suite of powerful tools for Obsidian power users, integrating Leaflet Map Views, SQLSeal & Tablite CSV Editor, Symlink Manager, and Tree Diagram with Asset Router.
+[![GitHub release](https://img.shields.io/github/v/release/pakcli/All-Obsidian-Plugin?style=flat-square&color=blue)](https://github.com/pakcli/All-Obsidian-Plugin/releases)
+[![Obsidian Minimum Version](https://img.shields.io/badge/Obsidian-1.8.0+-purple.svg?style=flat-square)](https://obsidian.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![Platform: Desktop Only](https://img.shields.io/badge/Platform-Desktop_Only-orange.svg?style=flat-square)](https://obsidian.md)
 
-## Features
+**PakCLI Suite** is the all-in-one modular power plugin for [Obsidian](https://obsidian.md). 
 
-### 1. SQLSeal & Tablite CSV Editor
-*   **Interactive Grid Editor:** Edit CSV/TSV files like spreadsheets using a built-in interactive table viewer and editor.
-*   **SQLite Engine:** Execute complex SQL queries directly inside Obsidian notes using `wa-sqlite`.
-*   **Dynamic Data Synchronization:** Keep your notes, metadata, and tables updated dynamically as underlying data files change.
-*   **Syntax Highlighting:** Write SQL blocks with syntax-highlighted code.
-*   **Receipt Scanner Integration:** Easily scan receipt files to populate tabular finances.
-
-### 2. Bases Leaflet Map Views
-*   **Interactive Maps:** Embed and view Leaflet maps directly inside Obsidian.
-*   **Measure & Copy Tools:** Easily measure distances on maps or copy coordinates with a single click.
-*   **Iconify Icon Sets:** Render custom map markers using Iconify icons.
-
-### 3. Symlink Manager & Date Picker
-*   **Symlinks & Junctions:** Create and manage symlinks/junctions between directories inside and outside the vault.
-*   **Status Badges:** Color-coded status badges (green = junction, orange = symlink, red = broken link) directly in the file explorer.
-*   **Fast Date Picker:** Quick Ctrl+D shortcut to insert customizable dates via modal.
-
-### 4. Tree Diagram & Asset Router
-*   **Tree Diagram Generator:** Generate visual hierarchy tree diagrams from indent-based or folder-based note sources.
-*   **Dynamic Asset Router:** Automatically intercept newly pasted or created images/attachments and route them to designated centralized asset folders or nested captain folders.
-*   **YAML Frontmatter Mapping:** Clean up link paths and match attachment filenames by note title properties automatically.
+It supercharges your note-taking environment into an integrated development, data analysis, and media management workspace on your local computer. Whether you are querying databases with SQL, editing CSV/TSV spreadsheets with virtualized grids, two-way syncing script files, capturing YouTube evidence clips, or dragging attachments directly into ChatGPT & Claude, PakCLI Suite provides high-performance native tools without relying on cloud services.
 
 ---
 
-## Installation & Setup
+## 🧩 Module Overview Table
 
-### Dev (Watch Mode)
+| Module Name | Settings Tab | Primary Function | Key Highlights |
+| :--- | :--- | :--- | :--- |
+| **Codeblock Sync** | `Codeblock Sync` | Two-way sync between Markdown codeblocks and disk script files | Diff viewer, script runner with output drawer, auto subfolder mirroring, bulk dashboard |
+| **SQLSeal & Tablite** | `SQLSeal & Tablite` | Embedded SQLite engine & full virtualized CSV table editor | Real-time SQL queries, TanStack virtual grid, multi-row & column drag-and-drop, YouTube thumbnail cache, Find & Replace (`Ctrl+F`), undo/redo |
+| **Leaflet Map** | `Leaflet Map` | Interactive geospatial and custom world maps | Coordinates, pins, GeoJSON layers, distance measurement, multi-layer map rendering |
+| **Docmost Sync** | `Docmost Sync` | Workspace sync with Docmost open-source wiki over HTTP | Push/pull space notes, workspace token authentication, conflict detection |
+| **YT Extension** | `YT Extension` | YouTube video timestamp capture & evidence clipping | High-resolution frame capture, video segment looping, transcript sync, local vault caching |
+| **Asset Router** | `Asset Router` | Smart attachment routing & organization | Centralized folder routing, custom folder rules, auto subfolder mirroring |
+| **Tree Diagram** | `Asset Router` | Visual ASCII & SVG directory tree diagram generator | Dynamic tree diagrams, interactive navigation table modes, ASCII directory visualization |
+| **Symlink Manager** | `Symlink Manager` | Filesystem symbolic links & folder junction management | Native directory symlinks, color-coded link badges, path resolution on Windows/macOS/Linux |
+| **Codeblock Scaler** | `Codeblock Mode` | Intelligent codeblock text scaler and formatter | ASCII diagram auto-fit (`scalefit`), word wrap, and individual slider horizontal scrolling (`flowclip`) |
+| **Date Picker** | `Date Picker` | Natural date selector and timestamp inserter | Calendar popup modal, format presets, `Ctrl+D` shortcut trigger |
+| **Asset Draggable** | `Asset Draggable` | Drag attachments directly into AI tools (ChatGPT/Claude) | Native OS file drag-and-drop, Chromium `DownloadURL` payload, 1-click clipboard image copying |
+
+---
+
+## 🌟 Detailed Features
+
+### 1. SQLSeal & Tablite CSV Editor
+* **Interactive Spreadsheet View**: View and edit CSV/TSV files with TanStack virtualized grid rendering (smooth 60fps on 100,000+ rows).
+* **Multi-Row & Column Drag-and-Drop**: Drag column headers or single/multi-selected rows with instant visual insertion indicators and confirmation dialogs.
+* **YouTube Thumbnail Cache**: Automatically detects `yt-url` or `url` columns, renders high-res thumbnail previews, and caches them locally in your vault.
+* **Find & Replace (`Ctrl+F`)**: Integrated search bar with match counts, Next/Previous jumping, and bulk cell replacement.
+* **Full Undo / Redo (`Ctrl+Z` / `Ctrl+Y`)**: Complete state history tracking for cell edits, row deletions, column moves, and bulk operations.
+* **Embedded SQLite (`wa-sqlite`)**: Execute complex SQL queries directly against vault files or Markdown tables inside codeblocks.
+* **Receipt Scanner**: Extract and categorize receipts into tabular finance entries.
+
+### 2. Codeblock Sync & Runner
+* **Two-Way File Mirroring**: Automatically mirrors codeblocks in Markdown notes to target script files on disk (PowerShell, Bash, Python, JavaScript, TypeScript, Batch).
+* **Inline Script Execution**: Execute scripts directly from the note and view stdout, stderr, and exit codes in an expandable drawer.
+* **Diff Viewer & Merge Modal**: Compare note code with disk scripts side-by-side with color-coded diff highlights before syncing.
+* **Bulk Sync Dashboard**: 1-click scanning modal to synchronize all modified scripts across your entire vault.
+
+### 3. Asset Draggable & AI Exporter
+* **Direct Drag to Web Apps**: Grab any embedded image, audio, or video inside Obsidian and drag it directly into ChatGPT, Claude, Google Drive, Gmail, or Windows Explorer.
+* **Multi-Format Payloads**: Injects native Electron `startDrag`, Chromium `DownloadURL`, and `text/uri-list` simultaneously for maximum compatibility.
+* **1-Click Clipboard Copy**: Right-click any image or attachment embed to copy native bitmap data to your clipboard.
+
+### 4. YouTube Evidence Capture
+* **Timestamped Evidence Clips**: Capture high-resolution video frames and clip loops with start/end timestamps.
+* **Subtitle & Transcript Sync**: Automatically downloads and formats subtitles matching the selected time range into Markdown notes.
+* **Zip Export**: Bundle video clips, thumbnails, transcripts, and metadata into a shareable `.zip` archive.
+
+### 5. Leaflet Map Views
+* **Interactive World & Fantasy Maps**: Embed interactive Leaflet maps with custom tile layers, markers, and shapes.
+* **Measurement & Coordinates**: Measure polygon areas, path distances, or copy precise coordinates.
+* **Iconify Marker Sets**: Style pins using hundreds of Iconify icon packs.
+
+### 6. Symlink Manager & Date Picker
+* **Filesystem Symlinks & Junctions**: Create and manage folder junctions between vault folders and external disk directories.
+* **Explorer Badges**: Live color-coded status badges (Green = Junction, Orange = Symlink, Red = Broken Link).
+* **Fast Date Picker (`Ctrl+D`)**: Quick modal popup to insert formatted timestamps into any active note or filename input.
+
+### 7. Tree Diagram & Asset Router
+* **Visual Directory Tree**: Render ASCII and SVG hierarchy tree diagrams from indent-based text or folder structures.
+* **Interactive Table Modes**: Switch between full table view and breadcrumb folder-navigation modes.
+* **Smart Asset Routing**: Automatically intercepts pasted attachments and organizes them into designated captain folders based on note frontmatter.
+
+### 8. Codeblock Scaler
+* **`scalefit` (ASCII SVG Auto-Fit)**: Renders ASCII diagrams as scalable vector SVGs that fit 100% container width with zero text wrapping.
+* **`flowclip`**: Keeps each codeblock as an independent horizontal slider.
+* **`wrap`**: Wraps long lines neatly for clean reading.
+
+---
+
+## ⌨️ Default Shortcuts
+
+| Shortcut | Action | Scope |
+| :--- | :--- | :--- |
+| `Ctrl + D` / `Cmd + D` | Open Date Picker Modal | Global / Note Editor / Explorer Rename |
+| `Ctrl + F` / `Cmd + F` | Toggle Find & Replace Bar | Tablite CSV View |
+| `Ctrl + Z` / `Cmd + Z` | Undo Last Edit | Tablite CSV View |
+| `Ctrl + Y` / `Cmd + Shift + Z` | Redo Edit | Tablite CSV View |
+| `Shift + Click` | Range Select Rows | Tablite CSV View |
+
+---
+
+## 🛠️ Development & Building
+
+### Prerequisites
+- Node.js 20+ (Node 22 LTS recommended)
+- npm
+
+### Install Dependencies
 ```bash
 npm install --legacy-peer-deps
+```
+
+### Dev Mode (Watch)
+```bash
 npm run dev
 ```
 
@@ -41,13 +111,27 @@ npm run dev
 npm run build
 ```
 
-### Deployment to Obsidian
-1. Edit the `$VaultPath` variable at the top of the `build-and-copy.ps1` script to match your vault's plugins folder:
-   ```powershell
-   $VaultPath = "C:\Users\YourUsername\Documents\ObsidianVault\.obsidian\plugins\pakcli-editors-choice"
-   ```
-2. Run the deployment script in PowerShell:
-   ```powershell
-   ./build-and-copy.ps1
-   ```
-3. Open Obsidian, go to **Settings → Community plugins**, reload, and enable **PakCLI Editor's Choice**.
+### Linting & Validation
+```bash
+npm run lint
+```
+
+---
+
+## 📦 Deployment & Publishing
+
+To build and deploy directly to your local Obsidian vault:
+```powershell
+./start_plugin_build.ps1
+```
+
+To bump version, tag, and publish to GitHub Releases:
+```powershell
+./start_plugin_publish.ps1
+```
+
+---
+
+## 📄 License
+
+MIT License © 2026 PakCLI Team.
