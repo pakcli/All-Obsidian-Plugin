@@ -7,7 +7,7 @@
 
 **PakCLI Suite** is the all-in-one modular power plugin for [Obsidian](https://obsidian.md). 
 
-It supercharges your note-taking environment into an integrated development, data analysis, and media management workspace on your local computer. Whether you are querying databases with SQL, editing CSV/TSV spreadsheets with virtualized grids, two-way syncing script files, capturing YouTube evidence clips, or dragging attachments directly into ChatGPT & Claude, PakCLI Suite provides high-performance native tools without relying on cloud services.
+It supercharges your note-taking environment into an integrated development, data analysis, and media management workspace on your local computer. Whether you are querying databases with SQL, editing CSV/TSV spreadsheets with virtualized grids, two-way syncing script files, capturing YouTube evidence clips, generating directory tree diagrams, or dragging attachments directly into ChatGPT & Claude, PakCLI Suite provides high-performance native tools without relying on cloud services.
 
 ---
 
@@ -20,8 +20,8 @@ It supercharges your note-taking environment into an integrated development, dat
 | **Leaflet Map** | `Leaflet Map` | Interactive geospatial and custom world maps | Coordinates, pins, GeoJSON layers, distance measurement, multi-layer map rendering |
 | **Docmost Sync** | `Docmost Sync` | Workspace sync with Docmost open-source wiki over HTTP | Push/pull space notes, workspace token authentication, conflict detection |
 | **YT Extension** | `YT Extension` | YouTube video timestamp capture & evidence clipping | High-resolution frame capture, video segment looping, transcript sync, local vault caching |
-| **Asset Router** | `Asset Router` | Smart attachment routing & organization | Centralized folder routing, custom folder rules, auto subfolder mirroring |
-| **Tree Diagram** | `Asset Router` | Visual ASCII & SVG directory tree diagram generator | Dynamic tree diagrams, interactive navigation table modes, ASCII directory visualization |
+| **Asset Router** | `Asset Router` | Smart attachment routing & file organization | Centralized folder routing, custom regex folder rules, auto subfolder mirroring, YAML title matching |
+| **Tree Diagram** | Codeblock (`tree`) | Visual ASCII & SVG directory tree diagram generator | Dynamic tree diagrams, interactive navigation table modes, ASCII directory visualization, 1-click folder scaffold generator |
 | **Symlink Manager** | `Symlink Manager` | Filesystem symbolic links & folder junction management | Native directory symlinks, color-coded link badges, path resolution on Windows/macOS/Linux |
 | **Codeblock Scaler** | `Codeblock Mode` | Intelligent codeblock text scaler and formatter | ASCII diagram auto-fit (`scalefit`), word wrap, and individual slider horizontal scrolling (`flowclip`) |
 | **Date Picker** | `Date Picker` | Natural date selector and timestamp inserter | Calendar popup modal, format presets, `Ctrl+D` shortcut trigger |
@@ -66,15 +66,27 @@ It supercharges your note-taking environment into an integrated development, dat
 * **Explorer Badges**: Live color-coded status badges (Green = Junction, Orange = Symlink, Red = Broken Link).
 * **Fast Date Picker (`Ctrl+D`)**: Quick modal popup to insert formatted timestamps into any active note or filename input.
 
-### 7. Tree Diagram & Asset Router
-* **Visual Directory Tree**: Render ASCII and SVG hierarchy tree diagrams from indent-based text or folder structures.
-* **Interactive Table Modes**: Switch between full table view and breadcrumb folder-navigation modes.
-* **Smart Asset Routing**: Automatically intercepts pasted attachments and organizes them into designated captain folders based on note frontmatter.
+### 7. Asset Router
+* **Centralized Asset Routing**: Automatically routes pasted/dragged images and files into a designated global asset folder (e.g. `assets/` or `attachments/`).
+* **Custom Folder Rules**: Set up path-specific rules to organize attachments based on note location or file extensions.
+* **Auto Subfolder Mirroring**: Replicate parent note folder hierarchies automatically inside asset directories.
+* **YAML Frontmatter Title Matching**: Clean up link paths and match attachment filenames by note title properties automatically.
 
-### 8. Codeblock Scaler
+### 8. Tree Diagram Generator
+* **Visual Directory Tree**: Render ASCII and SVG hierarchy tree diagrams from indent-based text or actual folder structures.
+* **Interactive Table & Breadcrumb Modes**: Switch between full table view and interactive folder-navigation modes.
+* **Scaffold Files & Folders**: 1-click generation of real files and folders in your vault directly from a tree diagram text outline.
+* **Codeblock Integration**: Use ````tree ... ```` codeblocks with live re-rendering.
+
+### 9. Docmost Sync
+* **Bi-Directional Wiki Sync**: Push and pull notes between Obsidian and a self-hosted Docmost open-source wiki workspace.
+* **Space-Level Mapping**: Map specific vault folders to individual Docmost spaces.
+* **Conflict Detection**: Prevent overwriting concurrent edits with timestamp-based conflict warnings.
+
+### 10. Codeblock Scaler
 * **`scalefit` (ASCII SVG Auto-Fit)**: Renders ASCII diagrams as scalable vector SVGs that fit 100% container width with zero text wrapping.
-* **`flowclip`**: Keeps each codeblock as an independent horizontal slider.
-* **`wrap`**: Wraps long lines neatly for clean reading.
+* **`flowclip`**: Keeps each codeblock as an independent horizontal slider with smooth touch/wheel panning.
+* **`wrap`**: Wraps long lines neatly for clean reading view.
 
 ---
 
