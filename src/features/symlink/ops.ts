@@ -1,26 +1,31 @@
-import { promises, Stats } from 'fs';
-import { dirname, join, basename } from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { PathUtils, getNodeFs, getNodeChildProcess } from '../../utils/nodeHelpers';
 import type { LinkType } from './types';
-
-const execAsync = promisify(exec);
 
 /**
  * Create a junction (Windows, same-drive, no admin) or a symbolic link.
  * The link path's parent must exist; the link path itself must NOT exist.
  */
 export async function createLink(linkPath: string, targetPath: string, type: LinkType): Promise<void> {
+	const fs = getNodeFs();
+	const cp = getNodeChildProcess();
+	if (!fs) throw new Error('Filesystem operations are only available on desktop platforms.');
+
 	await assertPathFree(linkPath);
 	await assertTargetExists(targetPath);
-	await promises.mkdir(dirname(linkPath), { recursive: true });
+	await fs.promises.mkdir(PathUtils.dirname(linkPath), { recursive: true });
 
-	if (process.platform === 'win32') {
+	const isWin = typeof process !== 'undefined' && process.platform === 'win32';
+	if (isWin && cp) {
 		// mklink is a cmd.exe builtin, not a standalone exe — must run via cmd /c.
 		const flag = type === 'junction' ? '/J' : '/D';
 		const cmd = `cmd /c mklink ${flag} ${quote(linkPath)} ${quote(targetPath)}`;
 		try {
-			await execAsync(cmd, { windowsHide: true });
+			await new Promise<void>((resolve, reject) => {
+				cp.exec(cmd, { windowsHide: true }, (err: any) => {
+					if (err) reject(err);
+					else resolve();
+				});
+			});
 		} catch (err: unknown) {
 			throw normalizeMklinkError(err, type);
 		}
@@ -28,7 +33,7 @@ export async function createLink(linkPath: string, targetPath: string, type: Lin
 	}
 
 	// POSIX: dir/file symlink — Node infers type on Linux/macOS.
-	await promises.symlink(targetPath, linkPath, 'dir');
+	await fs.promises.symlink(targetPath, linkPath, 'dir');
 }
 
 /**
@@ -36,22 +41,25 @@ export async function createLink(linkPath: string, targetPath: string, type: Lin
  * On Windows a directory junction must be removed with rmdir, not unlink.
  */
 export async function removeLink(linkPath: string): Promise<void> {
-	const lst = await promises.lstat(linkPath);
+	const fs = getNodeFs();
+	if (!fs) throw new Error('Filesystem operations are only available on desktop platforms.');
+	const lst = await fs.promises.lstat(linkPath);
 	if (!lst.isSymbolicLink()) {
 		throw new Error(`Not a symlink/junction: ${linkPath}`);
 	}
 
-	if (process.platform === 'win32') {
+	const isWin = typeof process !== 'undefined' && process.platform === 'win32';
+	if (isWin) {
 		try {
-			await promises.unlink(linkPath);
+			await fs.promises.unlink(linkPath);
 		} catch {
 			// Junctions appear as directories to rmdir.
-			await promises.rmdir(linkPath);
+			await fs.promises.rmdir(linkPath);
 		}
 		return;
 	}
 
-	await promises.unlink(linkPath);
+	await fs.promises.unlink(linkPath);
 }
 
 /**
@@ -59,15 +67,17 @@ export async function removeLink(linkPath: string): Promise<void> {
  * with the copied folder. Effectively: snapshot then detach.
  */
 export async function copyAndDisconnect(linkPath: string): Promise<void> {
-	const lst = await promises.lstat(linkPath);
+	const fs = getNodeFs();
+	if (!fs) throw new Error('Filesystem operations are only available on desktop platforms.');
+	const lst = await fs.promises.lstat(linkPath);
 	if (!lst.isSymbolicLink()) {
 		throw new Error(`Not a symlink/junction: ${linkPath}`);
 	}
 
-	const resolved = await promises.realpath(linkPath);
-	const tmp = join(dirname(linkPath), `.${basename(linkPath)}.copying-${Date.now()}`);
+	const resolved = await fs.promises.realpath(linkPath);
+	const tmp = PathUtils.join(PathUtils.dirname(linkPath), `.${PathUtils.basename(linkPath)}.copying-${Date.now()}`);
 
-	await promises.cp(resolved, tmp, { recursive: true, dereference: true });
+	await fs.promises.cp(resolved, tmp, { recursive: true, dereference: true });
 
 	try {
 		await removeLink(linkPath);
@@ -76,7 +86,7 @@ export async function copyAndDisconnect(linkPath: string): Promise<void> {
 		throw err;
 	}
 
-	await promises.rename(tmp, linkPath);
+	await fs.promises.rename(tmp, linkPath);
 }
 
 /** Atomically repoint: remove old link and create a new one at the same path. */
@@ -95,8 +105,10 @@ function quote(p: string): string {
 }
 
 async function assertPathFree(p: string): Promise<void> {
+	const fs = getNodeFs();
+	if (!fs) return;
 	try {
-		await promises.lstat(p);
+		await fs.promises.lstat(p);
 	} catch {
 		return;
 	}
@@ -104,9 +116,11 @@ async function assertPathFree(p: string): Promise<void> {
 }
 
 async function assertTargetExists(p: string): Promise<void> {
-	let st: Stats;
+	const fs = getNodeFs();
+	if (!fs) throw new Error('Filesystem operations are only available on desktop platforms.');
+	let st: any;
 	try {
-		st = await promises.stat(p);
+		st = await fs.promises.stat(p);
 	} catch {
 		throw new Error(`Target does not exist: ${p}`);
 	}
@@ -116,8 +130,10 @@ async function assertTargetExists(p: string): Promise<void> {
 }
 
 async function safeRemove(p: string): Promise<void> {
+	const fs = getNodeFs();
+	if (!fs) return;
 	try {
-		await promises.rm(p, { recursive: true, force: true });
+		await fs.promises.rm(p, { recursive: true, force: true });
 	} catch {
 		// best-effort cleanup
 	}

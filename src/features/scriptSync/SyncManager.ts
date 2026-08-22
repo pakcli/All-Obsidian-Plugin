@@ -3,11 +3,8 @@
  *
  * Core engine for two-way synchronization between Manager (.md notes) and CLI (script files).
  */
-import { App, FileSystemAdapter, Notice, Plugin, TFile } from 'obsidian';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as crypto from 'crypto';
-import { exec } from 'child_process';
+import { App, FileSystemAdapter, Notice, Platform, Plugin, TFile } from 'obsidian';
+import { PathUtils, getNodeFs, getNodeChildProcess } from '../../utils/nodeHelpers';
 import { FolderSyncSettings, PendingSyncItem, SyncStatusResult, SyncStatusType } from './types';
 import { extractFirstCodeBlock, injectFirstCodeBlock } from './markdownParser';
 
@@ -16,7 +13,7 @@ export class SyncManager {
     private plugin: Plugin;
     private getSettings: () => FolderSyncSettings;
     private saveSettings: () => Promise<void>;
-    private fileWatchers: fs.FSWatcher[] = [];
+    private fileWatchers: any[] = [];
 
     constructor(
         app: App,
@@ -31,7 +28,9 @@ export class SyncManager {
     }
 
     init(): void {
-        this.setupWatcher();
+        if (Platform.isDesktop) {
+            this.setupWatcher();
+        }
     }
 
     destroy(): void {
@@ -47,13 +46,17 @@ export class SyncManager {
 
     private setupWatcher(): void {
         this.stopWatcher();
+        if (!Platform.isDesktop) return;
+        const fs = getNodeFs();
+        if (!fs) return;
+
         const settings = this.getSettings();
         if (!settings.enabled || !settings.autoWatchCliFolder || !settings.cliRootFolder) return;
 
         try {
             let targetDir = settings.cliRootFolder.trim();
-            if (!path.isAbsolute(targetDir)) {
-                targetDir = path.join(this.getVaultRoot(), targetDir);
+            if (!PathUtils.isAbsolute(targetDir)) {
+                targetDir = PathUtils.join(this.getVaultRoot(), targetDir);
             }
 
             if (fs.existsSync(targetDir)) {
@@ -76,10 +79,16 @@ export class SyncManager {
         this.fileWatchers = [];
     }
 
-    /** Compute SHA-256 hash of a string with normalized line endings. */
+    /** Compute simple hash of a string with normalized line endings. */
     computeHash(text: string): string {
         const normalized = (text || '').replace(/\r\n/g, '\n').trim();
-        return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
+        let hash = 0;
+        for (let i = 0; i < normalized.length; i++) {
+            const char = normalized.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0;
+        }
+        return Math.abs(hash).toString(16);
     }
 
     /**
@@ -102,21 +111,22 @@ export class SyncManager {
         const managerRoot = settings.managerRootFolder.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
         if (managerRoot) {
             if (relPath === managerRoot) {
-                relPath = path.basename(normNotePath);
+                relPath = PathUtils.basename(normNotePath);
             } else if (relPath.startsWith(managerRoot + '/')) {
                 relPath = relPath.slice(managerRoot.length).replace(/^\/+/, '');
             }
         }
 
         // Replace .md extension with target script extension
-        const parsed = path.parse(relPath);
-        const scriptRel = path.join(parsed.dir, `${parsed.name}.${ext}`);
+        const baseName = PathUtils.basename(relPath).replace(/\.md$/i, '');
+        const dirName = PathUtils.dirname(relPath);
+        const scriptRel = PathUtils.join(dirName === '.' ? '' : dirName, `${baseName}.${ext}`);
 
-        if (path.isAbsolute(rawCliFolder)) {
-            return path.normalize(path.join(rawCliFolder, scriptRel));
+        if (PathUtils.isAbsolute(rawCliFolder)) {
+            return PathUtils.normalize(PathUtils.join(rawCliFolder, scriptRel));
         } else {
             const vaultRoot = this.getVaultRoot();
-            return path.normalize(path.join(vaultRoot, rawCliFolder, scriptRel));
+            return PathUtils.normalize(PathUtils.join(vaultRoot, rawCliFolder, scriptRel));
         }
     }
 
@@ -152,10 +162,11 @@ export class SyncManager {
             };
         }
 
-        if (!fs.existsSync(cliPath)) {
+        const fs = getNodeFs();
+        if (!fs || !fs.existsSync(cliPath)) {
             return {
                 status: 'cli_missing',
-                statusLabel: 'CLI Script Not Created',
+                statusLabel: !fs ? 'Desktop Filesystem Required' : 'CLI Script Not Created',
                 cliPath,
                 managerCode,
                 cliCode: '',
@@ -245,6 +256,13 @@ export class SyncManager {
         codeToSync?: string,
         language?: string
     ): Promise<boolean> {
+        if (!Platform.isDesktop) {
+            new Notice('Disk script sync requires desktop Obsidian.');
+            return false;
+        }
+        const fs = getNodeFs();
+        if (!fs) return false;
+
         try {
             const currentContent = await this.app.vault.read(noteFile);
             const extracted = extractFirstCodeBlock(currentContent);
@@ -258,13 +276,13 @@ export class SyncManager {
 
             if (direction === 'manager_to_cli') {
                 const code = codeToSync ?? (extracted ? extracted.code : '');
-                const targetDir = path.dirname(cliPath);
+                const targetDir = PathUtils.dirname(cliPath);
                 if (!fs.existsSync(targetDir)) {
                     await fs.promises.mkdir(targetDir, { recursive: true });
                 }
                 await fs.promises.writeFile(cliPath, code, 'utf8');
                 this.removeFromPending(noteFile.path);
-                new Notice(`✓ Synced to CLI: ${path.basename(cliPath)}`);
+                new Notice(`✓ Synced to CLI: ${PathUtils.basename(cliPath)}`);
                 return true;
             } else {
                 // CLI -> Manager direction
@@ -276,7 +294,7 @@ export class SyncManager {
                 const updatedNote = injectFirstCodeBlock(currentContent, cliContent, lang);
                 await this.app.vault.modify(noteFile, updatedNote);
                 this.removeFromPending(noteFile.path);
-                new Notice(`✓ Updated note codeblock from CLI: ${path.basename(cliPath)}`);
+                new Notice(`✓ Updated note codeblock from CLI: ${PathUtils.basename(cliPath)}`);
                 return true;
             }
         } catch (err) {
@@ -311,7 +329,7 @@ export class SyncManager {
             direction,
             timestamp: Date.now(),
             language: lang,
-            summary: `${path.basename(noteFile.path)} (${direction === 'manager_to_cli' ? 'Manager → CLI' : 'CLI → Manager'})`
+            summary: `${PathUtils.basename(noteFile.path)} (${direction === 'manager_to_cli' ? 'Manager → CLI' : 'CLI → Manager'})`
         };
 
         this.removeFromPending(noteFile.path);
@@ -329,11 +347,29 @@ export class SyncManager {
      * Executes the script on demand via PowerShell or Bash/Node and returns output.
      */
     async runScript(code: string, language: string, cliPath?: string | null): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+        if (!Platform.isDesktop) {
+            return {
+                stdout: '',
+                stderr: 'Script execution on disk is only available in desktop Obsidian (Windows, macOS, Linux).',
+                exitCode: 1
+            };
+        }
+
+        const fs = getNodeFs();
+        const cp = getNodeChildProcess();
+        if (!cp) {
+            return {
+                stdout: '',
+                stderr: 'Node.js child_process is not available.',
+                exitCode: 1
+            };
+        }
+
         return new Promise((resolve) => {
             const lang = (language || '').trim().toLowerCase();
             let command = '';
 
-            if (cliPath && fs.existsSync(cliPath)) {
+            if (cliPath && fs && fs.existsSync(cliPath)) {
                 if (lang === 'powershell' || lang === 'ps1') {
                     command = `powershell -NoProfile -ExecutionPolicy Bypass -File "${cliPath}"`;
                 } else if (lang === 'python' || lang === 'py') {
@@ -348,7 +384,7 @@ export class SyncManager {
             } else {
                 // Execute inline code via interpreter
                 if (lang === 'powershell' || lang === 'ps1') {
-                    const encoded = Buffer.from(code, 'utf16le').toString('base64');
+                    const encoded = typeof Buffer !== 'undefined' ? Buffer.from(code, 'utf16le').toString('base64') : btoa(unescape(encodeURIComponent(code)));
                     command = `powershell -NoProfile -EncodedCommand ${encoded}`;
                 } else if (lang === 'python' || lang === 'py') {
                     const escaped = code.replace(/"/g, '\\"');
@@ -361,7 +397,7 @@ export class SyncManager {
                 }
             }
 
-            exec(command, { timeout: 30000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+            cp.exec(command, { timeout: 30000, maxBuffer: 1024 * 1024 }, (err: any, stdout: string, stderr: string) => {
                 resolve({
                     stdout: stdout || '',
                     stderr: stderr || (err ? err.message : ''),

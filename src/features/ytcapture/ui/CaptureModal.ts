@@ -3,10 +3,8 @@
  * Quality & FPS settings, range slider, full duration button, progress bar,
  * and active card highlighting with muted inactive cards.
  */
-import { App, FileSystemAdapter, Modal, Notice, TFile } from "obsidian";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
+import { App, FileSystemAdapter, Modal, Notice, Platform, TFile } from "obsidian";
+import { PathUtils, getNodeFs, getNodeOs, getElectron } from "../../../utils/nodeHelpers";
 import type PakCLIPlugin from "../../../main";
 import type { VideoPreview, CaptureResult, TranscriptEntry, VideoQuality, VideoFps, ProgressInfo } from "../types";
 import { parseMediaUrl, buildYouTubeUrl } from "../utils/urlParser";
@@ -734,18 +732,116 @@ export class CaptureModal extends Modal {
       progress: 0,
       statusText: "Downloading clip…",
     });
-    const tempDir = path.join(os.tmpdir(), `ytec_${Date.now()}`);
+
+    const fs = getNodeFs();
+    const os = getNodeOs();
+    const tempDir = PathUtils.join(os ? os.tmpdir() : "/tmp", `ytec_${Date.now()}`);
 
     try {
+      const targetUrl =
+        p.original_url ||
+        (p.platform === "instagram" ? this.urlValue : buildYouTubeUrl(p.video_id));
+
+      const { baseName, formatExt } = buildMediaBaseName(
+        p.title,
+        p.start,
+        p.end,
+        p.quality
+      );
+      const outputFolder = this.plugin.settings.ytCaptureOutputFolder || "YT Captures";
+
+      const mp4Name = `${baseName}.${formatExt}`;
+      const thumbName = `${baseName}_thumb.jpg`;
+      const noteName = `${baseName}.md`;
+      const zipName = `${baseName}.zip`;
+
+      const activePresetId = this.plugin.settings.activePresetId || "yt_evidence_standard";
+      const presetsList = this.plugin.settings.presets || [];
+      let activePreset = presetsList.find((pr) => pr.id === activePresetId) || presetsList[0];
+      if (activePreset) {
+        activePreset.lastUsedAt = Date.now();
+        await this.plugin.saveSettings();
+      }
+
+      // Ensure output folder exists in vault
+      try {
+        await this.app.vault.createFolder(outputFolder);
+      } catch {
+        // Folder exists
+      }
+
+      // On Mobile platforms without yt-dlp binary execution
+      if (!Platform.isDesktop || !fs) {
+        this.setStatus("Downloading thumbnail & creating note…");
+        this.addLog("Mobile Mode: Downloading thumbnail and building markdown note…");
+
+        // Download thumbnail via standard Obsidian requestUrl
+        try {
+          const thumbArrayBuffer = await downloadThumbnail(p.thumbnail);
+          const thumbVaultPath = `${outputFolder}/${thumbName}`;
+          const existingThumb = this.app.vault.getAbstractFileByPath(thumbVaultPath);
+          if (existingThumb instanceof TFile) {
+            await this.app.vault.modifyBinary(existingThumb, thumbArrayBuffer);
+          } else {
+            await this.app.vault.createBinary(thumbVaultPath, thumbArrayBuffer);
+          }
+          this.addLog(`✓ Saved thumbnail: ${thumbVaultPath}`);
+        } catch {
+          this.addLog("⚠ Could not fetch thumbnail");
+        }
+
+        const capturedAt = new Date().toISOString();
+        const notesContent = buildNotesMarkdown({
+          title: p.title,
+          url: targetUrl,
+          videoId: p.video_id,
+          channel: p.channel,
+          channelUrl: p.channel_url,
+          uploadDate: p.upload_date,
+          videoDuration: p.video_duration,
+          capturedAt,
+          clipStart: p.start,
+          clipEnd: p.end,
+          clipDuration: p.duration,
+          viewCount: p.view_count,
+          tags: p.tags,
+          clipTranscript: "_Video downloading is supported on Desktop Obsidian. Embedded YouTube player ready below._",
+          description: p.description,
+          fullTranscript: "_No transcript downloaded._",
+          mediaEmbeds: {
+            mp4Filename: mp4Name,
+            thumbFilename: thumbName,
+          },
+          frontmatterKeys: activePreset?.frontmatterKeys,
+        });
+
+        const noteVaultPath = `${outputFolder}/${noteName}`;
+        const existingNote = this.app.vault.getAbstractFileByPath(noteVaultPath);
+        if (existingNote instanceof TFile) {
+          await this.app.vault.modify(existingNote, notesContent);
+        } else {
+          await this.app.vault.create(noteVaultPath, notesContent);
+        }
+        this.addLog(`✓ Saved note: ${noteVaultPath}`);
+
+        this.result = { filename: noteName, vaultPath: noteVaultPath, fsDirPath: outputFolder };
+
+        if (this.currentTaskId) {
+          this.bgManager.completeTask(this.currentTaskId, p.title, noteVaultPath);
+        }
+
+        this.step = "done";
+        this.render();
+        return;
+      }
+
+      // Desktop flow with full yt-dlp binary downloader
       fs.mkdirSync(tempDir, { recursive: true });
 
       this.setStatus("Downloading clip…");
       this.addLog("Starting yt-dlp clip download…");
 
-      const targetUrl =
-        p.original_url ||
-        (p.platform === "instagram" ? this.urlValue : buildYouTubeUrl(p.video_id));
-      const clipOutPath = path.join(tempDir, "clip.mp4");
+      const clipOutPath = PathUtils.join(tempDir, "clip.mp4");
 
       await downloadClip(
         targetUrl,
@@ -813,8 +909,8 @@ export class CaptureModal extends Modal {
       if (!fs.existsSync(clipOutPath)) {
         const candidates = fs
           .readdirSync(tempDir)
-          .filter((f) => !f.endsWith(".json3") && !f.endsWith(".jpg") && !f.endsWith(".json"))
-          .map((f) => path.join(tempDir, f));
+          .filter((f: string) => !f.endsWith(".json3") && !f.endsWith(".jpg") && !f.endsWith(".json"))
+          .map((f: string) => PathUtils.join(tempDir, f));
         if (candidates.length === 0)
           throw new Error(
             "Clip file not found after yt-dlp run. Check yt-dlp and ffmpeg are installed correctly."
@@ -825,7 +921,7 @@ export class CaptureModal extends Modal {
 
       this.setStatus("Downloading thumbnail…");
       const thumbArrayBuffer = await downloadThumbnail(p.thumbnail);
-      const thumbBuffer = Buffer.from(thumbArrayBuffer);
+      const thumbBuffer = typeof Buffer !== "undefined" ? Buffer.from(thumbArrayBuffer) : new Uint8Array(thumbArrayBuffer);
       this.addLog("✓ Thumbnail downloaded");
 
       this.setStatus("Fetching transcript…");
@@ -867,27 +963,6 @@ export class CaptureModal extends Modal {
           ? formatTranscriptForMarkdown(transcriptEntries, true)
           : "_No transcript available._";
 
-      const { baseName, formatExt } = buildMediaBaseName(
-        p.title,
-        p.start,
-        p.end,
-        p.quality
-      );
-      const outputFolder = this.plugin.settings.ytCaptureOutputFolder || "YT Captures";
-
-      const mp4Name = `${baseName}.${formatExt}`;
-      const thumbName = `${baseName}_thumb.jpg`;
-      const noteName = `${baseName}.md`;
-      const zipName = `${baseName}.zip`;
-
-      const activePresetId = this.plugin.settings.activePresetId || "yt_evidence_standard";
-      const presetsList = this.plugin.settings.presets || [];
-      let activePreset = presetsList.find((pr) => pr.id === activePresetId) || presetsList[0];
-      if (activePreset) {
-        activePreset.lastUsedAt = Date.now();
-        await this.plugin.saveSettings();
-      }
-
       const notesContent = buildNotesMarkdown({
         title: p.title,
         url: targetUrl,
@@ -913,12 +988,6 @@ export class CaptureModal extends Modal {
       });
 
       this.setStatus("Saving to vault…");
-
-      try {
-        await this.app.vault.createFolder(outputFolder);
-      } catch {
-        // Folder exists
-      }
 
       // 1. Save .mp4 video file directly to vault
       const mp4VaultPath = `${outputFolder}/${mp4Name}`;
@@ -984,7 +1053,7 @@ export class CaptureModal extends Modal {
       }
 
       const adapter = this.app.vault.adapter as FileSystemAdapter;
-      const fsDirPath = path.join(adapter.getBasePath(), outputFolder);
+      const fsDirPath = adapter?.getBasePath ? PathUtils.join(adapter.getBasePath(), outputFolder) : outputFolder;
 
       this.result = { filename: mp4Name, vaultPath: noteVaultPath, fsDirPath };
 
@@ -1005,10 +1074,12 @@ export class CaptureModal extends Modal {
       this.step = "input";
       this.render();
     } finally {
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } catch {
-        /* ignore */
+      if (fs) {
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch {
+          /* ignore */
+        }
       }
     }
   }
@@ -1124,14 +1195,14 @@ export class CaptureModal extends Modal {
 
     const actions = contentEl.createDiv({ cls: "ytec-actions ytec-actions-col" });
 
-    if (this.result) {
+    if (this.result && Platform.isDesktop) {
       const revealBtn = actions.createEl("button", {
         cls: "ytec-btn ytec-btn-secondary",
         text: "📂 Show in File Explorer",
       });
       revealBtn.addEventListener("click", () => {
         try {
-          const electronModule = typeof window !== "undefined" && (window as any).require ? (window as any).require("electron") : null;
+          const electronModule = getElectron();
           if (electronModule?.shell?.openPath) {
             electronModule.shell.openPath(this.result!.fsDirPath);
           } else {

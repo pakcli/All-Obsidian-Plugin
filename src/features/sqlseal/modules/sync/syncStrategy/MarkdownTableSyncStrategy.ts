@@ -2,7 +2,7 @@ import { ISyncStrategy } from "./abstractSyncStrategy";
 import type { App } from "obsidian";
 import { Component, MarkdownRenderer, normalizePath } from "obsidian";
 import { ParserTableDefinition } from "./types";
-import { dirname, join } from "path";
+import { PathUtils } from "../../../../../utils/nodeHelpers";
 import { FilepathHasher } from "../../../utils/hasher";
 import { sanitise } from "../../../utils/sanitiseColumn";
 
@@ -24,8 +24,8 @@ export class MarkdownTableSyncStrategy extends ISyncStrategy {
             let filePath = args[0].substring(FILE_PREFIX.length);
             
             if (filePath.startsWith('./') || filePath.startsWith('../')) {
-                const currentDir = dirname(def.sourceFile);
-                filePath = normalizePath(join(currentDir, filePath));
+                const currentDir = PathUtils.dirname(def.sourceFile);
+                filePath = normalizePath(PathUtils.join(currentDir, filePath));
             }
             
             const hasExtension = filePath.lastIndexOf('.') > filePath.lastIndexOf('/');

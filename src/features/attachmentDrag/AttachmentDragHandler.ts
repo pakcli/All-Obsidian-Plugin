@@ -5,24 +5,34 @@
  * directly draggable as native file objects into OS-level drop targets:
  *   - AI web chats (ChatGPT, Claude, Gemini, ...)
  *   - Browser upload dropzones (Gmail, Google Drive, Notion, Figma, ...)
- *   - Desktop chat & productivity apps (Slack, Discord, VS Code, ...)
- *   - OS file managers (File Explorer, Desktop, Finder)
+ *   - iPadOS split view & multitasking targets
+ *   - macOS desktop apps (Slack, Discord, VS Code, Finder)
+ *   - OS file managers (Finder on macOS, File Explorer on Windows)
  *
- * Also adds right-click context menu "Copy Image for Claude / ChatGPT"
- * for instant 1-click clipboard paste.
+ * Also adds context menu / long-press "Copy Image for Claude / ChatGPT"
+ * for instant 1-click clipboard paste on macOS, iPadOS, iOS, Windows, and Linux.
  */
-import { App, Menu, Notice, Plugin, TFile } from 'obsidian';
-import * as path from 'path';
-import * as fs from 'fs';
-import { resolveAttachment } from './resolver';
+import { App, Menu, Notice, Platform, Plugin, TFile } from 'obsidian';
+import { PathUtils, getNodeFs } from '../../utils/nodeHelpers';
+import { resolveAttachment, ResolvedAttachment } from './resolver';
 
 /** Copy image binary or file to system clipboard for instant paste into Claude / ChatGPT. */
-export async function copyAttachmentToClipboard(absPath: string): Promise<boolean> {
+export async function copyAttachmentToClipboard(app: App, resolved: ResolvedAttachment): Promise<boolean> {
+    const { file, absPath } = resolved;
+    const fileName = file?.name || PathUtils.basename(absPath);
+    const ext = PathUtils.extname(fileName).toLowerCase().slice(1);
+    const mime = (ext === 'png' ? 'image/png' : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : ext === 'svg' ? 'image/svg+xml' : 'image/png');
+
+    // 1. Electron native image (macOS Desktop & Windows Desktop)
     try {
-        const win = window as unknown as { require?: (m: string) => { clipboard?: { writeImage: (img: unknown) => void; write: (data: unknown) => void }; nativeImage?: { createFromPath: (p: string) => { isEmpty: () => boolean } } } };
+        const win = window as unknown as {
+            require?: (m: string) => {
+                clipboard?: { writeImage: (img: unknown) => void; write: (data: unknown) => void };
+                nativeImage?: { createFromPath: (p: string) => { isEmpty: () => boolean } };
+            };
+        };
         const electron = win.require ? win.require('electron') : null;
-        if (electron?.clipboard && electron?.nativeImage) {
-            const ext = path.extname(absPath).toLowerCase().slice(1);
+        if (electron?.clipboard && electron?.nativeImage && absPath) {
             if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext)) {
                 const img = electron.nativeImage.createFromPath(absPath);
                 if (img && !img.isEmpty()) {
@@ -35,17 +45,38 @@ export async function copyAttachmentToClipboard(absPath: string): Promise<boolea
         // Ignore electron clipboard failure
     }
 
+    // 2. Obsidian Vault binary read (iPadOS / iOS / macOS Safari / Standard Web Clipboard API)
     try {
-        const ext = path.extname(absPath).toLowerCase().slice(1);
-        const mime = (ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png');
-        const buffer = await fs.promises.readFile(absPath);
-        const blob = new Blob([buffer], { type: mime });
-        await navigator.clipboard.write([
-            new ClipboardItem({ [mime]: blob })
-        ]);
-        return true;
+        let arrayBuffer: ArrayBuffer | null = null;
+        if (file instanceof TFile) {
+            arrayBuffer = await app.vault.readBinary(file);
+        } else if (absPath) {
+            const fs = getNodeFs();
+            if (fs?.promises?.readFile) {
+                const buffer = await fs.promises.readFile(absPath);
+                arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+            }
+        }
+
+        if (arrayBuffer && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+            const blob = new Blob([arrayBuffer], { type: mime });
+            await navigator.clipboard.write([
+                new ClipboardItem({ [mime]: blob })
+            ]);
+            return true;
+        }
+    } catch (err) {
+        console.debug('[Asset Draggable] Vault readBinary clipboard copy error:', err);
+    }
+
+    // 3. Plain text / URI fallback
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(file?.path || absPath || fileName);
+            return true;
+        }
     } catch {
-        // Ignore fallback clipboard failure
+        // Ignore fallback failure
     }
 
     return false;
@@ -60,14 +91,30 @@ export class AttachmentDragHandler {
         this.vaultRoot = vaultRoot;
     }
 
-    /** Register event listeners for pointer activation, native drag payload, and context menu. */
+    /** Register event listeners for pointer activation, touch activation, native drag payload, and context menu. */
     register(plugin: Plugin): void {
-        // 1. Mark attachment widgets in Live Preview & Reading mode as draggable on mousedown
+        // 1. Mark attachment widgets in Live Preview & Reading mode as draggable on mousedown & pointerdown
         plugin.registerDomEvent(
             document,
             'mousedown',
-            (e: MouseEvent) => this.onMouseDown(e),
+            (e: MouseEvent) => this.onActivation(e.target),
             { capture: true }
+        );
+
+        plugin.registerDomEvent(
+            document,
+            'pointerdown',
+            (e: PointerEvent) => this.onActivation(e.target),
+            { capture: true }
+        );
+
+        plugin.registerDomEvent(
+            document,
+            'touchstart',
+            (e: TouchEvent) => {
+                if (e.target) this.onActivation(e.target);
+            },
+            { capture: true, passive: true }
         );
 
         // 2. Intercept dragstart and attach native file transfer payload & Electron startDrag
@@ -78,7 +125,7 @@ export class AttachmentDragHandler {
             { capture: true }
         );
 
-        // 3. Right-click context menu on images and attachments for instant clipboard copy to Claude / ChatGPT
+        // 3. Right-click / Long-press context menu on images and attachments for instant clipboard copy to Claude / ChatGPT
         plugin.registerDomEvent(
             document,
             'contextmenu',
@@ -87,9 +134,8 @@ export class AttachmentDragHandler {
         );
     }
 
-    private onMouseDown(e: MouseEvent): void {
-        const target = e.target instanceof HTMLElement ? e.target : null;
-        if (!target) return;
+    private onActivation(target: EventTarget | null): void {
+        if (!(target instanceof HTMLElement)) return;
 
         const attachmentEl = target.closest<HTMLElement>(
             '.internal-embed, .cm-embed-block, img, video, audio, a.internal-link'
@@ -117,11 +163,11 @@ export class AttachmentDragHandler {
         if (!resolved) return;
 
         const { file, absPath } = resolved;
-        const fileName = path.basename(absPath);
-        const normalizedPath = absPath.replace(/\\/g, '/');
+        const fileName = file?.name || PathUtils.basename(absPath);
+        const normalizedPath = (absPath || file?.path || '').replace(/\\/g, '/');
         const fileUrl = normalizedPath.startsWith('/') ? `file://${normalizedPath}` : `file:///${normalizedPath}`;
 
-        // 1. Use Obsidian's internal dragManager
+        // 1. Use Obsidian's internal dragManager (Works across iPadOS split-screen & macOS desktop)
         const dragManager = (this.app as unknown as {
             dragManager?: {
                 dragFile?: (e: DragEvent, f: TFile) => unknown;
@@ -148,60 +194,62 @@ export class AttachmentDragHandler {
             }
         }
 
-        // 2. Electron native webContents.startDrag (Hands off OS-level file handle to Chrome / Claude / ChatGPT)
-        try {
-            const win = window as unknown as {
-                require?: (m: string) => {
-                    remote?: {
-                        getCurrentWebContents?: () => { startDrag: (opts: { file?: string; files?: string[]; icon: unknown }) => void };
-                        getCurrentWindow?: () => { webContents?: { startDrag: (opts: { file?: string; files?: string[]; icon: unknown }) => void } };
-                    };
-                    nativeImage?: {
-                        createFromPath: (p: string) => { isEmpty: () => boolean };
-                        createFromDataURL: (u: string) => unknown;
+        // 2. Electron native webContents.startDrag (Hands off OS-level file handle to macOS Finder / Claude / ChatGPT)
+        if (Platform.isDesktop) {
+            try {
+                const win = window as unknown as {
+                    require?: (m: string) => {
+                        remote?: {
+                            getCurrentWebContents?: () => { startDrag: (opts: { file?: string; files?: string[]; icon: unknown }) => void };
+                            getCurrentWindow?: () => { webContents?: { startDrag: (opts: { file?: string; files?: string[]; icon: unknown }) => void } };
+                        };
+                        nativeImage?: {
+                            createFromPath: (p: string) => { isEmpty: () => boolean };
+                            createFromDataURL: (u: string) => unknown;
+                        };
                     };
                 };
-            };
 
-            const electron = win.require ? win.require('electron') : null;
-            const remote = win.require
-                ? ((win.require('@electron/remote') as typeof electron.remote) || electron?.remote)
-                : electron?.remote;
+                const electron = win.require ? win.require('electron') : null;
+                const remote = win.require
+                    ? ((win.require('@electron/remote') as typeof electron.remote) || electron?.remote)
+                    : electron?.remote;
 
-            const webContents = remote?.getCurrentWebContents?.() || remote?.getCurrentWindow?.()?.webContents;
+                const webContents = remote?.getCurrentWebContents?.() || remote?.getCurrentWindow?.()?.webContents;
 
-            let icon: unknown = '';
-            if (electron?.nativeImage) {
-                try {
-                    const img = electron.nativeImage.createFromPath(absPath);
-                    if (img && !img.isEmpty()) {
-                        icon = img;
-                    } else {
-                        const transparentPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-                        icon = electron.nativeImage.createFromDataURL(transparentPng);
+                let icon: unknown = '';
+                if (electron?.nativeImage && absPath) {
+                    try {
+                        const img = electron.nativeImage.createFromPath(absPath);
+                        if (img && !img.isEmpty()) {
+                            icon = img;
+                        } else {
+                            const transparentPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                            icon = electron.nativeImage.createFromDataURL(transparentPng);
+                        }
+                    } catch {
+                        // Ignore nativeImage creation failure
                     }
-                } catch {
-                    // Ignore nativeImage creation failure
                 }
-            }
 
-            if (webContents && typeof webContents.startDrag === 'function') {
-                webContents.startDrag({
-                    file: absPath,
-                    files: [absPath],
-                    icon: icon
-                });
+                if (webContents && typeof webContents.startDrag === 'function' && absPath) {
+                    webContents.startDrag({
+                        file: absPath,
+                        files: [absPath],
+                        icon: icon
+                    });
+                }
+            } catch (err) {
+                console.debug('[Asset Draggable] Electron startDrag error:', err);
             }
-        } catch (err) {
-            console.debug('[Asset Draggable] Electron startDrag error:', err);
         }
 
-        // 3. Set comprehensive Chromium & Web dataTransfer payloads (for Claude, ChatGPT, Google Drive, Gmail, etc.)
+        // 3. Set comprehensive Web dataTransfer payloads (for iPadOS Safari, Claude, ChatGPT, Google Drive, Gmail, etc.)
         if (e.dataTransfer) {
             e.dataTransfer.effectAllowed = 'all';
 
             // Specific MIME mapping for image/media uploads
-            const ext = path.extname(fileName).toLowerCase().slice(1);
+            const ext = PathUtils.extname(fileName).toLowerCase().slice(1);
             const mimeMap: Record<string, string> = {
                 png: 'image/png',
                 jpg: 'image/jpeg',
@@ -217,14 +265,14 @@ export class AttachmentDragHandler {
             };
             const mime = mimeMap[ext] || 'application/octet-stream';
 
-            // DownloadURL format for Windows Explorer, Finder, and Chromium browser drops (Claude/ChatGPT/Drive)
+            // DownloadURL format for macOS Finder and Chromium browser drops (Claude/ChatGPT/Drive)
             try {
                 e.dataTransfer.setData('DownloadURL', `${mime}:${fileName}:${fileUrl}`);
             } catch {
                 // Ignore dataTransfer failure
             }
 
-            // Standard URI, plain text, and HTML representations
+            // Standard URI, plain text, and HTML representations for iPadOS and macOS
             try {
                 e.dataTransfer.setData('text/uri-list', fileUrl);
                 e.dataTransfer.setData('text/plain', fileUrl);
@@ -239,15 +287,15 @@ export class AttachmentDragHandler {
         const target = e.target as HTMLElement | null;
         if (!target) return;
 
-        // Only show custom context menu if right-clicking an actual image or attachment embed
+        // Only show custom context menu if right-clicking or long-pressing an image or attachment embed
         const isEmbed = target.closest('.internal-embed, img, video, audio');
         if (!isEmbed) return;
 
         const resolved = resolveAttachment(target, this.app, this.vaultRoot);
         if (!resolved) return;
 
-        const { absPath } = resolved;
-        const fileName = path.basename(absPath);
+        const { file, absPath } = resolved;
+        const fileName = file?.name || PathUtils.basename(absPath);
 
         const menu = new Menu();
         menu.addItem((item) =>
@@ -255,9 +303,9 @@ export class AttachmentDragHandler {
                 .setTitle(`Copy Image for Claude / ChatGPT (${fileName})`)
                 .setIcon('copy')
                 .onClick(async () => {
-                    const success = await copyAttachmentToClipboard(absPath);
+                    const success = await copyAttachmentToClipboard(this.app, resolved);
                     if (success) {
-                        new Notice(`Copied "${fileName}"! Press Ctrl+V in Claude or ChatGPT to paste.`);
+                        new Notice(`Copied "${fileName}"! Paste in Claude, ChatGPT, or external apps.`);
                     } else {
                         new Notice(`Failed to copy "${fileName}" to clipboard.`);
                     }
@@ -266,13 +314,37 @@ export class AttachmentDragHandler {
 
         menu.addItem((item) =>
             item
-                .setTitle('Copy File Path')
-                .setIcon('link')
+                .setTitle('Copy File Name')
+                .setIcon('file-text')
                 .onClick(() => {
-                    navigator.clipboard.writeText(absPath);
-                    new Notice(`Copied path: ${absPath}`);
+                    navigator.clipboard.writeText(fileName);
+                    new Notice(`Copied name: ${fileName}`);
                 })
         );
+
+        if (file?.path) {
+            menu.addItem((item) =>
+                item
+                    .setTitle('Copy Vault Path')
+                    .setIcon('folder')
+                    .onClick(() => {
+                        navigator.clipboard.writeText(file.path);
+                        new Notice(`Copied vault path: ${file.path}`);
+                    })
+            );
+        }
+
+        if (Platform.isDesktop && absPath) {
+            menu.addItem((item) =>
+                item
+                    .setTitle('Copy Full Disk Path')
+                    .setIcon('link')
+                    .onClick(() => {
+                        navigator.clipboard.writeText(absPath);
+                        new Notice(`Copied disk path: ${absPath}`);
+                    })
+            );
+        }
 
         menu.showAtMouseEvent(e);
     }

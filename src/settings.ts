@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, ButtonComponent, Notice, normalizePath } from 'obsidian';
+import { App, Platform, PluginSettingTab, Setting, ButtonComponent, Notice, normalizePath } from 'obsidian';
 import { SymlinkManagerSettings, SymlinkManagerSettingTab, DEFAULT_SYMLINK_SETTINGS } from './features/symlink/settings';
 import { AssetRouterSettings, FolderRule, TitleOverrideOption } from './features/tree/types';
 import { TablitePluginData as SQLSealSettings, DEFAULT_PLUGIN_DATA as DEFAULT_SQLSEAL_SETTINGS } from './features/sqlseal/types';
@@ -89,9 +89,9 @@ const ALL_SUITE_TABS: SuiteTabInfo[] = [
     { id: 'leaflet',       label: 'Leaflet Map',       weight: 4 },
     { id: 'docmost',       label: 'Docmost Sync',      weight: 3 },
     { id: 'ytcapture',     label: 'YT Extension',      weight: 3 },
-    { id: 'foldersync',    label: 'Codeblock Sync',    weight: 3 },
+    { id: 'foldersync',    label: Platform.isDesktop ? 'Codeblock Sync' : 'Codeblock Sync (Desktop)',    weight: 3 },
     { id: 'router',        label: 'Asset Router',      weight: 3 },
-    { id: 'symlink',       label: 'Symlink Manager',   weight: 2 },
+    { id: 'symlink',       label: Platform.isDesktop ? 'Symlink Manager' : 'Symlink Manager (Desktop)',   weight: 2 },
     { id: 'codeblock',     label: 'Codeblock Mode',    weight: 1 },
     { id: 'datepicker',    label: 'Date Picker',       weight: 1 },
     { id: 'assetdraggable', label: 'Asset Draggable',  weight: 1 },

@@ -1,16 +1,19 @@
 /** JSZip builder */
 import JSZip from "jszip";
-import * as fs from "fs";
+import { getNodeFs } from "../../../utils/nodeHelpers";
 
 export async function buildZip(opts: {
   clipPath: string;
-  thumbData: Buffer;
+  thumbData: any;
   notesContent: string;
-}): Promise<Buffer> {
+}): Promise<any> {
   const zip = new JSZip();
-  const clipData = fs.readFileSync(opts.clipPath);
-  zip.file("clip.mp4", clipData);
+  const fs = getNodeFs();
+  if (fs) {
+    const clipData = fs.readFileSync(opts.clipPath);
+    zip.file("clip.mp4", clipData);
+  }
   zip.file("thumb.jpg", opts.thumbData);
   zip.file("notes.md", opts.notesContent);
-  return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }

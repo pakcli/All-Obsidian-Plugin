@@ -2,9 +2,8 @@
  * Direct HTTP Downloader for yt-dlp.exe and binary setup fallback.
  * Downloads binaries directly into plugin directory if Winget or PATH fails.
  */
-import { FileSystemAdapter, requestUrl } from "obsidian";
-import * as fs from "fs";
-import * as path from "path";
+import { FileSystemAdapter, Platform, requestUrl } from "obsidian";
+import { PathUtils, getNodeFs } from "../../../utils/nodeHelpers";
 import type PakCLIPlugin from "../../../main";
 import { runCommand, ensureWinGetInPath } from "./process";
 
@@ -16,16 +15,17 @@ export interface DownloadProgress {
  * Get plugin bin folder: <Vault>/.obsidian/plugins/master/bin
  */
 export function getPluginBinDir(plugin: PakCLIPlugin): string {
+  const fs = getNodeFs();
   const adapter = plugin.app.vault.adapter;
   let pluginDir = "";
   if (adapter instanceof FileSystemAdapter) {
     const configDir = plugin.app.vault.configDir ?? ".obsidian";
-    pluginDir = path.join(adapter.getBasePath(), plugin.manifest.dir || `${configDir}/plugins/${plugin.manifest.id || "master"}`);
+    pluginDir = PathUtils.join(adapter.getBasePath(), plugin.manifest.dir || `${configDir}/plugins/${plugin.manifest.id || "master"}`);
   } else {
-    pluginDir = path.join(process.cwd(), "bin");
+    pluginDir = typeof process !== "undefined" ? PathUtils.join(process.cwd(), "bin") : "bin";
   }
-  const binDir = path.join(pluginDir, "bin");
-  if (!fs.existsSync(binDir)) {
+  const binDir = PathUtils.join(pluginDir, "bin");
+  if (fs && !fs.existsSync(binDir)) {
     fs.mkdirSync(binDir, { recursive: true });
   }
   return binDir;
@@ -38,12 +38,19 @@ export async function downloadYtDlpDirect(
   plugin: PakCLIPlugin,
   onProgress?: DownloadProgress
 ): Promise<string> {
+  if (!Platform.isDesktop) {
+    throw new Error("Direct binary download is only supported on desktop platforms.");
+  }
+  const fs = getNodeFs();
+  if (!fs) throw new Error("Node fs is not available.");
+
   const binDir = getPluginBinDir(plugin);
-  const targetExe = path.join(binDir, process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp");
+  const isWin = typeof process !== "undefined" && process.platform === "win32";
+  const targetExe = PathUtils.join(binDir, isWin ? "yt-dlp.exe" : "yt-dlp");
 
   onProgress?.("Downloading latest yt-dlp from GitHub releases…");
 
-  const downloadUrl = process.platform === "win32"
+  const downloadUrl = isWin
     ? "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
     : "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp";
 
@@ -56,14 +63,14 @@ export async function downloadYtDlpDirect(
     throw new Error(`Failed to download yt-dlp (HTTP ${res.status})`);
   }
 
-  const buffer = Buffer.from(res.arrayBuffer);
+  const buffer = typeof Buffer !== "undefined" ? Buffer.from(res.arrayBuffer) : new Uint8Array(res.arrayBuffer);
   fs.writeFileSync(targetExe, buffer);
 
-  if (process.platform !== "win32") {
+  if (!isWin) {
     try {
       fs.chmodSync(targetExe, 0o755);
     } catch {
-      // Ignore chmod errors on Windows
+      // Ignore chmod errors
     }
   }
 
@@ -83,6 +90,7 @@ export async function ensureYtDlpAvailable(
   plugin: PakCLIPlugin,
   onProgress?: DownloadProgress
 ): Promise<boolean> {
+  if (!Platform.isDesktop) return false;
   ensureWinGetInPath();
 
   // 1. Try currently configured or resolved command
@@ -125,12 +133,19 @@ export async function downloadFfmpegDirect(
   plugin: PakCLIPlugin,
   onProgress?: DownloadProgress
 ): Promise<string> {
+  if (!Platform.isDesktop) {
+    throw new Error("Direct ffmpeg download is only supported on desktop platforms.");
+  }
+  const fs = getNodeFs();
+  if (!fs) throw new Error("Node fs is not available.");
+
   const binDir = getPluginBinDir(plugin);
-  const targetExe = path.join(binDir, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+  const isWin = typeof process !== "undefined" && process.platform === "win32";
+  const targetExe = PathUtils.join(binDir, isWin ? "ffmpeg.exe" : "ffmpeg");
 
   onProgress?.("Downloading ffmpeg binary via PowerShell…");
 
-  if (process.platform === "win32") {
+  if (isWin) {
     const escapedBinDir = binDir.replace(/\\/g, "\\\\");
     const script = `$tempZip = "$env:TEMP\\ffmpeg_temp.zip"; Invoke-WebRequest -Uri "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip" -OutFile $tempZip -UseBasicParsing; Expand-Archive -Path $tempZip -DestinationPath "${escapedBinDir}" -Force; Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue`;
 
@@ -160,6 +175,7 @@ export async function ensureFfmpegAvailable(
   plugin: PakCLIPlugin,
   onProgress?: DownloadProgress
 ): Promise<boolean> {
+  if (!Platform.isDesktop) return false;
   ensureWinGetInPath();
 
   try {

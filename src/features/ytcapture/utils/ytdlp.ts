@@ -1,9 +1,8 @@
 /**
  * yt-dlp wrapper functions for PakCLI Suite.
  */
-import * as path from "path";
-import * as fs from "fs";
 import { requestUrl } from "obsidian";
+import { PathUtils, getNodeFs } from "../../../utils/nodeHelpers";
 import type { YTCaptureSettings, YtDlpInfo, VideoQuality, VideoFps } from "../types";
 import { runCommand, resolveBinary } from "./process";
 
@@ -117,12 +116,13 @@ export async function downloadSubtitles(
       ...ffmpegArgs,
       "--skip-download", "--write-subs", "--write-auto-subs",
       "--sub-langs", "en.*,en", "--sub-format", "json3",
-      "--no-playlist", "--no-colors", "-o", path.join(outputDir, "%(id)s.%(ext)s"),
+      "--no-playlist", "--no-colors", "-o", PathUtils.join(outputDir, "%(id)s.%(ext)s"),
       url,
     ]
   ).catch(() => {/* silently ignore */});
 
-  const hasSubFile = fs.readdirSync(outputDir).some((f) => f.endsWith(".json3"));
+  const fs = getNodeFs();
+  const hasSubFile = fs ? fs.readdirSync(outputDir).some((f: string) => f.endsWith(".json3")) : false;
   if (!hasSubFile) {
     await runCommand(
       settings.ytDlpPath,
@@ -130,7 +130,7 @@ export async function downloadSubtitles(
         ...ffmpegArgs,
         "--skip-download", "--write-subs", "--write-auto-subs",
         "--sub-langs", "all", "--sub-format", "json3",
-        "--no-playlist", "--no-colors", "-o", path.join(outputDir, "%(id)s.%(ext)s"),
+        "--no-playlist", "--no-colors", "-o", PathUtils.join(outputDir, "%(id)s.%(ext)s"),
         url,
       ]
     ).catch(() => {/* ignore */});
@@ -143,6 +143,8 @@ export async function downloadThumbnail(thumbnailUrl: string): Promise<ArrayBuff
 }
 
 export function findSubtitleFile(dir: string): string | null {
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json3"));
-  return files.length > 0 ? path.join(dir, files[0]) : null;
+  const fs = getNodeFs();
+  if (!fs) return null;
+  const files = fs.readdirSync(dir).filter((f: string) => f.endsWith(".json3"));
+  return files.length > 0 ? PathUtils.join(dir, files[0]) : null;
 }

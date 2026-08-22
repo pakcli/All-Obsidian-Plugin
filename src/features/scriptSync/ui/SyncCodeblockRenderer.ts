@@ -6,7 +6,7 @@
  *   - Section 2: Formatted Codeblock with Copy Button & Scaler Integration
  */
 import { FileSystemAdapter, MarkdownRenderChild, Notice, TFile } from 'obsidian';
-import * as path from 'path';
+import { PathUtils } from '../../../utils/nodeHelpers';
 import { SyncManager } from '../SyncManager';
 import { renderDiffViewer } from '../diffViewer';
 import { renderAsciiSvg } from '../../codeblock/scaler';
@@ -74,7 +74,7 @@ export class SyncCodeblockRenderer extends MarkdownRenderChild {
                 ? this.plugin.app.vault.adapter.getBasePath()
                 : '';
             const displayPath = (vaultRoot && syncResult.cliPath.startsWith(vaultRoot))
-                ? path.relative(vaultRoot, syncResult.cliPath).replace(/\\/g, '/')
+                ? PathUtils.relative(vaultRoot, syncResult.cliPath).replace(/\\/g, '/')
                 : syncResult.cliPath;
 
             const targetPathEl = leftGroup.createSpan({ 

@@ -3,11 +3,11 @@
 [![GitHub release](https://img.shields.io/github/v/release/pakcli/All-Obsidian-Plugin?style=flat-square&color=blue)](https://github.com/pakcli/All-Obsidian-Plugin/releases)
 [![Obsidian Minimum Version](https://img.shields.io/badge/Obsidian-1.8.0+-purple.svg?style=flat-square)](https://obsidian.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-[![Platform: Desktop Only](https://img.shields.io/badge/Platform-Desktop_Only-orange.svg?style=flat-square)](https://obsidian.md)
+[![Platform: Desktop & Mobile](https://img.shields.io/badge/Platform-Desktop_%26_Mobile_(Android_%7C_iOS_%7C_macOS_%7C_Windows_%7C_Linux)-success.svg?style=flat-square)](https://obsidian.md)
 
-**PakCLI Suite** is the all-in-one modular power plugin for [Obsidian](https://obsidian.md). 
+**PakCLI Suite** is the all-in-one modular power plugin for [Obsidian](https://obsidian.md) across **Desktop & Mobile** (Android, iOS / iPhone, macOS / MacBook, Windows, Linux). 
 
-It supercharges your note-taking environment into an integrated development, data analysis, and media management workspace on your local computer. Whether you are querying databases with SQL, editing CSV/TSV spreadsheets with virtualized grids, two-way syncing script files, capturing YouTube evidence clips, generating directory tree diagrams, or dragging attachments directly into ChatGPT & Claude, PakCLI Suite provides high-performance native tools without relying on cloud services.
+It supercharges your note-taking environment into an integrated development, data analysis, and media management workspace. Whether you are querying databases with SQL, editing CSV/TSV spreadsheets with virtualized grids, viewing Leaflet interactive maps, generating directory tree diagrams, routing vault assets, or managing YouTube notes, PakCLI Suite provides high-performance native tools with zero external cloud dependencies.
 
 ---
 

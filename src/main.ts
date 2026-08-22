@@ -1,4 +1,4 @@
-import { FileSystemAdapter, Menu, Notice, Plugin, TAbstractFile, TFile, TFolder, MarkdownView } from 'obsidian';
+import { FileSystemAdapter, Menu, Notice, Platform, Plugin, TAbstractFile, TFile, TFolder, MarkdownView } from 'obsidian';
 import { BadgeRenderer } from './features/symlink/badges';
 import { SymlinkModal } from './features/symlink/modal';
 import { DatePickerModal } from './features/symlink/datePickerModal';
@@ -74,11 +74,11 @@ export default class PakCLIPlugin extends Plugin {
 		this.applyCodeblockStyle();
 
 		const adapter = this.app.vault.adapter;
-		if (!(adapter instanceof FileSystemAdapter)) {
-			new Notice('PakCLI: this plugin only runs on Obsidian desktop.');
-			return;
+		if (adapter instanceof FileSystemAdapter) {
+			this.vaultRoot = adapter.getBasePath();
+		} else {
+			this.vaultRoot = '';
 		}
-		this.vaultRoot = adapter.getBasePath();
 
 		// =========================================================================
 		// 1. Initialize SQLSeal
@@ -109,14 +109,34 @@ export default class PakCLIPlugin extends Plugin {
 		// =========================================================================
 		// 3. Initialize Symlink Manager & Date Picker
 		// =========================================================================
-		this.badges = new BadgeRenderer(this.app, this.vaultRoot);
+		if (Platform.isDesktop && this.vaultRoot) {
+			this.badges = new BadgeRenderer(this.app, this.vaultRoot);
 
-		this.addCommand({
-			id: 'manage-active-folder',
-			name: 'Manage symlink for active folder',
-			callback: () => this.openModalForVaultPath(''),
-		});
+			this.addCommand({
+				id: 'manage-active-folder',
+				name: 'Manage symlink for active folder',
+				callback: () => this.openModalForVaultPath(''),
+			});
 
+			this.registerEvent(
+				this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
+					if (!(file instanceof TFolder)) return;
+					menu.addItem((item) =>
+						item
+							.setTitle('Symlink: manage this folder')
+							.setIcon('link')
+							.onClick(() => this.openModalForVaultPath(file.path))
+					);
+				})
+			);
+
+			this.app.workspace.onLayoutReady(() => this.applyBadgeSetting());
+
+			this.registerEvent(this.app.vault.on('create', (f) => this.badges?.notify(f)));
+			this.registerEvent(this.app.vault.on('delete', (f) => this.badges?.notify(f)));
+			this.registerEvent(this.app.vault.on('rename', (f) => this.badges?.notify(f)));
+		}
+		
 		this.addCommand({
 			id: 'insert-date-picker',
 			name: 'Insert date from picker',
@@ -297,7 +317,9 @@ export default class PakCLIPlugin extends Plugin {
 			},
 		});
 
-		window.setTimeout(() => runYTCaptureStartupCheck(this.settings), 2000);
+		if (Platform.isDesktop) {
+			window.setTimeout(() => runYTCaptureStartupCheck(this.settings), 2000);
+		}
 
 		// =========================================================================
 		// 7. Register Settings Tab

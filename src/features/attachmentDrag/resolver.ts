@@ -1,6 +1,8 @@
 /**
  * resolver.ts - Resolves a dragged DOM element to a TFile and an absolute filesystem path.
  *
+ * Fully compatible with macOS, iPadOS, iOS, Windows, and Linux.
+ *
  * Supported element types:
  *  - <img>                     Embedded images in Reading mode & Live Preview
  *  - .internal-embed[src]      Embedded widgets (images, PDF, video, audio, etc.)
@@ -8,25 +10,65 @@
  *  - <video> / <audio>         Embedded media players
  */
 import { App, TFile } from 'obsidian';
-import * as path from 'path';
-import * as fs from 'fs';
+import { PathUtils, getNodeFs } from '../../utils/nodeHelpers';
 
 export interface ResolvedAttachment {
     file: TFile | null;
     absPath: string;
 }
 
-/** Decode an Obsidian app:// URL into an absolute OS path. */
-function appUrlToAbsPath(src: string): string | null {
+/** Decode an Obsidian app:// or mobile protocol URL into an absolute OS path or vault file. */
+function appUrlToResolved(src: string, app: App, vaultRoot: string): ResolvedAttachment | null {
     if (!src) return null;
     try {
-        if (src.startsWith('app://')) {
+        if (
+            src.startsWith('app://') ||
+            src.startsWith('capacitor://') ||
+            src.startsWith('http://localhost') ||
+            src.startsWith('obsidian://')
+        ) {
             const url = new URL(src);
-            let absPath = decodeURIComponent(url.pathname);
-            // Windows: /D:/folder/file -> D:/folder/file
-            if (/^\/[A-Za-z]:\//.test(absPath)) absPath = absPath.slice(1);
-            absPath = path.normalize(absPath);
-            if (fs.existsSync(absPath)) return absPath;
+            let decoded = decodeURIComponent(url.pathname);
+            // Windows drive letters: /D:/folder/file -> D:/folder/file
+            if (/^\/[A-Za-z]:\//.test(decoded)) decoded = decoded.slice(1);
+            decoded = PathUtils.normalize(decoded);
+
+            // 1. If decoded path matches vaultRoot on desktop
+            if (vaultRoot && decoded.toLowerCase().startsWith(vaultRoot.toLowerCase())) {
+                const rel = PathUtils.relative(vaultRoot, decoded).replace(/\\/g, '/');
+                const file = app.vault.getAbstractFileByPath(rel);
+                return {
+                    file: file instanceof TFile ? file : null,
+                    absPath: decoded
+                };
+            }
+
+            // 2. Direct vault path match (for iPadOS/iOS/Web)
+            const cleanPath = decoded.replace(/^\/+/, '');
+            const directFile = app.vault.getAbstractFileByPath(cleanPath);
+            if (directFile instanceof TFile) {
+                return {
+                    file: directFile,
+                    absPath: vaultRoot ? PathUtils.join(vaultRoot, directFile.path) : directFile.path
+                };
+            }
+
+            // 3. Search vault files by filename match
+            const filename = PathUtils.basename(decoded);
+            const found = app.vault.getFiles().find((f) => f.name === filename);
+            if (found) {
+                return {
+                    file: found,
+                    absPath: vaultRoot ? PathUtils.join(vaultRoot, found.path) : found.path
+                };
+            }
+
+            const fs = getNodeFs();
+            if (fs && fs.existsSync(decoded)) {
+                return { file: null, absPath: decoded };
+            }
+
+            return { file: null, absPath: decoded };
         }
     } catch {
         // Ignore URL parsing errors
@@ -36,7 +78,7 @@ function appUrlToAbsPath(src: string): string | null {
 
 /**
  * Given an element clicked or dragged, return both the Obsidian TFile (if inside vault)
- * and the absolute filesystem path on disk.
+ * and the filesystem path on disk.
  */
 export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string): ResolvedAttachment | null {
     if (!el) return null;
@@ -49,25 +91,30 @@ export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string):
         const clean = linkText.split('#')[0].split('|')[0].trim();
         if (!clean) return null;
 
+        const fs = getNodeFs();
         const file = app.metadataCache.getFirstLinkpathDest(clean, sourcePath);
         if (file instanceof TFile) {
-            const absPath = path.join(vaultRoot, ...file.path.split('/'));
-            if (fs.existsSync(absPath)) {
+            const absPath = vaultRoot ? PathUtils.join(vaultRoot, ...file.path.split('/')) : file.path;
+            if (!fs || fs.existsSync(absPath)) {
                 return { file, absPath };
             }
+            return { file, absPath };
         }
 
         const directAbstract = app.vault.getAbstractFileByPath(clean);
         if (directAbstract instanceof TFile) {
-            const absPath = path.join(vaultRoot, ...directAbstract.path.split('/'));
-            if (fs.existsSync(absPath)) {
+            const absPath = vaultRoot ? PathUtils.join(vaultRoot, ...directAbstract.path.split('/')) : directAbstract.path;
+            if (!fs || fs.existsSync(absPath)) {
                 return { file: directAbstract, absPath };
             }
+            return { file: directAbstract, absPath };
         }
 
-        const directPath = path.join(vaultRoot, ...clean.split('/'));
-        if (fs.existsSync(directPath)) {
-            return { file: null, absPath: directPath };
+        if (vaultRoot) {
+            const directPath = PathUtils.join(vaultRoot, ...clean.split('/'));
+            if (!fs || fs.existsSync(directPath)) {
+                return { file: null, absPath: directPath };
+            }
         }
 
         return null;
@@ -86,16 +133,9 @@ export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string):
     // 2. <img> element
     const img = el instanceof HTMLImageElement ? el : el.querySelector('img');
     if (img) {
-        const src = img.getAttribute('src') || '';
-        const decoded = appUrlToAbsPath(src);
-        if (decoded) {
-            const rel = path.relative(vaultRoot, decoded).replace(/\\/g, '/');
-            const file = app.vault.getAbstractFileByPath(rel);
-            return {
-                file: file instanceof TFile ? file : null,
-                absPath: decoded
-            };
-        }
+        const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
+        const resolved = appUrlToResolved(src, app, vaultRoot);
+        if (resolved) return resolved;
 
         const alt = img.getAttribute('alt') || '';
         if (alt) {
@@ -110,15 +150,8 @@ export function resolveAttachment(el: HTMLElement, app: App, vaultRoot: string):
         : el.querySelector<HTMLVideoElement | HTMLAudioElement>('video, audio');
     if (media) {
         const src = media.currentSrc || media.getAttribute('src') || '';
-        const decoded = appUrlToAbsPath(src);
-        if (decoded) {
-            const rel = path.relative(vaultRoot, decoded).replace(/\\/g, '/');
-            const file = app.vault.getAbstractFileByPath(rel);
-            return {
-                file: file instanceof TFile ? file : null,
-                absPath: decoded
-            };
-        }
+        const resolved = appUrlToResolved(src, app, vaultRoot);
+        if (resolved) return resolved;
     }
 
     // 4. <a class="internal-link">
@@ -138,5 +171,3 @@ export function resolveAttachmentAbsPath(el: HTMLElement, app: App, vaultRoot: s
     const res = resolveAttachment(el, app, vaultRoot);
     return res ? res.absPath : null;
 }
-
-
