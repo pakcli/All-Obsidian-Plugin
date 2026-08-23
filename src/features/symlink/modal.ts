@@ -10,8 +10,17 @@ import {
 } from 'obsidian';
 import { PathUtils } from '../../utils/nodeHelpers';
 import { detectLink, suggestLinkType } from './detect';
-import { copyAndDisconnect, createLink, removeLink, repointLink } from './ops';
+import {
+	copyAndDisconnect,
+	createLink,
+	removeLink,
+	repointLink,
+	SymlinkConflictError,
+	ConflictResolutionOption,
+} from './ops';
 import { browseFolder } from './dialog';
+import { SymlinkConflictModal } from './conflictModal';
+import { reindexVaultFolder } from './reindex';
 import { applyResponsivePath } from './truncate';
 import type { LinkInfo, LinkType } from './types';
 
@@ -185,10 +194,29 @@ export class SymlinkModal extends Modal {
 					new Notice('Pick a target folder first.');
 					return;
 				}
-				void this.guard(async () => {
-					await createLink(this.info.absPath, target, chosenType);
-					new Notice(`Link created → ${target}`);
-				});
+				const handleCreate = async (resolution?: ConflictResolutionOption) => {
+					void this.guard(async () => {
+						try {
+							await createLink(this.info.absPath, target, chosenType, resolution);
+							new Notice(`Link created → ${target}`);
+						} catch (err) {
+							if (err instanceof SymlinkConflictError) {
+								new SymlinkConflictModal(this.app, {
+									linkPath: err.linkPath,
+									targetPath: err.targetPath,
+									linkItemCount: err.linkItemCount,
+									targetItemCount: err.targetItemCount,
+									onResolve: async (choice) => {
+										await handleCreate(choice);
+									}
+								}).open();
+								return;
+							}
+							throw err;
+						}
+					});
+				};
+				handleCreate();
 			});
 	}
 
@@ -250,6 +278,23 @@ export class SymlinkModal extends Modal {
 				});
 			});
 
+		const rescanCard = this.bodyEl.createDiv({ cls: 'sm-card' });
+		rescanCard.createDiv({ cls: 'sm-card-title', text: '🔄 Re-scan & Index Files' });
+		rescanCard.createDiv({
+			cls: 'sm-card-desc',
+			text: 'Force Obsidian to immediately index and show all external files and subfolders in the File Explorer without reloading the vault.',
+		});
+		new ButtonComponent(rescanCard)
+			.setButtonText('Re-scan now')
+			.setCta()
+			.onClick(async () => {
+				const t0 = performance.now();
+				new Notice('Scanning and indexing linked files…');
+				await reindexVaultFolder(this.app, this.info.vaultPath);
+				this.opts.onChange?.();
+				new Notice(`Linked files indexed in ${elapsed(t0)}.`);
+			});
+
 		const close = this.bodyEl.createDiv({ cls: 'sm-actions' });
 		new ButtonComponent(close).setButtonText('Close').onClick(() => this.close());
 	}
@@ -289,10 +334,29 @@ export class SymlinkModal extends Modal {
 					new Notice('Target path is empty.');
 					return;
 				}
-				void this.guard(async () => {
-					await repointLink(this.info.absPath, v, chosenType);
-					new Notice('Target updated.');
-				});
+				const handleRepoint = async (resolution?: ConflictResolutionOption) => {
+					void this.guard(async () => {
+						try {
+							await repointLink(this.info.absPath, v, chosenType, resolution);
+							new Notice('Target updated.');
+						} catch (err) {
+							if (err instanceof SymlinkConflictError) {
+								new SymlinkConflictModal(this.app, {
+									linkPath: err.linkPath,
+									targetPath: err.targetPath,
+									linkItemCount: err.linkItemCount,
+									targetItemCount: err.targetItemCount,
+									onResolve: async (choice) => {
+										await handleRepoint(choice);
+									}
+								}).open();
+								return;
+							}
+							throw err;
+						}
+					});
+				};
+				handleRepoint();
 			});
 	}
 
@@ -351,10 +415,29 @@ export class SymlinkModal extends Modal {
 					new Notice('Pick a target first.');
 					return;
 				}
-				void this.guard(async () => {
-					await repointLink(this.info.absPath, v, chosenType);
-					new Notice('Repointed.');
-				});
+				const handleRepoint = async (resolution?: ConflictResolutionOption) => {
+					void this.guard(async () => {
+						try {
+							await repointLink(this.info.absPath, v, chosenType, resolution);
+							new Notice('Repointed.');
+						} catch (err) {
+							if (err instanceof SymlinkConflictError) {
+								new SymlinkConflictModal(this.app, {
+									linkPath: err.linkPath,
+									targetPath: err.targetPath,
+									linkItemCount: err.linkItemCount,
+									targetItemCount: err.targetItemCount,
+									onResolve: async (choice) => {
+										await handleRepoint(choice);
+									}
+								}).open();
+								return;
+							}
+							throw err;
+						}
+					});
+				};
+				handleRepoint();
 			});
 
 		const close = this.bodyEl.createDiv({ cls: 'sm-actions' });
@@ -379,6 +462,7 @@ export class SymlinkModal extends Modal {
 	private async guard(fn: () => Promise<void>): Promise<void> {
 		try {
 			await fn();
+			await reindexVaultFolder(this.app, this.info.vaultPath);
 			this.opts.onChange?.();
 			this.refresh();
 		} catch (err: unknown) {

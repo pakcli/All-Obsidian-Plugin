@@ -1,6 +1,7 @@
 import { FileSystemAdapter, Menu, Notice, Platform, Plugin, TAbstractFile, TFile, TFolder, MarkdownView } from 'obsidian';
 import { BadgeRenderer } from './features/symlink/badges';
 import { SymlinkModal } from './features/symlink/modal';
+import { reindexVaultFolder } from './features/symlink/reindex';
 import { DatePickerModal } from './features/symlink/datePickerModal';
 import { DEFAULT_SETTINGS, PakCLIPluginSettings, PakCLISettingTab } from './settings';
 import { SymlinkManagerSettingTab } from './features/symlink/settings';
@@ -235,6 +236,16 @@ export default class PakCLIPlugin extends Plugin {
 						.setTitle('Symlink: manage this folder')
 						.setIcon('link')
 						.onClick(() => this.openModalForVaultPath(file.path))
+				);
+				menu.addItem((item) =>
+					item
+						.setTitle('Symlink: re-scan / index folder')
+						.setIcon('refresh-cw')
+						.onClick(async () => {
+							new Notice(`Scanning and indexing "${file.path}"…`);
+							await reindexVaultFolder(this.app, file.path);
+							new Notice(`Indexed "${file.path}".`);
+						})
 				);
 			})
 		);
