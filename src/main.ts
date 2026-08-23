@@ -128,6 +128,16 @@ export default class PakCLIPlugin extends Plugin {
 							.setIcon('link')
 							.onClick(() => this.openModalForVaultPath(file.path))
 					);
+					menu.addItem((item) =>
+						item
+							.setTitle('Symlink: re-scan / index folder')
+							.setIcon('refresh-cw')
+							.onClick(async () => {
+								new Notice(`Scanning and indexing "${file.path}"…`);
+								await reindexVaultFolder(this.app, file.path);
+								new Notice(`Indexed "${file.path}".`);
+							})
+					);
 				})
 			);
 
@@ -227,34 +237,6 @@ export default class PakCLIPlugin extends Plugin {
 				}).open();
 			},
 		});
-
-		this.registerEvent(
-			this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
-				if (!(file instanceof TFolder)) return;
-				menu.addItem((item) =>
-					item
-						.setTitle('Symlink: manage this folder')
-						.setIcon('link')
-						.onClick(() => this.openModalForVaultPath(file.path))
-				);
-				menu.addItem((item) =>
-					item
-						.setTitle('Symlink: re-scan / index folder')
-						.setIcon('refresh-cw')
-						.onClick(async () => {
-							new Notice(`Scanning and indexing "${file.path}"…`);
-							await reindexVaultFolder(this.app, file.path);
-							new Notice(`Indexed "${file.path}".`);
-						})
-				);
-			})
-		);
-
-		this.app.workspace.onLayoutReady(() => this.applyBadgeSetting());
-
-		this.registerEvent(this.app.vault.on('create', (f) => this.badges?.notify(f)));
-		this.registerEvent(this.app.vault.on('delete', (f) => this.badges?.notify(f)));
-		this.registerEvent(this.app.vault.on('rename', (f) => this.badges?.notify(f)));
 
 		const symlinkTabInstance = new SymlinkManagerSettingTab(
 			this.app,
