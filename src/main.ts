@@ -41,6 +41,9 @@ import { PendingChangesModal } from './features/scriptSync/ui/PendingChangesModa
 import { ScanSyncModal } from './features/scriptSync/ui/ScanSyncModal';
 import { extractFirstCodeBlock } from './features/scriptSync/markdownParser';
 
+// ASCII Draw & Motion Studio
+import { registerAsciiDrawFeature } from './features/asciidraw';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
     
@@ -463,6 +466,11 @@ export default class PakCLIPlugin extends Plugin {
 				return false;
 			}
 		});
+
+		// =========================================================================
+		// 11. Register ASCII Draw & Motion Studio
+		// =========================================================================
+		registerAsciiDrawFeature(this);
 
 		new Notice('PakCLI Editor\'s Choice Loaded');
 	}
