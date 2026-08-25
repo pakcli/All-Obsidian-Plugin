@@ -11,6 +11,7 @@
 @use 'global-tables';
 @use 'jsonViewer';
 @use 'receiptScanner';
+@use 'profiles';
 
 
 @use '../features/sqlseal/modules/explorer/explorer/style.scss';

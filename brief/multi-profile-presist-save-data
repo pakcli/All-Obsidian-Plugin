@@ -1,0 +1,69 @@
+# Project Brief: Save Vault (Obsidian Plugin)
+
+## One-line summary
+An Obsidian plugin that lets a user keep multiple independent save states ("slots") of the plugin's data within a single Obsidian vault — switchable on demand, without needing separate vaults.
+
+## Problem
+Obsidian plugins normally persist their data through `saveData()` / `loadData()`, which writes to a single `data.json` file per plugin, per vault. That means there's only ever **one** save state — switching to a different data set currently means switching to an entirely different Obsidian vault, which is heavy-handed.
+
+## Goal
+Let the user create, name, switch between, view, and edit multiple save slots for the plugin's data — all inside one vault, without leaving Obsidian.
+
+## How it works (architecture)
+
+1. **Plugin data layer**
+   Uses Obsidian's standard `this.saveData(data)` / `this.loadData()` API, which persists to `data.json` inside the plugin's folder (`.obsidian/plugins/<plugin-id>/data.json`).
+
+2. **Slot storage**
+   Instead of storing one flat object, `data.json` stores a structure like:
+   ```json
+   {
+     "activeSlot": "default",
+     "slots": {
+       "default": { "...": "..." },
+       "project-a": { "...": "..." },
+       "project-b": { "...": "..." }
+     }
+   }
+   ```
+   Each slot holds a full copy of whatever the plugin normally stores.
+
+3. **Save a slot**
+   - Command or button captures the plugin's current in-memory state.
+   - Writes it into `slots[slotName]` in the data structure.
+   - Persists via `saveData()`.
+
+4. **Load / switch a slot**
+   - User picks a slot from the vault UI.
+   - Plugin reads `slots[slotName]` and loads it into the plugin's active state.
+   - Updates `activeSlot`.
+   - Refreshes any open views/panels that depend on this data.
+
+5. **Vault UI**
+   - Implemented as an Obsidian `ItemView` (side panel) or a `Modal`.
+   - Lists all saved slots (name, last-modified date).
+   - Actions per slot: **Load**, **Rename**, **Duplicate**, **Delete**.
+   - Optional: raw JSON view so the user can inspect or manually edit a slot's data before loading it.
+   - "Save current as new slot" button.
+   - Optionally expose the same actions as Obsidian **commands** (so they're accessible via the command palette / hotkeys), not just the UI panel.
+
+## Technical requirements
+- Standard Obsidian plugin structure: `manifest.json`, `main.ts` (compiled to `main.js`), optional `styles.css`.
+- Built with the official Obsidian API / TypeScript plugin template.
+- No external storage needed — everything lives in the plugin's own `data.json`, inside the vault (so it's portable with the vault, e.g. via sync or git).
+
+## Key edge cases to handle
+- Loading a slot while there are unsaved changes in the active state (recommend: warn before overwriting, or auto-save current state as a temp slot first).
+- Slot name collisions (disallow duplicates, or auto-suffix).
+- Plugin's own data schema changing across versions (old slots may not match a newer schema — should degrade gracefully, not crash Obsidian).
+- `data.json` growing large if many slots are kept — consider a soft warning past a certain size/slot count.
+
+## Out of scope (for v1)
+- Syncing slots across devices (this is just local to the vault; if the user uses Obsidian Sync or a sync plugin, slots travel with the vault automatically, but that's incidental, not designed for).
+- Supporting per-slot settings for *other* plugins — this only manages the data of this one plugin.
+- Cross-vault slot sharing/importing (may be a good v2 feature: export/import a slot as a `.json` file).
+
+## Open questions for the programmer
+- Should slots be editable as raw JSON from within the UI, or only via load/save/delete/rename actions?
+- Is there a reasonable slot count/size limit worth enforcing, or is it fine to leave unbounded for v1?
+- Should switching slots trigger a full plugin reload, or just refresh the relevant in-memory state/views?

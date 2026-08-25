@@ -41,8 +41,13 @@ import { PendingChangesModal } from './features/scriptSync/ui/PendingChangesModa
 import { ScanSyncModal } from './features/scriptSync/ui/ScanSyncModal';
 import { extractFirstCodeBlock } from './features/scriptSync/markdownParser';
 
+// Save Vault (Profiles) Manager
+import { ProfileManager } from './features/profiles/ProfileManager';
+import { CreateProfileModal, QuickSwitchProfileModal, ProfileManagerModal } from './features/profiles/ui/ProfileModals';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
+	profileManager!: ProfileManager;
     
 	// Symlink Manager properties
 	private badges: BadgeRenderer | null = null;
@@ -66,6 +71,12 @@ export default class PakCLIPlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
+
+		this.profileManager.onProfileSwitched(() => {
+			this.applyCodeblockStyle();
+			this.applyBadgeSetting();
+			this.syncManager?.init();
+		});
 
 		this.codeblockScaler = new CodeblockScaler(this);
 		this.codeblockScaler.init();
@@ -435,6 +446,31 @@ export default class PakCLIPlugin extends Plugin {
 			}
 		});
 
+		// Save Vault: Multi-Profile commands
+		this.addCommand({
+			id: 'save-vault-switch-profile',
+			name: 'Save Vault: Switch profile / save slot',
+			callback: () => {
+				new QuickSwitchProfileModal(this.app, this.profileManager).open();
+			},
+		});
+
+		this.addCommand({
+			id: 'save-vault-create-slot',
+			name: 'Save Vault: Save current state as new slot',
+			callback: () => {
+				new CreateProfileModal(this.app, this.profileManager).open();
+			},
+		});
+
+		this.addCommand({
+			id: 'save-vault-open-manager',
+			name: 'Save Vault: Open save slots manager modal',
+			callback: () => {
+				new ProfileManagerModal(this.app, this, this.profileManager).open();
+			},
+		});
+
 		// =========================================================================
 		// 10. Register CSV & TSV Table Editor View (Tablite Editor)
 		// =========================================================================
@@ -601,22 +637,37 @@ export default class PakCLIPlugin extends Plugin {
 	}
 
 	// =========================================================================
-	// Shared Settings Management
+	// Shared Settings & Profile Management
 	// =========================================================================
 	async loadSettings(): Promise<void> {
-		const data = (await this.loadData()) as Partial<PakCLIPluginSettings> | null;
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
+		if (!this.profileManager) {
+			this.profileManager = new ProfileManager(this);
+		}
+		const rawData = await this.loadData();
+		this.settings = await this.profileManager.init(rawData);
 	}
 
 	async saveSettings(): Promise<void> {
-		await this.saveData(this.settings);
+		if (this.profileManager) {
+			await this.profileManager.saveActiveSlotData(this.settings);
+		} else {
+			await super.saveData(this.settings);
+		}
 		this.applyCodeblockStyle();
 	}
 
 	async saveData(data: unknown): Promise<void> {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, this.settings || {}, (data as Partial<PakCLIPluginSettings>) || {});
-		await super.saveData(this.settings);
+		if (this.profileManager) {
+			await this.profileManager.saveActiveSlotData(this.settings);
+		} else {
+			await super.saveData(this.settings);
+		}
 		this.applyCodeblockStyle();
+	}
+
+	async saveRawStorage(storage: unknown): Promise<void> {
+		await super.saveData(storage);
 	}
 
 	formatDate(date: Date, format: string): string {

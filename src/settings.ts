@@ -15,6 +15,8 @@ import { PendingChangesModal } from './features/scriptSync/ui/PendingChangesModa
 import { ScanSyncModal } from './features/scriptSync/ui/ScanSyncModal';
 import { VaultFolderSuggest, FolderPickerModal } from './features/scriptSync/ui/FolderPicker';
 
+import { ProfileManagerTabRenderer } from './features/profiles/ui/ProfileManagerTab';
+
 import type PakCLIPlugin from './main';
 
 import { CodeblockLanguageRule } from './features/codeblock/scaler';
@@ -85,6 +87,7 @@ interface SuiteTabInfo {
 }
 
 const ALL_SUITE_TABS: SuiteTabInfo[] = [
+    { id: 'profiles',      label: 'Save Vault (Profiles)', weight: 2 },
     { id: 'sqlseal',       label: 'SQLSeal & Tablite', weight: 5 },
     { id: 'leaflet',       label: 'Leaflet Map',       weight: 4 },
     { id: 'docmost',       label: 'Docmost Sync',      weight: 3 },
@@ -282,7 +285,11 @@ export class PakCLISettingTab extends PluginSettingTab {
 
         const contentContainer = layoutContainer.createDiv({ cls: 'pakcli-tab-content' });
 
-        if (this.activeTab === 'ytcapture') {
+        if (this.activeTab === 'profiles') {
+            if (this.plugin.profileManager) {
+                new ProfileManagerTabRenderer(this.app, this.plugin, this.plugin.profileManager).render(contentContainer);
+            }
+        } else if (this.activeTab === 'ytcapture') {
             renderYTCaptureSettings(this.app, this.plugin, contentContainer);
         } else if (this.activeTab === 'docmost') {
             const docmostTab = new DocmostSettingsTab(this.app, this.plugin);
