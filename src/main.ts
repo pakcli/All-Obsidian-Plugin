@@ -348,7 +348,7 @@ export default class PakCLIPlugin extends Plugin {
 		this.syncManager.init();
 
 		// Left Ribbon Icon: Quick Scan & Dashboard
-		this.addRibbonIcon('terminal', 'Codeblock Sync: Scan & Sync Dashboard', () => {
+		this.addRibbonIcon('git-compare', 'Codeblock Sync: Scan & Sync Dashboard', () => {
 			new ScanSyncModal(
 				this.app,
 				this.syncManager,
