@@ -45,6 +45,9 @@ import { extractFirstCodeBlock } from './features/scriptSync/markdownParser';
 import { ProfileManager } from './features/profiles/ProfileManager';
 import { CreateProfileModal, QuickSwitchProfileModal, ProfileManagerModal } from './features/profiles/ui/ProfileModals';
 
+// ASCII Draw & Motion Studio
+import { registerAsciiDrawFeature } from './features/asciidraw';
+
 export default class PakCLIPlugin extends Plugin {
 	settings!: PakCLIPluginSettings;
 	profileManager!: ProfileManager;
@@ -356,7 +359,7 @@ export default class PakCLIPlugin extends Plugin {
 		this.syncManager.init();
 
 		// Left Ribbon Icon: Quick Scan & Dashboard
-		this.addRibbonIcon('terminal', 'Codeblock Sync: Scan & Sync Dashboard', () => {
+		this.addRibbonIcon('git-compare', 'Codeblock Sync: Scan & Sync Dashboard', () => {
 			new ScanSyncModal(
 				this.app,
 				this.syncManager,
@@ -499,6 +502,11 @@ export default class PakCLIPlugin extends Plugin {
 				return false;
 			}
 		});
+
+		// =========================================================================
+		// 11. Register ASCII Draw & Motion Studio
+		// =========================================================================
+		registerAsciiDrawFeature(this);
 
 		new Notice('PakCLI Editor\'s Choice Loaded');
 	}
