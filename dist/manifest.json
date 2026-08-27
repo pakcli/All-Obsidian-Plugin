@@ -1,7 +1,7 @@
 {
 	"id": "pakcli-suite",
 	"name": "PakCLI Suite",
-	"version": "1.2.3",
+	"version": "1.2.4",
 	"minAppVersion": "1.8.0",
 	"description": "All-in-one suite: Symlink Manager, Asset Router, Tree Diagram, SQLSeal & Tablite CSV Editor, ASCII Motion & Draw Studio, and Leaflet bases.",
 	"author": "PakCLI Team",
