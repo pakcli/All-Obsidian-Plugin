@@ -10,13 +10,40 @@ export async function fetchVideoInfo(
   url: string,
   settings: YTCaptureSettings
 ): Promise<YtDlpInfo> {
-  const stdout = await runCommand(settings.ytDlpPath, [
+  const baseArgs = [
     "--dump-json",
     "--skip-download",
     "--no-playlist",
     "--no-colors",
+    "--no-live-from-start",
     url,
-  ]);
+  ];
+
+  let stdout = "";
+  try {
+    stdout = await runCommand(settings.ytDlpPath, baseArgs);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // If live event ended error or extractor error, retry with player_client fallback
+    if (msg.toLowerCase().includes("live event has ended") || msg.toLowerCase().includes("this live event has ended")) {
+      try {
+        stdout = await runCommand(settings.ytDlpPath, [
+          "--dump-json",
+          "--skip-download",
+          "--no-playlist",
+          "--no-colors",
+          "--no-live-from-start",
+          "--extractor-args",
+          "youtube:player_client=android,ios,mweb,web",
+          url,
+        ]);
+      } catch {
+        throw new Error("This live stream has ended and YouTube is still processing the recording. Please wait a few minutes and try again.");
+      }
+    } else {
+      throw err;
+    }
+  }
 
   // Robust JSON parsing: find first '{' and last '}' to ignore any stdout warning lines
   const jsonStart = stdout.indexOf("{");
@@ -77,6 +104,7 @@ export async function downloadClip(
 
   if (!isInstagram) {
     args.push("--extractor-args", "youtube:player_client=mweb,android,web");
+    args.push("--no-live-from-start");
     if (start > 0 || end > 0) {
       args.push("--download-sections", `*${start}-${end}`, "--force-keyframes-at-cuts");
     }
@@ -99,7 +127,27 @@ export async function downloadClip(
     args.unshift("--ffmpeg-location", ffmpegCmd);
   }
 
-  await runCommand(settings.ytDlpPath, args, { onOutput: onProgress });
+  try {
+    await runCommand(settings.ytDlpPath, args, { onOutput: onProgress });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!isInstagram && (msg.toLowerCase().includes("live event has ended") || msg.toLowerCase().includes("this live event has ended"))) {
+      try {
+        const retryArgs = [...args];
+        // Remove existing --extractor-args if present, then add multi-client fallback
+        const eaIdx = retryArgs.indexOf("--extractor-args");
+        if (eaIdx !== -1) retryArgs.splice(eaIdx, 2);
+        retryArgs.unshift("--extractor-args", "youtube:player_client=android,ios,mweb,web");
+        await runCommand(settings.ytDlpPath, retryArgs, { onOutput: onProgress });
+      } catch {
+        throw new Error(
+          "This live stream has ended and YouTube is still processing the video. Please wait a few minutes and try again."
+        );
+      }
+    } else {
+      throw err;
+    }
+  }
 }
 
 export async function downloadSubtitles(
@@ -116,7 +164,7 @@ export async function downloadSubtitles(
       ...ffmpegArgs,
       "--skip-download", "--write-subs", "--write-auto-subs",
       "--sub-langs", "en.*,en", "--sub-format", "json3",
-      "--no-playlist", "--no-colors", "-o", PathUtils.join(outputDir, "%(id)s.%(ext)s"),
+      "--no-playlist", "--no-colors", "--no-live-from-start", "-o", PathUtils.join(outputDir, "%(id)s.%(ext)s"),
       url,
     ]
   ).catch(() => {/* silently ignore */});
@@ -130,7 +178,7 @@ export async function downloadSubtitles(
         ...ffmpegArgs,
         "--skip-download", "--write-subs", "--write-auto-subs",
         "--sub-langs", "all", "--sub-format", "json3",
-        "--no-playlist", "--no-colors", "-o", PathUtils.join(outputDir, "%(id)s.%(ext)s"),
+        "--no-playlist", "--no-colors", "--no-live-from-start", "-o", PathUtils.join(outputDir, "%(id)s.%(ext)s"),
         url,
       ]
     ).catch(() => {/* ignore */});

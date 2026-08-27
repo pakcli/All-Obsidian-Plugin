@@ -19,12 +19,37 @@ export async function fetchVideoInfo(
   url: string,
   settings: YTEvidenceSettings
 ): Promise<YtDlpInfo> {
-  const stdout = await runCommand(settings.ytDlpPath, [
+  const baseArgs = [
     "--dump-json",
     "--skip-download",
     "--no-playlist",
+    "--no-live-from-start",
     url,
-  ]);
+  ];
+
+  let stdout = "";
+  try {
+    stdout = await runCommand(settings.ytDlpPath, baseArgs);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes("live event has ended") || msg.toLowerCase().includes("this live event has ended")) {
+      try {
+        stdout = await runCommand(settings.ytDlpPath, [
+          "--dump-json",
+          "--skip-download",
+          "--no-playlist",
+          "--no-live-from-start",
+          "--extractor-args",
+          "youtube:player_client=android,ios,mweb,web",
+          url,
+        ]);
+      } catch {
+        throw new Error("This live stream has ended and YouTube is still processing the recording. Please wait a few minutes and try again.");
+      }
+    } else {
+      throw err;
+    }
+  }
 
   try {
     return JSON.parse(stdout) as YtDlpInfo;
@@ -49,26 +74,48 @@ export async function downloadClip(
   settings: YTEvidenceSettings,
   onProgress?: (msg: string) => void
 ): Promise<void> {
-  const args: string[] = [
-    "--download-sections",
-    `*${start}-${end}`,
-    "--force-keyframes-at-cuts",
-    "-f",
-    "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-    "--merge-output-format",
-    "mp4",
-    "--no-playlist",
-    "-o",
-    outputPath,
-    url,
-  ];
+  const buildArgs = (extraArgs: string[] = []): string[] => {
+    const args: string[] = [
+      "--download-sections",
+      `*${start}-${end}`,
+      "--force-keyframes-at-cuts",
+      "-f",
+      "bestvideo+bestaudio/best",
+      "--merge-output-format",
+      "mp4",
+      "--no-playlist",
+      "--no-live-from-start",
+      ...extraArgs,
+      "-o",
+      outputPath,
+      url,
+    ];
+    if (settings.ffmpegPath && settings.ffmpegPath !== "ffmpeg") {
+      args.unshift("--ffmpeg-location", settings.ffmpegPath);
+    }
+    return args;
+  };
 
-  // Allow custom ffmpeg location
-  if (settings.ffmpegPath && settings.ffmpegPath !== "ffmpeg") {
-    args.unshift("--ffmpeg-location", settings.ffmpegPath);
+  try {
+    await runCommand(settings.ytDlpPath, buildArgs(), { onStderr: onProgress });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes("live event has ended") || msg.toLowerCase().includes("this live event has ended")) {
+      try {
+        await runCommand(
+          settings.ytDlpPath,
+          buildArgs(["--extractor-args", "youtube:player_client=android,ios,mweb,web"]),
+          { onStderr: onProgress }
+        );
+      } catch {
+        throw new Error(
+          "This live stream has ended and YouTube is still processing the video. Please wait a few minutes and try again."
+        );
+      }
+    } else {
+      throw err;
+    }
   }
-
-  await runCommand(settings.ytDlpPath, args, { onStderr: onProgress });
 }
 
 // ─── Subtitle download ────────────────────────────────────────────────────────
@@ -95,6 +142,7 @@ export async function downloadSubtitles(
       "--sub-format",
       "json3",
       "--no-playlist",
+      "--no-live-from-start",
       "-o",
       path.join(outputDir, "%(id)s.%(ext)s"),
       url,
@@ -123,6 +171,7 @@ export async function downloadSubtitles(
         "--sub-format",
         "json3",
         "--no-playlist",
+        "--no-live-from-start",
         "-o",
         path.join(outputDir, "%(id)s.%(ext)s"),
         url,

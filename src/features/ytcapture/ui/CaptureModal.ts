@@ -334,6 +334,17 @@ export class CaptureModal extends Modal {
         cls: "ytec-badge ytec-badge-ok",
         text: isInstagram ? "📸 Instagram Media" : "🎬 YouTube Media",
       });
+      if (!isInstagram && p.is_live) {
+        badges.createEl("span", {
+          cls: "ytec-badge ytec-badge-warn",
+          text: "🔴 Live Stream",
+        });
+      } else if (!isInstagram && (p.live_status === "post_live" || p.was_live)) {
+        badges.createEl("span", {
+          cls: "ytec-badge ytec-badge-ok",
+          text: "📼 Live VOD (Ended)",
+        });
+      }
       badges.createEl("span", {
         cls: p.has_transcript
           ? "ytec-badge ytec-badge-ok"
@@ -698,6 +709,9 @@ export class CaptureModal extends Modal {
         end,
         duration: end - start,
         has_transcript: Boolean(hasSubs || hasAutoCaps),
+        is_live: info.is_live,
+        was_live: info.was_live,
+        live_status: info.live_status,
         video_duration: videoDur,
         upload_date: info.upload_date || "",
         view_count: info.view_count || 0,
