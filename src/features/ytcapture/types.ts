@@ -38,6 +38,9 @@ export interface YtDlpInfo {
   thumbnails?: Array<{ url: string; width?: number; height?: number }>;
   tags?: string[];
   webpage_url?: string;
+  is_live?: boolean;
+  was_live?: boolean;
+  live_status?: string;
   subtitles?: Record<string, unknown>;
   automatic_captions?: Record<string, unknown>;
 }
@@ -54,6 +57,9 @@ export interface VideoPreview {
   end: number;
   duration: number;
   has_transcript: boolean;
+  is_live?: boolean;
+  was_live?: boolean;
+  live_status?: string;
   video_duration: number;
   upload_date: string;
   view_count: number;
